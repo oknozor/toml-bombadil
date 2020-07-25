@@ -1,0 +1,26 @@
+dotfiles_dir = "dotfiles"
+
+[theme]
+name = "sway_nord"
+
+  [theme.alacritty]
+  source = "alacritty/alacritty.yml"
+
+  [theme.sway]
+  source = "sway/colors"
+
+  [theme.wofi]
+  source = "wofi/style.css"
+
+
+[[dot]]
+source = "alacritty"
+target = "alacritty"
+
+[[dot]]
+source = "wofi"
+target = ".config/wofi"
+
+[[dot]]
+source = "sway"
+target = ".config/sway"
