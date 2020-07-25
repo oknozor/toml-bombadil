@@ -14,28 +14,79 @@ client.unfocused        $black    $black     $gray   $black     $blue
 client.urgent           $lred     $black     $gray   $lred      $lblue
 */
 
+/*
+wm_border
+$wm_text
+$wm_bg
+$wm_bg_secondary
+ */
+
+use crate::color::{ToConfig, Theme};
+use anyhow::Result;
+use crate::config::Settings;
+
+#[derive(Debug, Serialize)]
 struct SwayColor {
-  focused_border: String,
-  focused_background: String,
-  focused_text: String,
-  focused_indicator: String,
-  focused_child_border: String,
+    colors: Vec<String>
+}
 
-  focused_inactive_border: String,
-  focused_inactive_background: String,
-  focused_inactive_text: String,
-  focused_inactive_child_border: String,
+impl SwayColor {
+    fn content(&self) -> String {
+        self.colors.join("\n")
+    }
+}
+impl ToConfig for SwayColor {
+    fn write() -> Result<()> {
+        // Get sway color config from bombadil config
+        let settings = &Settings::get().unwrap();
+        let sway_colors_config_path = &settings.theme.as_ref().unwrap().sway;
+        let sway_config_path = sway_colors_config_path.as_ref().unwrap().get_path()?;
 
-  focused_inactive_indicator: String,
-  unfocused_border: String,
-  unfocused_background: String,
-  unfocused_text: String,
-  unfocused_indicator: String,
-  unfocused_child_border: String,
+        // Create a new alacritty theme from bombadil color scheme
+        let new_theme = SwayColor::from_theme(settings.load_theme());
 
-  urgent_border: String,
-  urgent_background: String,
-  urgent_text: String,
-  urgent_indicator: String,
-  urgent_child_border: String,
+        // Replace and write alacritty config
+        std::fs::write(sway_config_path, &new_theme.content())?;
+        Ok(())
+    }
+
+    fn from_theme(theme: Theme) -> Self {
+        let mut colors = vec![];
+        colors.push(sway_var("text", theme.text));
+        colors.push(sway_var("cursor", theme.cursor));
+        colors.push(sway_var("background", theme.background));
+        colors.push(sway_var("foreground", theme.foreground));
+        colors.push(sway_var("black", theme.black));
+        colors.push(sway_var("white", theme.white));
+        colors.push(sway_var("red", theme.red));
+        colors.push(sway_var("blue", theme.blue));
+        colors.push(sway_var("green", theme.green));
+        colors.push(sway_var("cyan", theme.cyan));
+        colors.push(sway_var("magenta", theme.magenta));
+        colors.push(sway_var("light_black", theme.light_black));
+        colors.push(sway_var("light_white", theme.light_white));
+        colors.push(sway_var("light_red", theme.light_red));
+        colors.push(sway_var("light_blue", theme.light_blue));
+        colors.push(sway_var("light_green", theme.light_green));
+        colors.push(sway_var("light_cyan", theme.light_cyan));
+        colors.push(sway_var("light_magenta", theme.light_magenta));
+
+        SwayColor {
+            colors
+        }
+    }
+}
+
+fn sway_var(key: &str, value: String) -> String {
+    format!("set ${}  {}", key, value)
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn de_ok() {
+        SwayColor::write().unwrap();
+    }
 }

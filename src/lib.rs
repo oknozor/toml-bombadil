@@ -17,7 +17,6 @@ mod config;
 
 pub fn edit_links() -> Result<()> {
     let settings = Settings::get()?;
-    println!("{:?}", settings);
     let home = dirs::home_dir();
 
     if let Some(home) = home {

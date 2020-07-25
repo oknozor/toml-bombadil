@@ -1,5 +1,5 @@
-use crate::color::ToConfig;
-
+use crate::color::{ToConfig, Theme};
+use anyhow::Result;
 struct WofiColor {
   window_background: String,
   input_background: String,
@@ -58,7 +58,11 @@ color: #eceff4;
 }
 */
 impl ToConfig for WofiColor {
-  fn to_config(&self) -> String {
-    String::new()
+  fn write() -> Result<()> {
+    unimplemented!()
+  }
+
+  fn from_theme(theme: Theme) -> Self {
+    unimplemented!()
   }
 }

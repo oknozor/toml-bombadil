@@ -7,7 +7,7 @@ name = "sway_nord"
   source = "alacritty/alacritty.yml"
 
   [theme.sway]
-  source = "sway/colors"
+  source = "sway/color_vars"
 
   [theme.wofi]
   source = "wofi/style.css"
