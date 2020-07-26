@@ -1,12 +1,9 @@
 use pest::Parser;
 
-use std::collections::HashMap;
-
 #[derive(Parser)]
 #[grammar = "wofi.pest"]
 pub struct WofiParser;
 
-use std::fs;
 use pest::iterators::{Pair, Pairs};
 use crate::color::wofi_colors::{WofiColor, Selector, CSSProp};
 
@@ -47,7 +44,7 @@ impl WofiColor {
 }
 
 fn parse_prop(pair: Pair<Rule>) -> Selector {
-    let mut css_props = pair.into_inner()
+    let css_props = pair.into_inner()
         .next()
         .unwrap()
         .into_inner();

@@ -1,12 +1,8 @@
 use crate::color::{ToConfig, Theme};
-use std::collections::BTreeMap;
 use crate::config::Settings;
-use std::path::Path;
-use std::fs::File;
-use std::io::{BufReader, Read};
 use anyhow::Result;
 use std::fs;
-use serde_yaml::{Value, Index, Mapping, Sequence};
+use serde_yaml::{Value};
 
 #[derive(Debug, Serialize)]
 pub(crate) struct AlacrityColors {

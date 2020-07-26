@@ -1,5 +1,5 @@
 use config::{ConfigError, Config, File};
-use std::path::{Path, PathBuf};
+use std::path::{PathBuf};
 use crate::color::{ThemeConfig, Theme};
 use std::fs;
 use anyhow::Result;

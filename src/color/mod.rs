@@ -1,5 +1,4 @@
-use crate::color::alacritty_colors::AlacrityColors;
-use std::path::{Path, PathBuf};
+use std::path::{PathBuf};
 use anyhow::Result;
 use crate::config::Settings;
 

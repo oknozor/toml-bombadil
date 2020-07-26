@@ -65,7 +65,7 @@ impl ToConfig for WofiColor {
 
   // This shall never be used for Wofi, here we rely on mutating the existing config file
   // this might need some refactoring
-  fn from_theme(theme: Theme) -> Self {
+  fn from_theme(_: Theme) -> Self {
     unreachable!();
   }
 }
