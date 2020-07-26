@@ -2,6 +2,8 @@
 extern crate serde_derive;
 #[macro_use]
 extern crate anyhow;
+#[macro_use]
+extern crate pest_derive;
 
 
 use crate::config::Settings;
@@ -12,6 +14,7 @@ use std::os::unix::fs;
 
 mod color;
 mod config;
+mod parse;
 
 pub fn edit_links() -> Result<()> {
     let settings = Settings::get()?;

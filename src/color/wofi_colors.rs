@@ -1,68 +1,82 @@
 use crate::color::{ToConfig, Theme};
 use anyhow::Result;
-struct WofiColor {
-  window_background: String,
-  input_background: String,
-  input_primary: String,
-  input_border: String,
-  input_focused_background: String,
-  input_focused_primary: String,
-  input_focused_border: String,
-  inner_box_background: String,
-  inner_box_focused_background: String,
-  outer_box_background: String,
-  scroll: String,
-  text: String,
-  text_background: String,
+use crate::config::Settings;
+use std::fs;
+
+
+#[derive(Debug)]
+pub struct WofiColor {
+  pub window: Selector,
+  pub input: Selector,
+  pub input_focused: Selector,
+  pub inner_box: Selector,
+  pub inner_box_flowchild: Selector,
+  pub scroll: Selector,
+  pub outer_box: Selector,
+  pub text: Selector,
+}
+
+#[derive(Debug)]
+pub struct CSSProp {
+  pub(crate) key: String,
+  pub(crate) value: String,
+}
+
+#[derive(Debug)]
+pub struct Selector {
+  pub(crate) props: Vec<CSSProp>
 }
 
 /*
-window {
-margin: 5px;
-padding: 5px;
-background-color:  #434c5e;
-}
 
-#input {
-background-color:  #434c5e;
-color: #eceff4;
-border: 0px solid  #434c5e;
-}
-
-#input:focus {
-background-color: #5e81ac;
-color: #eceff4;
-border: 0px solid   #434c5e;
-}
-
-#inner-box {
-background-color:  #434c5e;
-}
-
-#inner-box flowboxchild:focus {
-background-color: #5e81ac
-}
-
-#outer-box {
-background-color:  #434c5e;
-}
-
-#scroll {
-background-color: #434c5e;
-}
-
-#text {
-margin: 2px;
-background-color: rgba(0,0,0,0);
-color: #eceff4;
-}
 */
 impl ToConfig for WofiColor {
   fn write() -> Result<()> {
-    unimplemented!()
+    let settings = &Settings::get().unwrap();
+    let wofi_theme_path = &settings.theme.as_ref().unwrap().wofi;
+    let wofi_theme_path = wofi_theme_path.as_ref().unwrap().get_path()?;
+
+    let content = fs::read_to_string(&wofi_theme_path)?;
+    let mut styles = WofiColor::from_css(&content);
+    let theme = settings.load_theme();
+
+    // Replace css color props
+    styles.window.set_bg_color(&theme.black);
+
+    styles.input.set_bg_color(&theme.black);
+    styles.input.set_color(&theme.white);
+    styles.input.set_border_color(&theme.light_white);
+
+    styles.input_focused.set_bg_color(&theme.light_blue);
+    styles.input_focused.set_color(&theme.red);
+    styles.input_focused.set_border_color(&theme.red);
+
+    styles.text.set_bg_color(&theme.green);
+    styles.text.set_color(&theme.light_magenta);
+
+    styles.inner_box.set_bg_color(&theme.magenta);
+    styles.inner_box_flowchild.set_bg_color(&theme.blue);
+    styles.outer_box.set_bg_color(&theme.black);
+    styles.scroll.set_bg_color(&theme.yellow);
+
+    std::fs::write(wofi_theme_path, styles.to_string())?;
+    Ok(())
   }
 
+  // This shall never be used for Wofi, here we rely on mutating the existing config file
+  // this might need some refactoring
   fn from_theme(theme: Theme) -> Self {
-    unimplemented!()
+    unreachable!();
   }
 }
+
+#[cfg(test)]
+mod test {
+  use super::*;
+
+  #[test]
+  fn de_ok() {
+    WofiColor::write().unwrap();
+  }
+}
+

@@ -13,6 +13,8 @@ toml = "^0"
 serde_yaml = "0.8"
 serde_derive = "^1"
 serde = "^1"
+pest = "^2"
+pest_derive = "^2"
 anyhow = "^1"
 
 [dev-dependencies]

@@ -3,9 +3,9 @@ use std::path::{Path, PathBuf};
 use anyhow::Result;
 use crate::config::Settings;
 
-mod sway_color;
-mod alacritty_colors;
-mod wofi_colors;
+pub(crate) mod sway_color;
+pub(crate) mod alacritty_colors;
+pub(crate) mod wofi_colors;
 
 pub trait ToConfig {
     fn write() -> Result<()>;
@@ -17,6 +17,7 @@ pub struct ThemeConfig {
     pub(crate) name: Option<String>,
     alacritty: Option<ThemeLocation>,
     sway: Option<ThemeLocation>,
+    wofi: Option<ThemeLocation>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
