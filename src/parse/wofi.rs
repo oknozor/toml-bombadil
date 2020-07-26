@@ -4,8 +4,8 @@ use pest::Parser;
 #[grammar = "wofi.pest"]
 pub struct WofiParser;
 
+use crate::color::wofi_colors::{CSSProp, Selector, WofiColor};
 use pest::iterators::{Pair, Pairs};
-use crate::color::wofi_colors::{WofiColor, Selector, CSSProp};
 
 impl WofiColor {
     pub(crate) fn from_css(content: &str) -> WofiColor {
@@ -20,20 +20,19 @@ impl WofiColor {
             match pair.as_rule() {
                 Rule::selector => {
                     let selector: Pairs<Rule> = pair.into_inner();
-                    selector.into_iter()
-                        .for_each(|pair| {
-                            match pair.as_rule() {
-                                Rule::window_selector => wofi_style.window = parse_prop(pair),
-                                Rule::input_selector => wofi_style.input = parse_prop(pair),
-                                Rule::input_focus_selector => wofi_style.input_focused = parse_prop(pair),
-                                Rule::inner_box_selector => wofi_style.inner_box = parse_prop(pair),
-                                Rule::inner_box_flowbox_child_selector => wofi_style.inner_box_flowchild = parse_prop(pair),
-                                Rule::outer_box_selector => wofi_style.outer_box = parse_prop(pair),
-                                Rule::scroll_selector => wofi_style.scroll = parse_prop(pair),
-                                Rule::text_selector => wofi_style.text = parse_prop(pair),
-                                _ => eprintln!("unknown prop {:?}", pair)
-                            }
-                        });
+                    selector.into_iter().for_each(|pair| match pair.as_rule() {
+                        Rule::window_selector => wofi_style.window = parse_prop(pair),
+                        Rule::input_selector => wofi_style.input = parse_prop(pair),
+                        Rule::input_focus_selector => wofi_style.input_focused = parse_prop(pair),
+                        Rule::inner_box_selector => wofi_style.inner_box = parse_prop(pair),
+                        Rule::inner_box_flowbox_child_selector => {
+                            wofi_style.inner_box_flowchild = parse_prop(pair)
+                        }
+                        Rule::outer_box_selector => wofi_style.outer_box = parse_prop(pair),
+                        Rule::scroll_selector => wofi_style.scroll = parse_prop(pair),
+                        Rule::text_selector => wofi_style.text = parse_prop(pair),
+                        _ => eprintln!("unknown prop {:?}", pair),
+                    });
                 }
                 Rule::EOI => (),
                 _ => unreachable!(),
@@ -44,20 +43,12 @@ impl WofiColor {
 }
 
 fn parse_prop(pair: Pair<Rule>) -> Selector {
-    let css_props = pair.into_inner()
-        .next()
-        .unwrap()
-        .into_inner();
+    let css_props = pair.into_inner().next().unwrap().into_inner();
 
     let mut props = vec![];
 
     css_props.into_iter().for_each(|prop| {
-        let mut key_value = prop
-            .into_inner()
-            .next()
-            .unwrap()
-            .into_inner()
-            .into_iter();
+        let mut key_value = prop.into_inner().next().unwrap().into_inner().into_iter();
 
         let key = key_value.next().unwrap().as_str().to_string();
         let mut value = key_value.next().unwrap().as_str().to_string();
@@ -90,22 +81,22 @@ impl Default for WofiColor {
 impl ToString for WofiColor {
     fn to_string(&self) -> String {
         let mut output = String::new();
-        output +="window";
-        output +=&self.window.to_css();
-        output +="#input";
-        output +=&self.input.to_css();
-        output +="#input:focus";
-        output +=&self.input_focused.to_css();
-        output +="#inner-box";
-        output +=&self.inner_box.to_css();
-        output +="#inner-box flowboxchild:focus";
-        output +=&self.inner_box_flowchild.to_css();
-        output +="#outer-box";
-        output +=&self.outer_box.to_css();
-        output +="#text";
-        output +=&self.text.to_css();
-        output +="#scroll";
-        output +=&self.scroll.to_css();
+        output += "window";
+        output += &self.window.to_css();
+        output += "#input";
+        output += &self.input.to_css();
+        output += "#input:focus";
+        output += &self.input_focused.to_css();
+        output += "#inner-box";
+        output += &self.inner_box.to_css();
+        output += "#inner-box flowboxchild:focus";
+        output += &self.inner_box_flowchild.to_css();
+        output += "#outer-box";
+        output += &self.outer_box.to_css();
+        output += "#text";
+        output += &self.text.to_css();
+        output += "#scroll";
+        output += &self.scroll.to_css();
         output
     }
 }
@@ -113,12 +104,12 @@ impl ToString for WofiColor {
 impl ToString for Selector {
     fn to_string(&self) -> String {
         let mut output = String::new();
-        output +="\n";
+        output += "\n";
         self.props.iter().for_each(|prop| {
-            output +=&prop.key;
-            output +=": ";
-            output +=&prop.value;
-            output +=";\n";
+            output += &prop.key;
+            output += ": ";
+            output += &prop.value;
+            output += ";\n";
         });
         output
     }
@@ -130,8 +121,11 @@ impl Selector {
     }
 
     pub(crate) fn set_bg_color(&mut self, value: &str) {
-        if let Some(prop) = self.props.iter_mut()
-            .find(|prop| prop.key == "background-color") {
+        if let Some(prop) = self
+            .props
+            .iter_mut()
+            .find(|prop| prop.key == "background-color")
+        {
             prop.value = value.to_string();
         } else {
             panic!("No such CSS property : 'background-color'")
@@ -139,8 +133,7 @@ impl Selector {
     }
 
     pub(crate) fn set_color(&mut self, value: &str) {
-        if let Some(prop) = self.props.iter_mut()
-            .find(|prop| prop.key == "color") {
+        if let Some(prop) = self.props.iter_mut().find(|prop| prop.key == "color") {
             prop.value = value.to_string();
         } else {
             panic!("No such CSS property 'color'")
@@ -148,8 +141,7 @@ impl Selector {
     }
 
     pub(crate) fn set_border_color(&mut self, value: &str) {
-        if let Some(prop) = self.props.iter_mut()
-            .find(|prop| prop.key == "border") {
+        if let Some(prop) = self.props.iter_mut().find(|prop| prop.key == "border") {
             let split: Vec<&str> = prop.value.split(" ").collect();
 
             prop.value = format!("{} {} {}", split[0], split[1], value);
@@ -161,17 +153,14 @@ impl Selector {
 
 impl Default for Selector {
     fn default() -> Self {
-        Selector {
-            props: vec![]
-        }
+        Selector { props: vec![] }
     }
 }
 
-
 #[cfg(test)]
 mod test {
-    use std::ops::Not;
     use crate::color::wofi_colors::WofiColor;
+    use std::ops::Not;
 
     #[test]
     fn parse_wofi_config_ok() {

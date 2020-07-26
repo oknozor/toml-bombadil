@@ -21,13 +21,13 @@ $wm_bg
 $wm_bg_secondary
  */
 
-use crate::color::{ToConfig, Theme};
-use anyhow::Result;
+use crate::color::{Theme, ToConfig};
 use crate::config::Settings;
+use anyhow::Result;
 
 #[derive(Debug, Serialize)]
-struct SwayColor {
-    colors: Vec<String>
+pub(crate) struct SwayColor {
+    colors: Vec<String>,
 }
 
 impl SwayColor {
@@ -73,9 +73,7 @@ impl ToConfig for SwayColor {
         colors.push(sway_var("light_magenta", theme.light_magenta));
         colors.push(sway_var("light_yellow", theme.light_yellow));
 
-        SwayColor {
-            colors
-        }
+        SwayColor { colors }
     }
 }
 

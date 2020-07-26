@@ -1,9 +1,9 @@
-use std::path::{PathBuf};
-use anyhow::Result;
 use crate::config::Settings;
+use anyhow::Result;
+use std::path::PathBuf;
 
-pub(crate) mod sway_color;
 pub(crate) mod alacritty_colors;
+pub(crate) mod sway_color;
 pub(crate) mod wofi_colors;
 
 pub trait ToConfig {
@@ -14,9 +14,9 @@ pub trait ToConfig {
 #[derive(Debug, Deserialize, Serialize)]
 pub struct ThemeConfig {
     pub(crate) name: Option<String>,
-    alacritty: Option<ThemeLocation>,
-    sway: Option<ThemeLocation>,
-    wofi: Option<ThemeLocation>,
+    pub(crate) alacritty: Option<ThemeLocation>,
+    pub(crate) sway: Option<ThemeLocation>,
+    pub(crate) wofi: Option<ThemeLocation>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -70,7 +70,7 @@ impl Default for Theme {
             light_blue: "#81A1C1".to_string(),
             light_magenta: "#B48EAD".to_string(),
             light_cyan: "#8FBCBB".to_string(),
-            light_white: "#ECEFF4".to_string()
+            light_white: "#ECEFF4".to_string(),
         }
     }
 }

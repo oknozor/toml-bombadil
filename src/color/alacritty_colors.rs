@@ -1,15 +1,15 @@
-use crate::color::{ToConfig, Theme};
+use crate::color::{Theme, ToConfig};
 use crate::config::Settings;
 use anyhow::Result;
+use serde_yaml::Value;
 use std::fs;
-use serde_yaml::{Value};
 
 #[derive(Debug, Serialize)]
 pub(crate) struct AlacrityColors {
     primary: PrimaryColors,
     cursor: CursorColors,
     normal: Palette,
-    bright: Palette
+    bright: Palette,
 }
 
 #[derive(Debug, Serialize)]
@@ -57,8 +57,14 @@ impl ToConfig for AlacrityColors {
 
     fn from_theme(theme: Theme) -> Self {
         AlacrityColors {
-            primary: PrimaryColors { background: theme.background, foreground: theme.foreground },
-            cursor: CursorColors { text: theme.text, cursor: theme.cursor },
+            primary: PrimaryColors {
+                background: theme.background,
+                foreground: theme.foreground,
+            },
+            cursor: CursorColors {
+                text: theme.text,
+                cursor: theme.cursor,
+            },
             normal: Palette {
                 black: theme.black,
                 red: theme.red,
@@ -67,7 +73,7 @@ impl ToConfig for AlacrityColors {
                 blue: theme.blue,
                 magenta: theme.magenta,
                 cyan: theme.cyan,
-                white: theme.white
+                white: theme.white,
             },
             bright: Palette {
                 black: theme.light_black,
@@ -77,8 +83,8 @@ impl ToConfig for AlacrityColors {
                 blue: theme.light_blue,
                 magenta: theme.light_magenta,
                 cyan: theme.light_cyan,
-                white: theme.light_white
-            }
+                white: theme.light_white,
+            },
         }
     }
 }

@@ -16,6 +16,16 @@ serde = "^1"
 pest = "^2"
 pest_derive = "^2"
 anyhow = "^1"
+clap = { version = "^2", optional = true }
+
+[features]
+default = ["cli"]
+cli = [ "clap"]
+
+[[bin]]
+name = "bombadil"
+path = "src/bin/bombadil.rs"
+required-features = ["clap"]
 
 [dev-dependencies]
 temp_testdir = "0.2"
