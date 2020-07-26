@@ -63,6 +63,7 @@ impl ToConfig for SwayColor {
         colors.push(sway_var("green", theme.green));
         colors.push(sway_var("cyan", theme.cyan));
         colors.push(sway_var("magenta", theme.magenta));
+        colors.push(sway_var("yellow", theme.yellow));
         colors.push(sway_var("light_black", theme.light_black));
         colors.push(sway_var("light_white", theme.light_white));
         colors.push(sway_var("light_red", theme.light_red));
@@ -70,6 +71,7 @@ impl ToConfig for SwayColor {
         colors.push(sway_var("light_green", theme.light_green));
         colors.push(sway_var("light_cyan", theme.light_cyan));
         colors.push(sway_var("light_magenta", theme.light_magenta));
+        colors.push(sway_var("light_yellow", theme.light_yellow));
 
         SwayColor {
             colors

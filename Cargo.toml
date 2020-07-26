@@ -9,7 +9,6 @@ edition = "2018"
 [dependencies]
 config = "^0"
 dirs = "^3"
-indoc = "^0"
 toml = "^0"
 serde_yaml = "0.8"
 serde_derive = "^1"
