@@ -1,10 +1,11 @@
 use crate::config::Settings;
 use anyhow::Result;
 use std::path::PathBuf;
+pub(crate) mod alacritty_theme;
+pub(crate) mod sway_theme;
+pub(crate) mod wofi_theme;
 
-pub(crate) mod alacritty_colors;
-pub(crate) mod sway_color;
-pub(crate) mod wofi_colors;
+pub static ARGONAUT: &[u8] = include_bytes!("default_themes/argonaut.toml");
 
 pub trait ToConfig {
     fn write() -> Result<()>;

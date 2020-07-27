@@ -5,58 +5,55 @@ extern crate anyhow;
 #[macro_use]
 extern crate pest_derive;
 
-use crate::color::alacritty_colors::AlacrityColors;
-use crate::color::sway_color::SwayColor;
-use crate::color::wofi_colors::WofiColor;
-use crate::color::ToConfig;
+use crate::theming::alacritty_theme::AlacrityColors;
+use crate::theming::sway_theme::SwayColor;
+use crate::theming::wofi_theme::WofiColor;
+use crate::theming::{ToConfig, ARGONAUT};
 use crate::config::Settings;
 use anyhow::Result;
 use std::ops::Not;
 use std::os::unix::fs;
 use std::path::{Path, PathBuf};
+use std::fs::File;
+use std::io::Write;
 
-mod color;
-mod config;
+pub mod config;
+mod theming;
 mod parse;
 
 pub fn edit_links() -> Result<()> {
     let settings = Settings::get()?;
-    let home = dirs::home_dir();
-
-    if let Some(home) = home {
-        // append dotfiles path to $HOME
-        let mut dot_dir = home.clone();
-        dot_dir.push(&settings.dotfiles_dir);
-
-        if dot_dir.exists() {
-            settings.dot.iter().for_each(|dot| {
-                // append source to dotfiles path
-                let mut source = PathBuf::from(&dot_dir);
-                source.push(&dot.source);
-
-                // append relative target to $HOME
-                let target = PathBuf::from(&dot.target);
-                if target.is_absolute() {
-                    link(&source, &target).unwrap();
-                } else {
-                    let mut relative_target = PathBuf::from(&home);
-                    relative_target.push(&dot.target);
-                    link(&source, &relative_target).unwrap();
-                }
-            });
-        }
-    }
-
+    // FIXME : unwrap usage
+    settings.dot.iter().for_each(|dot| dot.link().unwrap());
     Ok(())
 }
 
-pub fn self_link(dot_config_path: &str) -> Result<()> {
-    let bombadil_xdg_config = Settings::xdg_path()?;
-    let bombadil_config_local = Path::new(dot_config_path).to_path_buf();
-    if bombadil_config_local.exists() {
-        link(&bombadil_config_local, &bombadil_xdg_config)
+
+pub fn install(dotfiles_path: &str) -> Result<()> {
+    // Link bombadil config against xdg dir
+    let dotfiles_path = Path::new(dotfiles_path);
+    if !dotfiles_path.exists() {
+        return Err(anyhow!("{}, not found"));
+    }
+
+    self_link(dotfiles_path.to_str().unwrap())?;
+
+    // Create default themes
+    let theme_path = dotfiles_path.join(".themes");
+    if !theme_path.exists() {
+        let theme_path = Settings::get()?.bombadil_dots_user_theme_path()?;
+        std::fs::create_dir(&theme_path)
+            .map_err(|err| anyhow!("Theme path {:?} already present, please run with `--force` to override. {}", &theme_path, err))?;
+    }
+
+    let argonaut = theme_path.join("aronaut.toml");
+
+    if !argonaut.exists() {
+        let mut file = File::create(theme_path.join("argonaut.toml"))?;
+        file.write_all(ARGONAUT)
+            .map_err(|err| anyhow!("Could not write to file {} : {}", "argonaut.toml", err))
     } else {
-        Err(anyhow!("Config file {:?} not found", bombadil_config_local))
+        Err(anyhow!("Theme argonaut is present"))
     }
 }
 
@@ -76,6 +73,33 @@ pub fn load_theme() -> Result<()> {
         eprintln!("No theme entry in bombadil config")
     }
     Ok(())
+}
+
+pub fn list_themes() -> Result<Vec<Box<PathBuf>>> {
+    let theme_path = Settings::bombadil_theme_xdg_path()?;
+    std::fs::read_dir(theme_path)
+        .map(|read_dir| read_dir
+            .map(|item| Box::new(item.unwrap().path()))
+            .collect())
+        .map_err(|err| anyhow!("Cannot read config directory, {}", err))
+}
+
+fn self_link(dot_config_path: &str) -> Result<()> {
+    std::fs::create_dir(Settings::bombadil_xdg_path()?)?;
+    let bombadil_xdg_config = Settings::bombadil_config_xdg_path()?;
+    let theme_xdg_config = Settings::bombadil_theme_xdg_path()?;
+
+    let bombadil_config_local = Path::new(dot_config_path)
+        .join("bombadil.toml");
+    let theme_config_local = Path::new(dot_config_path)
+        .join("themes");
+
+    if bombadil_config_local.exists() {
+        link(&bombadil_config_local, &bombadil_xdg_config)?;
+        link(&theme_config_local, &theme_xdg_config)
+    } else {
+        Err(anyhow!("Config file {:?} not found", bombadil_config_local))
+    }
 }
 
 fn link(source: &PathBuf, target: &PathBuf) -> Result<()> {
@@ -115,7 +139,7 @@ mod tests {
 
     #[test]
     fn should_symlink_existing_source_file() {
-        // Arrange
+// Arrange
         let temp = TempDir::default();
         let temp = PathBuf::from(temp.as_ref());
 
@@ -125,17 +149,17 @@ mod tests {
 
         let source = Path::new("Cargo.toml").to_path_buf();
 
-        // Act
+// Act
         let result = link(&source, &target);
 
-        // Assert
+// Assert
         assert!(result.is_ok());
         assert!(Path::new(&target).exists())
     }
 
     #[test]
     fn should_not_symlink_invalid_source_file() {
-        // Arrange
+// Arrange
         let temp = TempDir::default();
         let temp = PathBuf::from(temp.as_ref());
 
@@ -145,10 +169,10 @@ mod tests {
 
         let source = Path::new("not a file").to_path_buf();
 
-        // Act
+// Act
         let result = link(&source, &target);
 
-        // Assert
+// Assert
         assert!(result.is_err());
         assert!(Path::new(&target).exists().not())
     }

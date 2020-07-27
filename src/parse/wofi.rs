@@ -4,7 +4,7 @@ use pest::Parser;
 #[grammar = "wofi.pest"]
 pub struct WofiParser;
 
-use crate::color::wofi_colors::{CSSProp, Selector, WofiColor};
+use crate::theming::wofi_theme::{CSSProp, Selector, WofiColor};
 use pest::iterators::{Pair, Pairs};
 
 impl WofiColor {
@@ -159,7 +159,7 @@ impl Default for Selector {
 
 #[cfg(test)]
 mod test {
-    use crate::color::wofi_colors::WofiColor;
+    use crate::theming::wofi_theme::WofiColor;
     use std::ops::Not;
 
     #[test]

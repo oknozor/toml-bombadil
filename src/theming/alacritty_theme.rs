@@ -1,4 +1,4 @@
-use crate::color::{Theme, ToConfig};
+use crate::theming::{Theme, ToConfig};
 use crate::config::Settings;
 use anyhow::Result;
 use serde_yaml::Value;
@@ -39,19 +39,20 @@ pub struct Palette {
 impl ToConfig for AlacrityColors {
     fn write() -> Result<()> {
         // Get alacritty config from bombadil config
-        let settings = &Settings::get().unwrap();
+        let settings = &Settings::get()?;
         let allacrity_config_path = &settings.theme.as_ref().unwrap().alacritty;
         let allacrity_config_path = allacrity_config_path.as_ref().unwrap().get_path()?;
         let content = fs::read_to_string(&allacrity_config_path)?;
         let mut yaml = serde_yaml::from_str::<Value>(&content)?;
         let colors = yaml.get_mut("colors").unwrap();
 
-        // Create a new alacritty theme from bombadil color scheme
+        // Create a new alacritty theme from bombadil theming scheme
         let new_theme = AlacrityColors::from_theme(settings.load_theme());
 
         // Replace and write alacritty config
         *colors = serde_yaml::to_value(new_theme)?;
-        std::fs::write(allacrity_config_path, serde_yaml::to_string(&yaml)?)?;
+        std::fs::write(allacrity_config_path, serde_yaml::to_string(&yaml)?)
+            .map_err(|err| anyhow!("Alacritty config error : {}", err))?;
         Ok(())
     }
 
