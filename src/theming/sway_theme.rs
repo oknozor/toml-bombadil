@@ -21,7 +21,7 @@ $wm_bg
 $wm_bg_secondary
  */
 
-use crate::color::{Theme, ToConfig};
+use crate::theming::{Theme, ToConfig};
 use crate::config::Settings;
 use anyhow::Result;
 
@@ -37,16 +37,17 @@ impl SwayColor {
 }
 impl ToConfig for SwayColor {
     fn write() -> Result<()> {
-        // Get sway color config from bombadil config
-        let settings = &Settings::get().unwrap();
+        // Get sway theming config from bombadil config
+        let settings = &Settings::get()?;
         let sway_colors_config_path = &settings.theme.as_ref().unwrap().sway;
         let sway_config_path = sway_colors_config_path.as_ref().unwrap().get_path()?;
 
-        // Create a new alacritty theme from bombadil color scheme
+        // Create a new sway theme from bombadil theming scheme
         let new_theme = SwayColor::from_theme(settings.load_theme());
 
-        // Replace and write alacritty config
-        std::fs::write(sway_config_path, &new_theme.content())?;
+        // Replace and write sway config
+        std::fs::write(sway_config_path, &new_theme.content())
+            .map_err(|err| anyhow!("Sway config error : {}", err))?;
         Ok(())
     }
 
