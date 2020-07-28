@@ -8,10 +8,9 @@ extern crate anyhow;
 extern crate pest_derive;
 
 use crate::config::{Settings, SETTINGS};
-use crate::theming::alacritty_theme::AlacrityColors;
-use crate::theming::sway_theme::SwayColor;
-use crate::theming::wofi_theme::WofiColor;
-use crate::theming::{ToConfig, ARGONAUT, AYU};
+use crate::preprocessor::Preprocessor;
+use crate::preprocessor::{AlacrittyPreprocessor, SwayPreprocessor, WofiPreprocessor};
+use crate::theming::{ARGONAUT, AYU};
 use anyhow::Result;
 use std::ffi::OsStr;
 use std::fs::File;
@@ -20,9 +19,13 @@ use std::ops::Not;
 use std::os::unix::fs;
 use std::path::{Path, PathBuf};
 
-pub mod config;
-mod parse;
+pub(crate) mod config;
+pub(crate) mod preprocessor;
 mod theming;
+
+pub(crate) trait AsConfigPath {
+    fn path() -> Path;
+}
 
 pub fn edit_links() -> Result<()> {
     // FIXME : unwrap usage
@@ -67,19 +70,18 @@ fn write_theme((theme_name, theme): (&str, &[u8])) -> Result<()> {
 }
 
 pub fn load_theme() -> Result<()> {
-    if let Some(theme_config) = &SETTINGS.theme {
-        theme_config
-            .wofi
-            .as_ref()
-            .and_then(|_config| WofiColor::write().ok());
-        theme_config
-            .alacritty
-            .as_ref()
-            .and_then(|_config| AlacrityColors::write().ok());
-        theme_config
-            .sway
-            .as_ref()
-            .and_then(|_config| SwayColor::write().ok());
+    if let Some(_) = &SETTINGS.theme {
+        if let Some(processor) = AlacrittyPreprocessor::get() {
+            processor.execute()?
+        }
+
+        if let Some(processor) = SwayPreprocessor::get() {
+            processor.execute()?
+        }
+
+        if let Some(processor) = WofiPreprocessor::get() {
+            processor.execute()?
+        }
     } else {
         eprintln!("No theme entry in bombadil config")
     }

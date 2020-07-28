@@ -1,59 +1,64 @@
 use crate::config::Settings;
+use crate::preprocessor::Theming;
+use crate::theming::alacritty::AlacrityColors;
+use crate::theming::sway::SwayColor;
+use crate::theming::wofi::Wofi;
 use anyhow::Result;
+use std::fs;
+use std::marker::PhantomData;
 use std::path::PathBuf;
-pub(crate) mod alacritty_theme;
-pub(crate) mod sway_theme;
-pub(crate) mod wofi_theme;
+
+pub(crate) mod alacritty;
+pub(crate) mod sway;
+pub(crate) mod wofi;
 
 pub static ARGONAUT: (&str, &[u8]) = (
     "argonaut.toml",
     include_bytes!("default_themes/argonaut.toml"),
 );
+
 pub static AYU: (&str, &[u8]) = (
     "ayu_mirage.toml",
     include_bytes!("default_themes/ayu_mirage.toml"),
 );
 
-pub trait ToConfig {
-    fn write() -> Result<()>;
-    fn from_theme(theme: Theme) -> Self;
-}
-
 #[derive(Debug, Deserialize, Serialize)]
 pub struct ThemeConfig {
     pub(crate) name: Option<String>,
-    pub(crate) alacritty: Option<ThemeLocation>,
-    pub(crate) sway: Option<ThemeLocation>,
-    pub(crate) wofi: Option<ThemeLocation>,
+    pub(crate) alacritty: Option<ThemeLocation<AlacrityColors>>,
+    pub(crate) sway: Option<ThemeLocation<SwayColor>>,
+    pub(crate) wofi: Option<ThemeLocation<Wofi>>,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
-pub struct ThemeLocation {
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct ThemeLocation<T: Theming> {
     source: String,
+    #[serde(default = "T::get_type")]
+    phantom: PhantomData<T>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Theme {
-    background: String,
-    foreground: String,
-    text: String,
-    cursor: String,
-    black: String,
-    red: String,
-    green: String,
-    yellow: String,
-    blue: String,
-    magenta: String,
-    cyan: String,
-    white: String,
-    light_black: String,
-    light_red: String,
-    light_green: String,
-    light_yellow: String,
-    light_blue: String,
-    light_magenta: String,
-    light_cyan: String,
-    light_white: String,
+    pub background: String,
+    pub foreground: String,
+    pub text: String,
+    pub cursor: String,
+    pub black: String,
+    pub red: String,
+    pub green: String,
+    pub yellow: String,
+    pub blue: String,
+    pub magenta: String,
+    pub cyan: String,
+    pub white: String,
+    pub light_black: String,
+    pub light_red: String,
+    pub light_green: String,
+    pub light_yellow: String,
+    pub light_blue: String,
+    pub light_magenta: String,
+    pub light_cyan: String,
+    pub light_white: String,
 }
 
 impl Default for Theme {
@@ -83,10 +88,16 @@ impl Default for Theme {
     }
 }
 
-impl ThemeLocation {
-    fn get_path(&self) -> Result<PathBuf> {
+impl<T: Theming> ThemeLocation<T> {
+    pub fn get_path(&self) -> Result<PathBuf> {
         let mut xdg_config_path = Settings::xdg_config_dir()?;
         xdg_config_path.push(&self.source);
         Ok(xdg_config_path)
+    }
+
+    pub fn get_content(&self) -> Result<String> {
+        let path = &self.get_path()?;
+        fs::read_to_string(path)
+            .map_err(|err| anyhow!("cannot read theme location {:?} : {}", path, err))
     }
 }
