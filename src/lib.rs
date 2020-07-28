@@ -27,6 +27,7 @@ pub(crate) trait AsConfigPath {
     fn path() -> Path;
 }
 
+/// Create a symlink for each [[dot]] config defined in bombadil.toml
 pub fn edit_links() -> Result<()> {
     // FIXME : unwrap usage
     SETTINGS.dot.iter().for_each(|dot| {
@@ -36,6 +37,11 @@ pub fn edit_links() -> Result<()> {
     Ok(())
 }
 
+/// 1. Create a symlink in XDG_CONFIG_DIR/bombadil.toml pointing to {dotfiles}/bombadil.toml
+/// to allow usage from anywhere in the filesystem.
+/// 2. Create bombadil default directories
+///   - theme : $HOME/{dotfiles}/themes
+///   - default themes: $HOME/{dotfiles}/themes/{theme}.toml
 pub fn install(dotfiles_path: &str) -> Result<()> {
     // Link bombadil config against xdg dir
     let dotfiles_path = Path::new(dotfiles_path);
@@ -56,19 +62,7 @@ pub fn install(dotfiles_path: &str) -> Result<()> {
     write_theme(ARGONAUT)
 }
 
-fn write_theme((theme_name, theme): (&str, &[u8])) -> Result<()> {
-    let path = SETTINGS.theme_dir().unwrap().join(theme_name);
-
-    if !path.exists() {
-        File::create(&path)
-            .map_err(|err| anyhow!("Error with theme {:?}. {}", path, err))?
-            .write_all(theme)
-            .map_err(|err| anyhow!("Could not write to file {:?} : {}", path, err))?;
-    }
-
-    Ok(())
-}
-
+/// Execute preprocessors defined in bombadil.toml to change the current theme.
 pub fn load_theme() -> Result<()> {
     if let Some(_) = &SETTINGS.theme {
         if let Some(processor) = AlacrittyPreprocessor::get() {
@@ -131,6 +125,21 @@ fn link(source: &PathBuf, target: &PathBuf) -> Result<()> {
         Err(anyhow!("target dir {:?} does not exists", target))
     }
 }
+
+
+fn write_theme((theme_name, theme): (&str, &[u8])) -> Result<()> {
+    let path = SETTINGS.theme_dir().unwrap().join(theme_name);
+
+    if !path.exists() {
+        File::create(&path)
+            .map_err(|err| anyhow!("Error with theme {:?}. {}", path, err))?
+            .write_all(theme)
+            .map_err(|err| anyhow!("Could not write to file {:?} : {}", path, err))?;
+    }
+
+    Ok(())
+}
+
 
 #[cfg(test)]
 mod tests {

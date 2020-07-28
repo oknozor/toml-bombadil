@@ -79,14 +79,20 @@ impl Preprocessor<Wofi> for WofiPreprocessor {
     }
 }
 
+/// A generic preprocessor to inject value in a program configuration.
 pub trait Preprocessor<T>
 where
     T: Theming,
 {
+    /// Get the preprocessor if it is called in `bombadil.toml`
     fn get() -> Option<Box<Self>>;
 
+    /// Get the path represented as `ThemeLocation<T>` to the user configuration file to inject.
     fn location(&self) -> &ThemeLocation<T>;
 
+    /// Apply the current `Theme` to the configuration
+    /// For now we are using processor only for color schemes but it could be used to
+    /// templatize any global configuration
     fn execute(&self) -> Result<()> {
         let content = self.location().get_content()?;
         let content = T::apply_theme(SETTINGS.get_current_theme_or_default(), &content)?;
@@ -97,9 +103,14 @@ where
     }
 }
 
+/// A trait defining a configuration that support theme preprocessor
 pub trait Theming {
+    /// 1. Deserialize the configuration
+    /// 2. Apply the given theme
+    /// 3. Serialize and return
     fn apply_theme(theme: Theme, content: &str) -> Result<String>;
-    // Trick to get phantom type from `Self` when deserializing ThemeLocation<Self>
+    /// Allow to get phantom type from `Self` when deserializing ThemeLocation<Self>.
+    /// This allows writing generic preprocessor of the form `Preprocessor<T: Theming>`
     fn get_type() -> PhantomData<Self> {
         PhantomData::<Self>
     }

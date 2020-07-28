@@ -5,6 +5,7 @@ use std::fs;
 use std::path::PathBuf;
 
 lazy_static! {
+    /// A handy reference to bombadil.toml configuration
     pub static ref SETTINGS: Settings = Settings::get().unwrap();
 }
 
@@ -173,7 +174,7 @@ impl Settings {
         Ok(self.bombadil_dotfile_path()?.join("themes"))
     }
 
-    /// Resole the bombadil user defined path
+    /// Resole user defined dotfiles path
     pub fn bombadil_dotfile_path(&self) -> Result<PathBuf, ConfigError> {
         dirs::home_dir()
             .ok_or(ConfigError::NotFound(
