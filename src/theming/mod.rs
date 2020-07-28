@@ -89,12 +89,14 @@ impl Default for Theme {
 }
 
 impl<T: Theming> ThemeLocation<T> {
+    /// Return the `source` path for a theme configuration
     pub fn get_path(&self) -> Result<PathBuf> {
         let mut xdg_config_path = Settings::xdg_config_dir()?;
         xdg_config_path.push(&self.source);
         Ok(xdg_config_path)
     }
 
+    /// Return the content of a specific program configuration theme (ex: $HOME/.config/allacrity/allacrity.yaml)
     pub fn get_content(&self) -> Result<String> {
         let path = &self.get_path()?;
         fs::read_to_string(path)
