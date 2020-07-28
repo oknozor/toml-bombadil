@@ -82,7 +82,7 @@ impl DotLink {
 impl Settings {
     /// Try to find a theme matching `[theme.name] config property`
     /// Fallback to the default `Theme` impl is none is found
-    pub fn load_theme(&self) -> Theme {
+    pub fn get_current_theme_or_default(&self) -> Theme {
         let theme_settings = &self.theme.as_ref();
 
         match theme_settings {
@@ -149,7 +149,7 @@ impl Settings {
             )
         })?;
 
-        toml::from_str(&content).map_err(|err| anyhow!("Cannot parse theme : {}", err))
+        toml::from_str(&content).map_err(|err| anyhow!("Cannot preprocessor theme : {}", err))
     }
 
     /// Resolve `$XDG_CONFIG_DIR`
@@ -168,11 +168,6 @@ impl Settings {
             .map(|path| path.join("bombadil.toml"))
     }
 
-    /// Resolve the bombadil XDG settings path : `$HOME/{dotfiles}/bombadil.toml`
-    pub fn bombadil_config_dot_path(&self) -> Result<PathBuf, ConfigError> {
-        Ok(self.bombadil_dotfile_path()?.join("bombadil.toml"))
-    }
-
     /// Resolve the bombadil XDG theme path : `$HOME/{dotfiles}/bombadil.toml`
     pub fn theme_dir(&self) -> Result<PathBuf, ConfigError> {
         Ok(self.bombadil_dotfile_path()?.join("themes"))
@@ -188,15 +183,5 @@ impl Settings {
             .map_err(|_err| {
                 ConfigError::NotFound("Unable to find toml setting `dotfile_dir`".into())
             })
-    }
-
-    /// Resole the bombadil path theme path in dotfiles user dir
-    pub fn bombadil_dots_user_theme_path(&self) -> Result<PathBuf, ConfigError> {
-        dirs::home_dir()
-            .ok_or(ConfigError::NotFound(
-                "Unable to find $HOME directory".into(),
-            ))
-            .map(|home| home.join(&self.dotfiles_dir).join("themes"))
-            .map_err(|_err| ConfigError::NotFound("Unable to find themes directory".into()))
     }
 }
