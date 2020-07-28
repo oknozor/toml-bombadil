@@ -5,7 +5,14 @@ pub(crate) mod alacritty_theme;
 pub(crate) mod sway_theme;
 pub(crate) mod wofi_theme;
 
-pub static ARGONAUT: &[u8] = include_bytes!("default_themes/argonaut.toml");
+pub static ARGONAUT: (&str, &[u8]) = (
+    "argonaut.toml",
+    include_bytes!("default_themes/argonaut.toml"),
+);
+pub static AYU: (&str, &[u8]) = (
+    "ayu_mirage.toml",
+    include_bytes!("default_themes/ayu_mirage.toml"),
+);
 
 pub trait ToConfig {
     fn write() -> Result<()>;

@@ -1,5 +1,6 @@
 background = "#292C3E"
 foreground = "#EBEBEB"
+
 text = "#FF261E"
 cursor = "#FF261E"
 black = "#0d0d0d"
@@ -10,6 +11,7 @@ blue = "#1BA6FA"
 magenta = "#8763B8"
 cyan = "#21DEEF"
 white = "#EBEBEB"
+
 light_black = "#6D7070"
 light_red = "#FF4352"
 light_green = "#B8E466"
