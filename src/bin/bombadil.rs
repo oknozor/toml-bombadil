@@ -1,5 +1,5 @@
 use clap::{App, Arg, SubCommand};
-use toml_bombadil::{edit_links, load_theme, install, list_themes};
+use toml_bombadil::{edit_links, install, list_themes, load_theme};
 
 const LINK: &str = "link";
 const THEME: &str = "theme";
@@ -35,12 +35,13 @@ fn main() {
         .subcommand(
             SubCommand::with_name(THEME)
                 .help("symlink your dotfiles according to bombadil.toml config")
-                .arg(Arg::with_name("set")
-                    .help("set the current theme and update your dotfiles accordingly")
-                    .short("ls")
-                    .long("set")
-                    .takes_value(true)
-                    .required_unless_one(&["list", "load"])
+                .arg(
+                    Arg::with_name("set")
+                        .help("set the current theme and update your dotfiles accordingly")
+                        .short("ls")
+                        .long("set")
+                        .takes_value(true)
+                        .required_unless_one(&["list", "load"]),
                 )
                 .arg(
                     Arg::with_name("list")
@@ -55,23 +56,18 @@ fn main() {
                         .long("load")
                         .help("load current theme")
                         .required_unless_one(&["set", "list"]),
-                )
+                ),
         )
         .get_matches();
 
     if let Some(subcommand) = matches.subcommand_name() {
         match subcommand {
             INSTALL => {
-                let install_commmand = matches
-                    .subcommand_matches(INSTALL)
-                    .unwrap();
+                let install_commmand = matches.subcommand_matches(INSTALL).unwrap();
 
-                let config_path = install_commmand
-                    .value_of("CONFIG")
-                    .unwrap();
+                let config_path = install_commmand.value_of("CONFIG").unwrap();
 
-                let _command_result = install(config_path)
-                    .unwrap();
+                let _command_result = install(config_path).expect("install err");
             }
 
             LINK => {
@@ -79,16 +75,13 @@ fn main() {
             }
 
             THEME => {
-                let theme_command = matches
-                    .subcommand_matches(THEME)
-                    .unwrap();
+                let theme_command = matches.subcommand_matches(THEME).unwrap();
 
                 if theme_command.is_present("list") {
                     list_themes()
                         .unwrap_or_else(|err| fatal!("{}", err))
                         .iter()
                         .for_each(|path| println!("{}", path.display()));
-
                 } else if theme_command.is_present("set") {
                     println!("{}", theme_command.value_of("set").unwrap());
                     todo!("set theme")
@@ -97,7 +90,7 @@ fn main() {
                 }
             }
 
-            _ => unreachable!()
+            _ => unreachable!(),
         }
     }
 }

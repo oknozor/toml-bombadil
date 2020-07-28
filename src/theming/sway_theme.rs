@@ -21,8 +21,8 @@ $wm_bg
 $wm_bg_secondary
  */
 
+use crate::config::SETTINGS;
 use crate::theming::{Theme, ToConfig};
-use crate::config::Settings;
 use anyhow::Result;
 
 #[derive(Debug, Serialize)]
@@ -38,12 +38,11 @@ impl SwayColor {
 impl ToConfig for SwayColor {
     fn write() -> Result<()> {
         // Get sway theming config from bombadil config
-        let settings = &Settings::get()?;
-        let sway_colors_config_path = &settings.theme.as_ref().unwrap().sway;
+        let sway_colors_config_path = &SETTINGS.theme.as_ref().unwrap().sway;
         let sway_config_path = sway_colors_config_path.as_ref().unwrap().get_path()?;
 
         // Create a new sway theme from bombadil theming scheme
-        let new_theme = SwayColor::from_theme(settings.load_theme());
+        let new_theme = SwayColor::from_theme(SETTINGS.load_theme());
 
         // Replace and write sway config
         std::fs::write(sway_config_path, &new_theme.content())

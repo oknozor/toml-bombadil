@@ -1,5 +1,5 @@
+use crate::config::SETTINGS;
 use crate::theming::{Theme, ToConfig};
-use crate::config::Settings;
 use anyhow::Result;
 use std::fs;
 
@@ -31,13 +31,12 @@ pub struct Selector {
 */
 impl ToConfig for WofiColor {
     fn write() -> Result<()> {
-        let settings = &Settings::get()?;
-        let wofi_theme_path = &settings.theme.as_ref().unwrap().wofi;
+        let wofi_theme_path = &SETTINGS.theme.as_ref().unwrap().wofi;
         let wofi_theme_path = wofi_theme_path.as_ref().unwrap().get_path()?;
 
         let content = fs::read_to_string(&wofi_theme_path)?;
         let mut styles = WofiColor::from_css(&content);
-        let theme = settings.load_theme();
+        let theme = SETTINGS.load_theme();
 
         // Replace css theming props
         styles.window.set_bg_color(&theme.black);
@@ -59,7 +58,7 @@ impl ToConfig for WofiColor {
         styles.scroll.set_bg_color(&theme.yellow);
 
         std::fs::write(wofi_theme_path, styles.to_string())
-        .map_err(|err| anyhow!("Wofi config error : {}", err))?;
+            .map_err(|err| anyhow!("Wofi config error : {}", err))?;
         Ok(())
     }
 
