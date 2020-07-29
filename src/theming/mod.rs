@@ -6,11 +6,12 @@ use crate::theming::wofi::Wofi;
 use anyhow::Result;
 use std::fs;
 use std::marker::PhantomData;
-use std::path::PathBuf;
+use std::path::{PathBuf, Path};
 
 pub(crate) mod alacritty;
 pub(crate) mod sway;
 pub(crate) mod wofi;
+pub(crate) mod display;
 
 pub static ARGONAUT: (&str, &[u8]) = (
     "argonaut.toml",
@@ -59,6 +60,21 @@ pub struct Theme {
     pub light_magenta: String,
     pub light_cyan: String,
     pub light_white: String,
+}
+
+impl Theme {
+    pub fn from_path<T>(theme_path: T) -> Result<Theme> where T: AsRef<Path> {
+        // unwrapping `theme_path` is safe here
+        let content = fs::read_to_string(&theme_path).map_err(|err| {
+            anyhow!(
+                "Cannot read {}, cause : {}",
+                theme_path.as_ref().display(),
+                err
+            )
+        })?;
+
+        toml::from_str(&content).map_err(|err| anyhow!("Cannot preprocessor theme : {}", err))
+    }
 }
 
 impl Default for Theme {

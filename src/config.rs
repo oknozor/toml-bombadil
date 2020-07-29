@@ -81,6 +81,7 @@ impl DotLink {
 }
 
 impl Settings {
+
     /// Try to find a theme matching `[theme.name] config property`
     /// Fallback to the default `Theme` impl is none is found
     pub fn get_current_theme_or_default(&self) -> Theme {
@@ -130,7 +131,7 @@ impl Settings {
         }
     }
 
-    fn resolve_theme(&self, theme_name: &str) -> Result<Theme> {
+    pub fn resolve_theme(&self, theme_name: &str) -> Result<Theme> {
         let theme_path = self
             .theme_dir()
             .map(|theme_dir| theme_dir.join(theme_name))
@@ -141,16 +142,7 @@ impl Settings {
                 )
             })?;
 
-        // unwrapping `theme_path` is safe here
-        let content = fs::read_to_string(&theme_path).map_err(|err| {
-            anyhow!(
-                "Cannot read {}, cause : {}",
-                theme_path.to_str().unwrap(),
-                err
-            )
-        })?;
-
-        toml::from_str(&content).map_err(|err| anyhow!("Cannot preprocessor theme : {}", err))
+        Theme::from_path(theme_path)
     }
 
     /// Resolve `$XDG_CONFIG_DIR`
