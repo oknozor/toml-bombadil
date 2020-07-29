@@ -21,7 +21,7 @@ use std::path::{Path, PathBuf};
 
 pub(crate) mod config;
 pub(crate) mod preprocessor;
-mod theming;
+pub mod theming;
 
 pub(crate) trait AsConfigPath {
     fn path() -> Path;
@@ -82,12 +82,12 @@ pub fn load_theme() -> Result<()> {
     Ok(())
 }
 
-pub fn list_themes() -> Result<Vec<Box<PathBuf>>> {
+pub fn list_themes() -> Result<Vec<PathBuf>> {
     let theme_path = SETTINGS.theme_dir()?;
     std::fs::read_dir(theme_path)
         .map(|read_dir| {
             read_dir
-                .map(|item| Box::new(item.unwrap().path()))
+                .map(|item| item.unwrap().path())
                 .collect()
         })
         .map_err(|err| anyhow!("Cannot read config directory, {}", err))

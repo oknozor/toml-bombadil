@@ -1,5 +1,5 @@
 use clap::{App, Arg, SubCommand};
-use toml_bombadil::{edit_links, install, list_themes, load_theme};
+use toml_bombadil::{edit_links, install, list_themes, load_theme, theming::Theme};
 
 const LINK: &str = "link";
 const THEME: &str = "theme";
@@ -81,7 +81,7 @@ fn main() {
                     list_themes()
                         .unwrap_or_else(|err| fatal!("{}", err))
                         .iter()
-                        .for_each(|path| println!("{}", path.display()));
+                        .for_each(|path| println!("{:?} {}", &path, Theme::from_path(&path).unwrap()));
                 } else if theme_command.is_present("set") {
                     println!("{}", theme_command.value_of("set").unwrap());
                     todo!("set theme")

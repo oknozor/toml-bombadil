@@ -17,6 +17,7 @@ serde = "^1"
 pest = "^2"
 pest_derive = "^2"
 anyhow = "^1"
+termion = "1.5.5"
 clap = { version = "^2", optional = true }
 
 [features]
