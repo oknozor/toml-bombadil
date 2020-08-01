@@ -23,7 +23,7 @@ impl Theming for Wofi {
             match pair.as_rule() {
                 Rule::selector => {
                     let selector: Pairs<Rule> = pair.into_inner();
-                    selector.into_iter().for_each(|pair| match pair.as_rule() {
+                    selector.for_each(|pair| match pair.as_rule() {
                         Rule::window_selector => wofi_style.window = parse_prop(pair),
                         Rule::input_selector => wofi_style.input = parse_prop(pair),
                         Rule::input_focus_selector => wofi_style.input_focused = parse_prop(pair),
@@ -73,7 +73,7 @@ impl Selector {
 
     pub(crate) fn set_border_color(&mut self, value: &str) {
         if let Some(prop) = self.props.iter_mut().find(|prop| prop.key == "border") {
-            let split: Vec<&str> = prop.value.split(" ").collect();
+            let split: Vec<&str> = prop.value.split(' ').collect();
 
             prop.value = format!("{} {} {}", split[0], split[1], value);
         } else {
@@ -107,16 +107,16 @@ impl Wofi {
         wofi_style.input.set_border_color(&theme.light_white);
 
         wofi_style.input_focused.set_bg_color(&theme.light_blue);
-        wofi_style.input_focused.set_color(&theme.red);
-        wofi_style.input_focused.set_border_color(&theme.red);
+        wofi_style.input_focused.set_color(&theme.blue);
+        wofi_style.input_focused.set_border_color(&theme.light_blue);
 
-        wofi_style.text.set_bg_color(&theme.green);
-        wofi_style.text.set_color(&theme.light_magenta);
+        wofi_style.text.set_bg_color(&theme.black);
+        wofi_style.text.set_color(&theme.text);
 
-        wofi_style.inner_box.set_bg_color(&theme.magenta);
+        wofi_style.inner_box.set_bg_color(&theme.black);
         wofi_style.inner_box_flowchild.set_bg_color(&theme.blue);
-        wofi_style.outer_box.set_bg_color(&theme.black);
-        wofi_style.scroll.set_bg_color(&theme.yellow);
+        wofi_style.outer_box.set_bg_color(&theme.light_black);
+        wofi_style.scroll.set_bg_color(&theme.light_blue);
         wofi_style
     }
 }
@@ -149,8 +149,8 @@ fn parse_prop(pair: Pair<Rule>) -> Selector {
 
     let mut props = vec![];
 
-    css_props.into_iter().for_each(|prop| {
-        let mut key_value = prop.into_inner().next().unwrap().into_inner().into_iter();
+    css_props.for_each(|prop| {
+        let mut key_value = prop.into_inner().next().unwrap().into_inner();
 
         let key = key_value.next().unwrap().as_str().to_string();
         let mut value = key_value.next().unwrap().as_str().to_string();

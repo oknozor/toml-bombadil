@@ -31,8 +31,8 @@ pub(crate) trait AsConfigPath {
 pub fn edit_links() -> Result<()> {
     // FIXME : unwrap usage
     SETTINGS.dot.iter().for_each(|dot| {
-        let _ = dot.unlink().expect(&format!("UNLINK ERROR {:?}", &dot));
-        dot.link().expect(&format!("DOT ERROR {:?}", &dot))
+        let _ = dot.unlink().unwrap_or_else(|err | panic!("UNLINK ERROR {:?} : {}", &dot, err));
+        dot.link().unwrap_or_else(|err| panic!("DOT ERROR {:?}, {}", &dot, err))
     });
     Ok(())
 }
@@ -64,7 +64,7 @@ pub fn install(dotfiles_path: &str) -> Result<()> {
 
 /// Execute preprocessors defined in bombadil.toml to change the current theme.
 pub fn load_theme() -> Result<()> {
-    if let Some(_) = &SETTINGS.theme {
+    if SETTINGS.theme.is_some() {
         if let Some(processor) = AlacrittyPreprocessor::get() {
             processor.execute()?
         }

@@ -46,7 +46,7 @@ impl DotLink {
         } else {
             dirs::home_dir()
                 .map(|home| home.join(&self.target))
-                .ok_or(anyhow!("Unable to find $HOME directory"))
+                .ok_or_else( ||anyhow!("Unable to find $HOME directory"))
         }
     }
 
@@ -147,7 +147,7 @@ impl Settings {
 
     /// Resolve `$XDG_CONFIG_DIR`
     pub fn xdg_config_dir() -> Result<PathBuf, ConfigError> {
-        dirs::config_dir().ok_or(ConfigError::NotFound(
+        dirs::config_dir().ok_or_else( ||ConfigError::NotFound(
             "Unable to find XDG_CONFIG_DIR".into(),
         ))
     }
@@ -155,7 +155,7 @@ impl Settings {
     /// Resolve the bombadil XDG settings path : `$XDG_CONFIG_DIR/bombadil.toml
     pub fn bombadil_config_xdg_path() -> Result<PathBuf, ConfigError> {
         dirs::config_dir()
-            .ok_or(ConfigError::NotFound(
+            .ok_or_else(|| ConfigError::NotFound(
                 "Unable to find `$XDG_CONFIG/bombadil.toml`".into(),
             ))
             .map(|path| path.join("bombadil.toml"))
@@ -169,7 +169,7 @@ impl Settings {
     /// Resole user defined dotfiles path
     pub fn bombadil_dotfile_path(&self) -> Result<PathBuf, ConfigError> {
         dirs::home_dir()
-            .ok_or(ConfigError::NotFound(
+            .ok_or_else(|| ConfigError::NotFound(
                 "Unable to find $HOME directory".into(),
             ))
             .map(|home| home.join(&self.dotfiles_dir))

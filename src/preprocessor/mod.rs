@@ -33,7 +33,7 @@ impl Preprocessor<AlacrityColors> for AlacrittyPreprocessor {
                     location: location.clone(),
                 })
             })
-            .map(|preprocessor| Box::new(preprocessor))
+            .map(Box::new)
     }
 
     fn location(&self) -> &ThemeLocation<AlacrityColors> {
@@ -52,7 +52,7 @@ impl Preprocessor<SwayColor> for SwayPreprocessor {
                     location: location.clone(),
                 })
             })
-            .map(|preprocessor| Box::new(preprocessor))
+            .map(Box::new)
     }
 
     fn location(&self) -> &ThemeLocation<SwayColor> {
@@ -71,7 +71,7 @@ impl Preprocessor<Wofi> for WofiPreprocessor {
                     location: location.clone(),
                 })
             })
-            .map(|preprocessor| Box::new(preprocessor))
+            .map(Box::new)
     }
 
     fn location(&self) -> &ThemeLocation<Wofi> {
