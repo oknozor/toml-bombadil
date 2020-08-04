@@ -8,7 +8,7 @@ path = "vars.toml"
 
 [[dot]]
 source = "alacritty"
-target = "alacritty"
+target = ".config/alacritty/alacritty.yml"
 
 [[dot]]
 source = "wofi"
