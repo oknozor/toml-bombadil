@@ -52,6 +52,10 @@ impl Bombadil {
         };
 
         fs::symlink(&config_path, &xdg_config)
+            .and_then(|res| {
+                println!("{:?} => {:?}", &config_path, xdg_config);
+                Ok(())
+            })
             .map_err(|err| anyhow!("Unable to symlink {:?} to {:?} : {}",config_path, xdg_config, err))
     }
 
@@ -85,7 +89,11 @@ impl Bombadil {
                 }
             }
 
-            fs::symlink(&dot_copy_path, target)?;
+            fs::symlink(&dot_copy_path, target)
+                .and_then(|res| {
+                    println!("{:?} => {:?}", &dot_copy_path, target);
+                    Ok(())
+                })?;
         }
         // TODO : EXECUTE HOOK
         Ok(())
