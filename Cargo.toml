@@ -8,10 +8,8 @@ edition = "2018"
 
 [dependencies]
 config = "^0"
-lazy_static = "^1"
 dirs = "^3"
 toml = "^0"
-serde_yaml = "0.8"
 serde_derive = "^1"
 serde = "^1"
 pest = "^2"

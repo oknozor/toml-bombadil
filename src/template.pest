@@ -1,0 +1,12 @@
+variable_start = _{ "__[" }
+variable_end = _{ "]__" }
+variable_name = { (!variable_end ~ANY)* }
+variable = { variable_start ~ variable_name ~ variable_end }
+raw_content = { !variable_start ~ ANY }
+
+file = {
+    SOI ~
+    ( variable | raw_content )*
+     ~
+    EOI
+}
