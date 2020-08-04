@@ -1,8 +1,8 @@
 use clap::{App, Arg, SubCommand};
-use toml_bombadil::{edit_links, install, list_themes, load_theme, theming::Theme};
+use toml_bombadil::Bombadil;
+use std::path::Path;
 
 const LINK: &str = "link";
-const THEME: &str = "theme";
 const INSTALL: &str = "install";
 
 macro_rules! fatal {
@@ -32,65 +32,25 @@ fn main() {
             SubCommand::with_name(LINK)
                 .help("symlink your dotfiles according to bombadil.toml config"),
         )
-        .subcommand(
-            SubCommand::with_name(THEME)
-                .help("symlink your dotfiles according to bombadil.toml config")
-                .arg(
-                    Arg::with_name("set")
-                        .help("set the current theme and update your dotfiles accordingly")
-                        .short("ls")
-                        .long("set")
-                        .takes_value(true)
-                        .required_unless_one(&["list", "load"]),
-                )
-                .arg(
-                    Arg::with_name("list")
-                        .short("l")
-                        .long("list")
-                        .help("list available theme")
-                        .required_unless_one(&["set", "load"]),
-                )
-                .arg(
-                    Arg::with_name("load")
-                        .short("l")
-                        .long("load")
-                        .help("load current theme")
-                        .required_unless_one(&["set", "list"]),
-                ),
-        )
         .get_matches();
 
     if let Some(subcommand) = matches.subcommand_name() {
         match subcommand {
             INSTALL => {
                 let install_commmand = matches.subcommand_matches(INSTALL).unwrap();
+                let config_path = install_commmand.value_of("CONFIG")
+                    .map(|config_path| Path::new(config_path).to_path_buf());
+                let bombadil = Bombadil::from_settings().unwrap();
 
-                let config_path = install_commmand.value_of("CONFIG").unwrap();
-
-                let _command_result = install(config_path).expect("install err");
+                bombadil.link_self_config(config_path).unwrap();
             }
 
             LINK => {
-                let _command_result = edit_links();
+                let bombadil = Bombadil::from_settings().expect("Settings error");
+                let _command_result = bombadil.install().unwrap();
             }
 
-            THEME => {
-                let theme_command = matches.subcommand_matches(THEME).unwrap();
-
-                if theme_command.is_present("list") {
-                    list_themes()
-                        .unwrap_or_else(|err| fatal!("{}", err))
-                        .iter()
-                        .for_each(|path| println!("{:?} {}", &path, Theme::from_path(&path).unwrap()));
-                } else if theme_command.is_present("set") {
-                    println!("{}", theme_command.value_of("set").unwrap());
-                    todo!("set theme")
-                } else if theme_command.is_present("load") {
-                    load_theme().unwrap()
-                }
-            }
-
-            _ => unreachable!(),
+            _ => unreachable!()
         }
     }
 }
