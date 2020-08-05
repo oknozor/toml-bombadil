@@ -10,6 +10,7 @@ use crate::hook::Hook;
 use crate::settings::Settings;
 use crate::templating::Variables;
 use anyhow::Result;
+use colored::*;
 use dirs::home_dir;
 use std::fs::File;
 use std::io::Write;
@@ -61,7 +62,11 @@ impl Bombadil {
                     err
                 )
             })
-            .map(|_result| println!("{:?} => {:?}", &config_path, xdg_config))
+            .map(|_result| {
+                let source = format!("{:?}", &config_path).blue();
+                let dest = format!("{:?}", &xdg_config).green();
+                println!("{} => {}", source, dest)
+            })
     }
 
     pub fn install(&self) -> Result<()> {
@@ -95,8 +100,17 @@ impl Bombadil {
             }
 
             fs::symlink(&dot_copy_path, target)
-                .map(|_result| println!("{:?} => {:?}", &dot_copy_path, target))
-                .map_err(|err| anyhow!("{:?} => {:?} : {}", &dot_copy_path, target, err))
+                .map(|_result| {
+                    let source = format!("{:?}", &dot_copy_path).blue();
+                    let dest = format!("{:?}", target).green();
+                    println!("{} => {}", source, dest)
+                })
+                .map_err(|err| {
+                    let source = format!("{:?}", &dot_copy_path).blue();
+                    let dest = format!("{:?}", &target).red();
+                    let err = format!("{}", err).red().bold();
+                    anyhow!("{} => {} : {}", source, dest, err)
+                })
                 .unwrap_or_else(|err| eprintln!("{}", err));
         }
 
