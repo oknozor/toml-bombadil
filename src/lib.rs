@@ -38,12 +38,12 @@ impl Bombadil {
 
         let xdg_config = Settings::bombadil_config_xdg_path()?;
 
-        if let Ok(_) = std::fs::symlink_metadata(&xdg_config) {
+        if std::fs::symlink_metadata(&xdg_config).is_ok() {
             std::fs::remove_file(&xdg_config)?;
         }
 
         let config_path = &config_path
-            .unwrap_or(Path::new("bombadil.toml").to_path_buf())
+            .unwrap_or_else(|| Path::new("bombadil.toml").to_path_buf())
             .canonicalize()?;
 
         let config_path = if config_path.is_dir() {
@@ -53,11 +53,8 @@ impl Bombadil {
         };
 
         fs::symlink(&config_path, &xdg_config)
-            .and_then(|_result| {
-                println!("{:?} => {:?}", &config_path, xdg_config);
-                Ok(())
-            })
             .map_err(|err| anyhow!("Unable to symlink {:?} to {:?} : {}",config_path, xdg_config, err))
+            .map(|_result| println!("{:?} => {:?}", &config_path, xdg_config))
     }
 
     pub fn install(&self) -> Result<()> {
@@ -82,7 +79,7 @@ impl Bombadil {
             let target = &dot.target()?;
 
             // Unlink if exists
-            if let Ok(_) = std::fs::symlink_metadata(target) {
+            if std::fs::symlink_metadata(target).is_ok() {
                 if target.is_dir() {
                     std::fs::remove_dir_all(&target)?;
                 } else {
@@ -91,11 +88,9 @@ impl Bombadil {
             }
 
             fs::symlink(&dot_copy_path, target)
+                .map(|_result| println!("{:?} => {:?}", &dot_copy_path, target))
                 .map_err(|err| anyhow!("{:?} => {:?} : {}", &dot_copy_path, target, err))
-                .and_then(|_result| {
-                    println!("{:?} => {:?}", &dot_copy_path, target);
-                    Ok(())
-                }).unwrap_or_else(|err| eprintln!("{}", err));
+                .unwrap_or_else(|err| eprintln!("{}", err));
         }
 
         self.hooks.iter().map(Hook::run)
@@ -124,10 +119,7 @@ impl Bombadil {
         // Resolve hooks from config
         let mut hooks = vec![];
         if let Some(setting_hooks) = settings.hook {
-            hooks.extend(setting_hooks
-                .iter()
-                .cloned()
-                .collect::<Vec<Hook>>());
+            hooks.extend(setting_hooks);
         }
 
         let home_dir = dirs::home_dir();
@@ -164,7 +156,8 @@ impl Bombadil {
             for entry in source_path.read_dir()? {
                 let entry_name = entry?.path();
                 let entry_name = entry_name.file_name().unwrap().to_str().unwrap();
-                &self.traverse_dots_and_copy(&source_path.join(entry_name), &copy_path.join(entry_name));
+                self.traverse_dots_and_copy(&source_path.join(entry_name), &copy_path.join(entry_name))
+                    .unwrap_or_else(|err| eprintln!("{}", err));
             }
         }
 

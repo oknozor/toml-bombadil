@@ -8,7 +8,7 @@ pub struct Hook {
 
 impl Hook {
     pub(crate) fn run(&self) -> Result<()> {
-        let args: Vec<&str> = self.command.split(" ").collect();
+        let args: Vec<&str> = self.command.split(' ').collect();
         if args.is_empty() {
             return Err(anyhow!("Cannot run empty hook"));
         }
