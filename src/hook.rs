@@ -30,3 +30,36 @@ impl Hook {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::hook::Hook;
+
+    #[test]
+    fn should_run_command() {
+        // Arrange
+        let hook = Hook {
+            command: "echo hello world".to_string()
+        };
+
+        // Act
+        let result = hook.run();
+
+        // Assert
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn should_fail_to_run_invalid_command() {
+        // Arrange
+        let hook = Hook {
+            command: "azmroih".to_string()
+        };
+
+        // Act
+        let result = hook.run();
+
+        // Assert
+        assert!(result.is_err());
+    }
+}
