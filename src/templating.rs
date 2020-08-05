@@ -8,23 +8,16 @@ use std::path::Path;
 
 #[derive(Parser)]
 #[grammar = "template.pest"]
-struct TemplateParser;
+struct BombadilParser;
 
 pub(crate) struct Variables {
     /// holds the values defined in template.toml
     pub variables: HashMap<String, String>,
 }
 
-impl Default for Variables {
-    fn default() -> Self {
-        Self {
-            variables: Default::default(),
-        }
-    }
-}
-
 impl Variables {
-    pub fn from_toml(path: &Path) -> Result<Self> {
+    /// Deserialize a toml file struct Variables
+    pub(crate) fn from_toml(path: &Path) -> Result<Self> {
         let file = File::open(path)?;
         let mut buf_reader = BufReader::new(file);
         let mut contents = String::new();
@@ -38,18 +31,17 @@ impl Variables {
         Ok(Self { variables })
     }
 
-    pub fn extend(&mut self, template: Variables) {
-        self.variables.extend(template.variables);
-    }
 
-    pub fn to_dot(&self, path: &Path) -> Result<String> {
+    /// Read file in the given path and return its content
+    /// with variable replaced by their values.
+    pub(crate) fn to_dot(&self, path: &Path) -> Result<String> {
         // Read file content
         let file = File::open(path)?;
         let mut buf_reader = BufReader::new(file);
         let mut contents = String::new();
         buf_reader.read_to_string(&mut contents)?;
 
-        let pairs = TemplateParser::parse(Rule::file, &contents)
+        let pairs = BombadilParser::parse(Rule::file, &contents)
             .expect("Unable to parse template file")
             .next()
             .unwrap();
@@ -74,6 +66,18 @@ impl Variables {
         }
 
         Ok(output)
+    }
+
+    pub(crate) fn extend(&mut self, template: Variables) {
+        self.variables.extend(template.variables);
+    }
+}
+
+impl Default for Variables {
+    fn default() -> Self {
+        Self {
+            variables: Default::default(),
+        }
     }
 }
 
