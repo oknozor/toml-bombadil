@@ -15,6 +15,7 @@ use std::ops::Not;
 use std::os::unix::fs;
 use std::path::{PathBuf, Path};
 use dirs::home_dir;
+use crate::hook::Hook;
 
 pub(crate) mod dots;
 pub(crate) mod hook;
@@ -25,7 +26,7 @@ pub struct Bombadil {
     path: PathBuf,
     dots: Vec<DotLink>,
     vars: Variables,
-    hooks: Vec<String>,
+    hooks: Vec<Hook>,
 }
 
 impl Bombadil {
@@ -52,7 +53,7 @@ impl Bombadil {
         };
 
         fs::symlink(&config_path, &xdg_config)
-            .and_then(|res| {
+            .and_then(|_result| {
                 println!("{:?} => {:?}", &config_path, xdg_config);
                 Ok(())
             })
@@ -89,14 +90,21 @@ impl Bombadil {
                 }
             }
 
-            println!("{:?}, {:?}", &dot_copy_path, &target);
             fs::symlink(&dot_copy_path, target)
-                .and_then(|res| {
+                .map_err(|err| anyhow!("{:?} => {:?} : {}", &dot_copy_path, target, err))
+                .and_then(|_result| {
                     println!("{:?} => {:?}", &dot_copy_path, target);
                     Ok(())
-                })?;
+                }).unwrap_or_else(|err| eprintln!("{}", err));
         }
-        // TODO : EXECUTE HOOK
+
+        self.hooks.iter().map(Hook::run)
+            .for_each(|result| {
+                if let Err(err) = result {
+                    eprintln!("{}", err);
+                }
+            });
+
         Ok(())
     }
 
@@ -118,9 +126,8 @@ impl Bombadil {
         if let Some(setting_hooks) = settings.hook {
             hooks.extend(setting_hooks
                 .iter()
-                .map(|hook| &hook.command)
                 .cloned()
-                .collect::<Vec<String>>());
+                .collect::<Vec<Hook>>());
         }
 
         let home_dir = dirs::home_dir();
@@ -307,5 +314,27 @@ mod tests {
         let blue_dot = std::fs::read_to_string(path.join("subdir_2").join("template_2")).unwrap();
         assert_eq!(red_dot, "color: red_value".to_string());
         assert_eq!(blue_dot, "color: blue_value".to_string());
+    }
+
+    #[test]
+    fn hook_ok() {
+
+        // Arrange
+        let target = TempDir::new("/tmp/hook", false).to_path_buf();
+        let target_str_path = &target.to_str().unwrap();
+        let config = Bombadil {
+            path: Path::new("tests/hook").to_path_buf().canonicalize().unwrap(),
+            dots: vec![],
+            vars: Variables::default(),
+            hooks: vec![Hook {
+                command: format!("touch {}/dummy", target_str_path)
+            }],
+        };
+
+        // Act
+        config.install().unwrap();
+
+        // Assert
+        assert!(target.join("dummy").exists());
     }
 }
