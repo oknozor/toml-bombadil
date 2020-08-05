@@ -1,4 +1,5 @@
-# Toml Bombadil
+# Toml Bombadil 
+![CI](https://github.com/oknozor/toml-bombadil/workflows/CI/badge.svg?branch=master)
 
 ! This is a work in progress.
 
