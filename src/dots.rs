@@ -14,9 +14,13 @@ pub struct DotLink {
 
 impl DotLink {
     pub fn target(&self) -> Result<PathBuf> {
-        home_dir()
-            .map(|home| home.join(&self.target))
-            .ok_or(anyhow!("Unable to find dot path : {:?}", &self.target))
+        if self.target.is_absolute() {
+            Ok(self.target.clone())
+        } else {
+            home_dir()
+                .map(|home| home.join(&self.target))
+                .ok_or(anyhow!("Unable to find dot path : {:?}", &self.target))
+        }
     }
 }
 
