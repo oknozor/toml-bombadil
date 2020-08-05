@@ -89,6 +89,7 @@ impl Bombadil {
                 }
             }
 
+            println!("{:?}, {:?}", &dot_copy_path, &target);
             fs::symlink(&dot_copy_path, target)
                 .and_then(|res| {
                     println!("{:?} => {:?}", &dot_copy_path, target);
@@ -215,8 +216,7 @@ mod tests {
     fn install_single_file_works() {
 
         // Arrange
-        let temp_dir = TempDir::new("test_tmp", false).to_path_buf();
-        let target = &temp_dir.join("dot_target");
+        let target = TempDir::new("/tmp/dot_target", false).to_path_buf();
 
         let mut map = HashMap::new();
         map.insert("red".to_string(), "red_value".to_string());
@@ -245,8 +245,7 @@ mod tests {
     fn install_with_subdir() {
 
         // Arrange
-        let temp_dir = TempDir::new("test_tmp", false).to_path_buf();
-        let target = &temp_dir.join("sub_dir_target");
+        let target = TempDir::new("/tmp/sub_dir_target", false).to_path_buf();
 
         let mut map = HashMap::new();
         map.insert("red".to_string(), "red_value".to_string());
@@ -280,8 +279,7 @@ mod tests {
     fn install_with_nested_subdirs() {
 
         // Arrange
-        let temp_dir = TempDir::new("test_tmp", false).to_path_buf();
-        let target = &temp_dir.join("sub_dir_2_target");
+        let target = TempDir::new("/tmp/sub_dir_2_target", false).to_path_buf();
 
         let mut map = HashMap::new();
         map.insert("red".to_string(), "red_value".to_string());

@@ -1,21 +1,14 @@
-[theme] 
-red = "#ff3333" 
-black = "#000033"
-green = "#66ff66"
+dotfiles_dir = "dotfiles"
 
-  [theme.alacritty]
-  source = "alacritty/alacritty.yml"
+[[hook]]
+command = "sway reload"
 
-  [theme.sway] 
-  source = "sway/colors"
-
-  [theme.wofi]
-  source = "wofi/style.css"
-
+[[var]]
+path = "vars.toml"
 
 [[dot]]
 source = "alacritty"
-target = "alacritty"
+target = ".config/alacritty/alacritty.yml"
 
 [[dot]]
 source = "wofi"
@@ -24,3 +17,10 @@ target = ".config/wofi"
 [[dot]]
 source = "sway"
 target = ".config/sway"
+
+#[xdg]
+#web_browser = "firefox-developper-edition"
+#mail = "thunderbird"
+#image.jpeg = "eog"
+
+

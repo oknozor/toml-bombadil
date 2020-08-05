@@ -24,7 +24,7 @@ pub struct Var {
 
 impl Settings {
     /// Resolve bombadil settings against its standard xdg path :
-    /// `$XDG_CONFIG_DIR/bombadil/config.toml
+    /// `$XDG_CONFIG_DIR/bombadil/config.example.toml
     pub fn get() -> Result<Self> {
         match Self::bombadil_config_xdg_path() {
             Ok(path) => {
