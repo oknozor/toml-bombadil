@@ -1,4 +1,4 @@
-use clap::{App, Arg, SubCommand};
+use clap::{App, AppSettings, Arg, SubCommand};
 use std::path::Path;
 use toml_bombadil::Bombadil;
 
@@ -15,22 +15,30 @@ macro_rules! fatal {
 
 fn main() {
     let matches = App::new("Toml Bombadil")
-        .version("0.1")
+        .settings(&[
+            AppSettings::UnifiedHelpMessage,
+            AppSettings::ColoredHelp,
+            AppSettings::SubcommandRequiredElseHelp,
+            AppSettings::VersionlessSubcommands
+        ])
+        .version(env!("CARGO_PKG_VERSION"))
         .author("Paul D. <paul.delafosse@protonmail.com>")
-        .about("A dotfile and theme manager")
+        .about("A dotfile template manager")
+        .long_about("Toml is a dotfile template manager, written in rust. \
+        For more info on how to configure it please go to https://github.com/oknozor/toml-bombadil")
         .subcommand(
-            SubCommand::with_name(INSTALL).arg(
-                Arg::with_name("CONFIG")
+            SubCommand::with_name(INSTALL)
+                .about("Link a given bombadil config to XDG_CONFIG_DIR/bombadil.toml")
+                .arg(Arg::with_name("CONFIG")
                     .help("path to your bombadil.toml config file inside your dotfiles directory")
                     .short("c")
                     .long("config")
                     .takes_value(true)
-                    .required(true),
-            ),
+                    .required(true)),
         )
         .subcommand(
             SubCommand::with_name(LINK)
-                .help("symlink your dotfiles according to bombadil.toml config"),
+                .about("Symlink a copy of your dotfiles  and inject variables according to bombadil.toml config"),
         )
         .get_matches();
 

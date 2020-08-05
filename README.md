@@ -2,8 +2,7 @@
 ![CI](https://github.com/oknozor/toml-bombadil/workflows/CI/badge.svg?branch=master)
 [![codecov](https://codecov.io/gh/oknozor/toml-bombadil/branch/master/graph/badge.svg)](https://codecov.io/gh/oknozor/toml-bombadil)
 ![crates.io](https://img.shields.io/crates/v/toml-bombadil.svg)
-
-! This is a work in progress.
+![aur](https://img.shields.io/aur/version/bombadil-bin)
 
 Toml Bombadil is a dotfile manager written in rust. 
 
@@ -25,9 +24,22 @@ You can have multiple value files in the same dotfile repository and change colo
 In addition this is completely optional, you could start using Toml Bombadil only to generate symlinks and templatize 
 your dot file progressively. 
 
+## Installation 
+
+### Using [cargo](https://doc.rust-lang.org/cargo/)
+
+```shell script
+cargo install toml-bombadil
+```
+
+### Archlinux 
+```shell script
+yay -S bombadil-bin
+```
+
 ## Getting started
 
-1. Installation : 
+**1. Setup :** 
 
 By default Bombadil will look for a toml config file named `bombadil.toml`.
 
@@ -38,7 +50,7 @@ cd my_dotfiles && touch bombadil.toml
 
 If you are using git you might want to add `.dots` to your `.gitignore`. 
 
-2. Configuration : 
+**2. Configuration :**
 
 ```toml
 # Path to your dotfiles relative to your $HOME directory
@@ -65,7 +77,7 @@ path = "vars.toml"
 command = "sway reload"
 ```
 
-3. Linking bombadil : 
+**3. Linking bombadil :**
 
 For Bombadil to be able to run from any directory and use different config files we need to symlink bombadil config to 
 `$XDG_CONFIG_DIR/bombadil.toml` : 
@@ -79,18 +91,18 @@ If you want to switch to another config simply run :
 bombadil install -c my_dotfiles/bombadil-i3.toml
 ```
 
-4. Install template and symlink : 
+**4. Install template and symlink :**
 
 ```shell script
 bombadil link
 ```
 
 This command will do the following : 
-- Remove {dotfiles_dir}/.dots and any symlink pointing to a sub directory/file
-- Inject variables (if you defined some) in a copy of dot entries listed in Bombadil config
-- Write the copies to {dotfiles_dir}/.dots
-- Symlink dot entries
-- Run post install hooks
+- Remove `{dotfiles_dir}/.dots` and any symlink pointing to a sub directory/file.
+- Inject variables (if you defined some) in a copy of dot entries listed in Bombadil config.
+- Write the copies to `{dotfiles_dir}/.dots`.
+- Symlink dot entries.
+- Run post install hooks.
 
 ## Templatize you dotfiles
 
@@ -152,10 +164,15 @@ colors:
 ...
 ```
 
-To update the current config simply run `bombadil link`.
+To update variables and the current config simply run `bombadil link`.
 
+## Contributiing
 
+Found a bug, have a suggestion for a new feature ? Please submit an [issue](https://github.com/oknozor/toml-bombadil/issues). 
 
+## License
+
+All the code in this repository is released under the MIT License, for more information take a look at the [LICENSE](LICENSE) file.
 
 
 
