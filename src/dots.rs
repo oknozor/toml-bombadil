@@ -19,7 +19,7 @@ impl DotLink {
         } else {
             home_dir()
                 .map(|home| home.join(&self.target))
-                .ok_or(anyhow!("Unable to find dot path : {:?}", &self.target))
+                .ok_or_else(|| anyhow!("Unable to find dot path : {:?}", &self.target))
         }
     }
 }
