@@ -1,4 +1,4 @@
-use clap::{App, Arg, SubCommand, AppSettings};
+use clap::{App, AppSettings, Arg, SubCommand};
 use std::path::Path;
 use toml_bombadil::Bombadil;
 
