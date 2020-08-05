@@ -1,4 +1,5 @@
 use anyhow::Result;
+use colored::Colorize;
 use pest::Parser;
 use std::collections::HashMap;
 use std::fs::File;
@@ -53,12 +54,13 @@ impl Variables {
                 Rule::variable => {
                     let var_name = pair.into_inner().next().unwrap().as_str().trim();
 
-                    let value = self
-                        .variables
-                        .get(var_name)
-                        .unwrap_or_else(|| panic!("Undefined variable : {}", var_name));
+                    let value = self.variables.get(var_name).cloned().unwrap_or_else(|| {
+                        let err = format!("Undefined variable : {} in {:?}", var_name, path);
+                        eprintln!("{}", err.yellow());
+                        "undefined variable".to_string()
+                    });
 
-                    output.push_str(value);
+                    output.push_str(&value);
                 }
                 Rule::raw_content => output.push_str(pair.as_str()),
                 _ => (),
