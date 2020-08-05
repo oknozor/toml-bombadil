@@ -3,6 +3,12 @@ name = "toml-bombadil"
 version = "0.1.0"
 authors = ["Paul Delafosse <paul.delafosse@protonmail.com>"]
 edition = "2018"
+license = "MIT"
+readme = "README.md"
+repository = "https://github.com/oknozor/toml-bombadil/"
+description = """
+A dotfile manager.
+"""
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
