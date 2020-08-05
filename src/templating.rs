@@ -22,7 +22,8 @@ impl Variables {
         let mut buf_reader = BufReader::new(file);
         let mut contents = String::new();
 
-        buf_reader.read_to_string(&mut contents)
+        buf_reader
+            .read_to_string(&mut contents)
             .map_err(|err| anyhow!("Cannot find var file {:?} : {}", &path, err))?;
 
         let variables: HashMap<String, String> = toml::from_str(&contents)
@@ -30,7 +31,6 @@ impl Variables {
 
         Ok(Self { variables })
     }
-
 
     /// Read file in the given path and return its content
     /// with variable replaced by their values.

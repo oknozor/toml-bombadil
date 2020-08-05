@@ -1,6 +1,6 @@
 use clap::{App, Arg, SubCommand};
-use toml_bombadil::Bombadil;
 use std::path::Path;
+use toml_bombadil::Bombadil;
 
 const LINK: &str = "link";
 const INSTALL: &str = "install";
@@ -38,24 +38,23 @@ fn main() {
         match subcommand {
             INSTALL => {
                 let install_commmand = matches.subcommand_matches(INSTALL).unwrap();
-                let config_path = install_commmand.value_of("CONFIG")
+                let config_path = install_commmand
+                    .value_of("CONFIG")
                     .map(|config_path| Path::new(config_path).to_path_buf());
                 let bombadil = Bombadil::from_settings().unwrap();
 
-                bombadil.link_self_config(config_path)
+                bombadil
+                    .link_self_config(config_path)
                     .unwrap_or_else(|err| fatal!("{}", err));
             }
 
             LINK => {
-                let bombadil = Bombadil::from_settings()
-                    .unwrap_or_else(|err| fatal!("{}", err));
+                let bombadil = Bombadil::from_settings().unwrap_or_else(|err| fatal!("{}", err));
 
-                let _command_result = bombadil.install()
-                    .unwrap_or_else(|err| fatal!("{}", err));
-
+                let _command_result = bombadil.install().unwrap_or_else(|err| fatal!("{}", err));
             }
 
-            _ => unreachable!()
+            _ => unreachable!(),
         }
     }
 }

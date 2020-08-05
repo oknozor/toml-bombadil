@@ -44,7 +44,6 @@ impl Settings {
         }
     }
 
-
     /// Resolve the bombadil XDG settings path : `$XDG_CONFIG_DIR/bombadil.toml
     pub fn bombadil_config_xdg_path() -> Result<PathBuf, ConfigError> {
         dirs::config_dir()
