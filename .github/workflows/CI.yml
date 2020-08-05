@@ -1,28 +1,13 @@
-on: [push]
-
 name: CI
 
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
 jobs:
-  check:
-    name: Check
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout sources
-        uses: actions/checkout@v2
-
-      - name: Install stable toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
-
-      - name: Run cargo check
-        uses: actions-rs/cargo@v1
-        continue-on-error: false
-        with:
-          command: check
-
   test:
     name: Tests
     runs-on: ubuntu-latest
@@ -37,7 +22,7 @@ jobs:
           toolchain: stable
           override: true
 
-      - name: Code coverage
+      - name: Test
         uses: actions-rs/tarpaulin@v0.1
         with:
           args: '-- --test-threads 1'
@@ -54,7 +39,7 @@ jobs:
           path: cobertura.xml
 
   lints:
-    name: Lints
+    name: Lints & Format
     runs-on: ubuntu-latest
     steps:
       - name: Checkout sources
