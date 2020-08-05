@@ -42,12 +42,17 @@ fn main() {
                     .map(|config_path| Path::new(config_path).to_path_buf());
                 let bombadil = Bombadil::from_settings().unwrap();
 
-                bombadil.link_self_config(config_path).unwrap();
+                bombadil.link_self_config(config_path)
+                    .unwrap_or_else(|err| fatal!("{}", err));
             }
 
             LINK => {
-                let bombadil = Bombadil::from_settings().expect("Settings error");
-                let _command_result = bombadil.install().unwrap();
+                let bombadil = Bombadil::from_settings()
+                    .unwrap_or_else(|err| fatal!("{}", err));
+
+                let _command_result = bombadil.install()
+                    .unwrap_or_else(|err| fatal!("{}", err));
+
             }
 
             _ => unreachable!()
