@@ -6,16 +6,16 @@ extern crate anyhow;
 extern crate pest_derive;
 
 use crate::dots::DotLink;
+use crate::hook::Hook;
 use crate::settings::Settings;
 use crate::templating::Variables;
 use anyhow::Result;
+use dirs::home_dir;
 use std::fs::File;
 use std::io::Write;
 use std::ops::Not;
 use std::os::unix::fs;
-use std::path::{PathBuf, Path};
-use dirs::home_dir;
-use crate::hook::Hook;
+use std::path::{Path, PathBuf};
 
 pub(crate) mod dots;
 pub(crate) mod hook;
@@ -53,7 +53,14 @@ impl Bombadil {
         };
 
         fs::symlink(&config_path, &xdg_config)
-            .map_err(|err| anyhow!("Unable to symlink {:?} to {:?} : {}",config_path, xdg_config, err))
+            .map_err(|err| {
+                anyhow!(
+                    "Unable to symlink {:?} to {:?} : {}",
+                    config_path,
+                    xdg_config,
+                    err
+                )
+            })
             .map(|_result| println!("{:?} => {:?}", &config_path, xdg_config))
     }
 
@@ -93,20 +100,18 @@ impl Bombadil {
                 .unwrap_or_else(|err| eprintln!("{}", err));
         }
 
-        self.hooks.iter().map(Hook::run)
-            .for_each(|result| {
-                if let Err(err) = result {
-                    eprintln!("{}", err);
-                }
-            });
+        self.hooks.iter().map(Hook::run).for_each(|result| {
+            if let Err(err) = result {
+                eprintln!("{}", err);
+            }
+        });
 
         Ok(())
     }
 
     pub fn from_settings() -> Result<Bombadil> {
         let settings = Settings::get()?;
-        let base_dir = home_dir().unwrap()
-            .join(&settings.dotfiles_dir);
+        let base_dir = home_dir().unwrap().join(&settings.dotfiles_dir);
         // Resolve variables from path
         let mut vars = Variables::default();
         if let Some(setting_vars) = settings.var {
@@ -156,8 +161,11 @@ impl Bombadil {
             for entry in source_path.read_dir()? {
                 let entry_name = entry?.path();
                 let entry_name = entry_name.file_name().unwrap().to_str().unwrap();
-                self.traverse_dots_and_copy(&source_path.join(entry_name), &copy_path.join(entry_name))
-                    .unwrap_or_else(|err| eprintln!("{}", err));
+                self.traverse_dots_and_copy(
+                    &source_path.join(entry_name),
+                    &copy_path.join(entry_name),
+                )
+                .unwrap_or_else(|err| eprintln!("{}", err));
             }
         }
 
@@ -179,25 +187,25 @@ impl Bombadil {
     /// Resolve dot source copy path ({dotfiles/.dots/) against user defined dotfile directory
     /// Does not check if file exists
     pub(crate) fn dot_copy_source_path(&self, source: &PathBuf) -> PathBuf {
-        self.path
-            .join(".dots")
-            .join(source)
+        self.path.join(".dots").join(source)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::collections::HashMap;
     use std::path::Path;
     use temp_testdir::TempDir;
-    use std::collections::HashMap;
 
     #[test]
     fn self_link_works() {
-
         // Arrange
         let config = Bombadil {
-            path: Path::new("tests/dotfiles_simple").to_path_buf().canonicalize().unwrap(),
+            path: Path::new("tests/dotfiles_simple")
+                .to_path_buf()
+                .canonicalize()
+                .unwrap(),
             dots: vec![],
             vars: Variables::default(),
             hooks: vec![],
@@ -214,7 +222,6 @@ mod tests {
 
     #[test]
     fn install_single_file_works() {
-
         // Arrange
         let target = TempDir::new("/tmp/dot_target", false).to_path_buf();
 
@@ -222,14 +229,15 @@ mod tests {
         map.insert("red".to_string(), "red_value".to_string());
 
         let config = Bombadil {
-            path: Path::new("tests/dotfiles_simple").to_path_buf().canonicalize().unwrap(),
+            path: Path::new("tests/dotfiles_simple")
+                .to_path_buf()
+                .canonicalize()
+                .unwrap(),
             dots: vec![DotLink {
                 source: Path::new("template").to_path_buf(),
                 target: target.clone(),
             }],
-            vars: Variables {
-                variables: map
-            },
+            vars: Variables { variables: map },
             hooks: vec![],
         };
 
@@ -238,12 +246,14 @@ mod tests {
 
         // Assert
         assert!(target.exists());
-        assert_eq!(std::fs::read_to_string(&target).unwrap(), "color: red_value".to_string());
+        assert_eq!(
+            std::fs::read_to_string(&target).unwrap(),
+            "color: red_value".to_string()
+        );
     }
 
     #[test]
     fn install_with_subdir() {
-
         // Arrange
         let target = TempDir::new("/tmp/sub_dir_target", false).to_path_buf();
 
@@ -252,14 +262,15 @@ mod tests {
         map.insert("blue".to_string(), "blue_value".to_string());
 
         let config = Bombadil {
-            path: Path::new("tests/dotfiles_nested").to_path_buf().canonicalize().unwrap(),
+            path: Path::new("tests/dotfiles_nested")
+                .to_path_buf()
+                .canonicalize()
+                .unwrap(),
             dots: vec![DotLink {
                 source: Path::new("sub_dir").to_path_buf(),
                 target: target.clone(),
             }],
-            vars: Variables {
-                variables: map
-            },
+            vars: Variables { variables: map },
             hooks: vec![],
         };
 
@@ -277,7 +288,6 @@ mod tests {
 
     #[test]
     fn install_with_nested_subdirs() {
-
         // Arrange
         let target = TempDir::new("/tmp/sub_dir_2_target", false).to_path_buf();
 
@@ -286,14 +296,15 @@ mod tests {
         map.insert("blue".to_string(), "blue_value".to_string());
 
         let config = Bombadil {
-            path: Path::new("tests/dotfiles_nested_2").to_path_buf().canonicalize().unwrap(),
+            path: Path::new("tests/dotfiles_nested_2")
+                .to_path_buf()
+                .canonicalize()
+                .unwrap(),
             dots: vec![DotLink {
                 source: Path::new("sub_dir_1").to_path_buf(),
                 target: target.clone(),
             }],
-            vars: Variables {
-                variables: map
-            },
+            vars: Variables { variables: map },
             hooks: vec![],
         };
 
@@ -311,16 +322,18 @@ mod tests {
 
     #[test]
     fn hook_ok() {
-
         // Arrange
         let target = TempDir::new("/tmp/hook", false).to_path_buf();
         let target_str_path = &target.to_str().unwrap();
         let config = Bombadil {
-            path: Path::new("tests/hook").to_path_buf().canonicalize().unwrap(),
+            path: Path::new("tests/hook")
+                .to_path_buf()
+                .canonicalize()
+                .unwrap(),
             dots: vec![],
             vars: Variables::default(),
             hooks: vec![Hook {
-                command: format!("touch {}/dummy", target_str_path)
+                command: format!("touch {}/dummy", target_str_path),
             }],
         };
 

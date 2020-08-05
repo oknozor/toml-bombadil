@@ -1,6 +1,6 @@
-use std::path::PathBuf;
 use anyhow::Result;
 use dirs::home_dir;
+use std::path::PathBuf;
 
 /// Represent a link between a `source` dotfile in the user defined dotfiles directory
 /// and the XDG `target` path where it should be linked
@@ -23,5 +23,3 @@ impl DotLink {
         }
     }
 }
-
-

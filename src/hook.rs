@@ -1,5 +1,5 @@
-use std::process::{Command, Stdio};
 use anyhow::Result;
+use std::process::{Command, Stdio};
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Hook {
@@ -25,7 +25,8 @@ impl Hook {
         command
             .stdout(Stdio::inherit())
             .stderr(Stdio::inherit())
-            .spawn()?.wait()?;
+            .spawn()?
+            .wait()?;
 
         Ok(())
     }
@@ -39,7 +40,7 @@ mod tests {
     fn should_run_command() {
         // Arrange
         let hook = Hook {
-            command: "echo hello world".to_string()
+            command: "echo hello world".to_string(),
         };
 
         // Act
@@ -53,7 +54,7 @@ mod tests {
     fn should_fail_to_run_invalid_command() {
         // Arrange
         let hook = Hook {
-            command: "azmroih".to_string()
+            command: "azmroih".to_string(),
         };
 
         // Act
