@@ -2,6 +2,7 @@
 ![CI](https://github.com/oknozor/toml-bombadil/workflows/CI/badge.svg?branch=master)
 [![codecov](https://codecov.io/gh/oknozor/toml-bombadil/branch/master/graph/badge.svg)](https://codecov.io/gh/oknozor/toml-bombadil)
 ![crates.io](https://img.shields.io/crates/v/toml-bombadil.svg)
+![aur](https://img.shields.io/aur/version/bombadil-bin)
 
 Toml Bombadil is a dotfile manager written in rust. 
 
