@@ -213,7 +213,38 @@ mod tests {
     use temp_testdir::TempDir;
 
     #[test]
-    fn self_link_works() {
+    fn should_copy_dotfiles() {
+        // Arrange
+        let target = TempDir::new("/tmp/dot_target", false).to_path_buf();
+
+        let source = Path::new("template").to_path_buf();
+        let config = Bombadil {
+            path: Path::new("tests/dotfiles_simple")
+                .to_path_buf()
+                .canonicalize()
+                .unwrap(),
+            dots: vec![DotLink {
+                source: source.clone(),
+                target: target.clone(),
+            }],
+            vars: Variables::default(),
+            hooks: vec![],
+        };
+
+        // Act
+        config
+            .traverse_dots_and_copy(
+                &config.source_path(&source).unwrap(),
+                &config.dot_copy_source_path(&source),
+            )
+            .unwrap();
+
+        // Assert
+        assert!(Path::new("tests/dotfiles_simple/.dots/template").exists());
+    }
+
+    #[test]
+    fn should_return_dot_path() {
         // Arrange
         let config = Bombadil {
             path: Path::new("tests/dotfiles_simple")
@@ -226,11 +257,36 @@ mod tests {
         };
 
         // Act
-        let config_path = Path::new("tests/dotfiles_simple/bombadil.toml").to_path_buf();
-        config.link_self_config(Some(config_path)).unwrap();
-        let link = dirs::config_dir().unwrap().join("bombadil.toml");
+        let path = config.dot_copy_source_path(&Path::new("template").to_path_buf());
 
         // Assert
+        assert!(path
+            .to_str()
+            .unwrap()
+            .contains("tests/dotfiles_simple/.dots/template"));
+        assert!(path.is_absolute());
+    }
+
+    #[test]
+    fn self_link_works() {
+        // Arrange
+        let config = Bombadil {
+            path: Path::new("tests/dotfiles_simple")
+                .to_path_buf()
+                .canonicalize()
+                .unwrap(),
+            dots: vec![],
+            vars: Variables::default(),
+            hooks: vec![],
+        };
+
+        let config_path = Path::new("tests/dotfiles_simple/bombadil.toml").to_path_buf();
+
+        // Act
+        config.link_self_config(Some(config_path)).unwrap();
+
+        // Assert
+        let link = dirs::config_dir().unwrap().join("bombadil.toml");
         assert!(link.exists());
     }
 
