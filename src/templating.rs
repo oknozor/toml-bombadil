@@ -23,7 +23,7 @@ impl Variables {
         let mut contents = String::new();
 
         buf_reader.read_to_string(&mut contents)
-            .map_err(|err| anyhow!("Cannot find var file {:?}", &path))?;
+            .map_err(|err| anyhow!("Cannot find var file {:?} : {}", &path, err))?;
 
         let variables: HashMap<String, String> = toml::from_str(&contents)
             .map_err(|err| anyhow!("parse error in {:?} :  {}", path, err))?;
