@@ -166,10 +166,16 @@ impl Bombadil {
     fn traverse_dots_and_copy(&self, source_path: &PathBuf, copy_path: &PathBuf) -> Result<()> {
         // Single file : inject vars and write to .dots/
         if source_path.is_file() {
-            let content = self.vars.to_dot(&source_path)?;
             std::fs::create_dir_all(&copy_path.parent().unwrap())?;
-            let mut dot_copy = File::create(&copy_path)?;
-            dot_copy.write_all(content.as_bytes())?;
+
+            if let Ok(content) = self.vars.to_dot(&source_path) {
+                let mut dot_copy = File::create(&copy_path)?;
+                dot_copy.write_all(content.as_bytes())?;
+            } else {
+                // Something went wrong parsing or reading the source path,
+                // We just copy the file in place
+                std::fs::copy(&source_path, &copy_path)?;
+            }
         } else if source_path.is_dir() {
             std::fs::create_dir_all(copy_path)?;
             for entry in source_path.read_dir()? {
@@ -220,6 +226,37 @@ mod tests {
         let source = Path::new("template").to_path_buf();
         let config = Bombadil {
             path: Path::new("tests/dotfiles_simple")
+                .to_path_buf()
+                .canonicalize()
+                .unwrap(),
+            dots: vec![DotLink {
+                source: source.clone(),
+                target: target.clone(),
+            }],
+            vars: Variables::default(),
+            hooks: vec![],
+        };
+
+        // Act
+        config
+            .traverse_dots_and_copy(
+                &config.source_path(&source).unwrap(),
+                &config.dot_copy_source_path(&source),
+            )
+            .unwrap();
+
+        // Assert
+        assert!(Path::new("tests/dotfiles_simple/.dots/template").exists());
+    }
+
+    #[test]
+    fn should_copy_non_utf8_dotfiles() {
+        // Arrange
+        let target = TempDir::new("/tmp/dot_target", false).to_path_buf();
+
+        let source = Path::new("ferris.png").to_path_buf();
+        let config = Bombadil {
+            path: Path::new("tests/dotfiles_non_utf8")
                 .to_path_buf()
                 .canonicalize()
                 .unwrap(),
