@@ -90,7 +90,7 @@ mod test {
     use std::path::Path;
 
     #[test]
-    fn test() {
+    fn should_inject_variables() {
         let mut map = HashMap::new();
         map.insert("red".to_string(), "red_value".to_string());
 
@@ -99,5 +99,15 @@ mod test {
             .unwrap();
 
         assert_eq!(string, "color: red_value");
+    }
+
+    #[test]
+    fn should_fail_on_non_utf8_file() {
+        let content = Variables {
+            variables: HashMap::new(),
+        }
+        .to_dot(Path::new("tests/dotfiles_non_utf8/ferris.png"));
+
+        assert!(content.is_err());
     }
 }
