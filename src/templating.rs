@@ -19,18 +19,25 @@ pub(crate) struct Variables {
 impl Variables {
     /// Deserialize a toml file struct Variables
     pub(crate) fn from_toml(path: &Path) -> Result<Self> {
-        let file = File::open(path)?;
-        let mut buf_reader = BufReader::new(file);
-        let mut contents = String::new();
+        let file = File::open(path);
 
-        buf_reader
-            .read_to_string(&mut contents)
-            .map_err(|err| anyhow!("Cannot find var file {:?} : {}", &path, err))?;
+        if let Err(err) = file {
+            let warning = format!("Could not open var file {:?} : {}", path, err).red();
+            eprintln!("{}", warning);
+            Ok(Self::default())
+        } else {
+            let mut buf_reader = BufReader::new(file.unwrap());
+            let mut contents = String::new();
 
-        let variables: HashMap<String, String> = toml::from_str(&contents)
-            .map_err(|err| anyhow!("parse error in {:?} :  {}", path, err))?;
+            buf_reader
+                .read_to_string(&mut contents)
+                .map_err(|err| anyhow!("Cannot read var file {:?} : {}", &path, err))?;
 
-        Ok(Self { variables })
+            let variables: HashMap<String, String> = toml::from_str(&contents)
+                .map_err(|err| anyhow!("parse error in {:?} :  {}", path, err))?;
+
+            Ok(Self { variables })
+        }
     }
 
     /// Read file in the given path and return its content
