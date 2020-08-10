@@ -11,7 +11,6 @@ use crate::settings::Settings;
 use crate::templating::Variables;
 use anyhow::Result;
 use colored::*;
-use dirs::home_dir;
 use std::fs::File;
 use std::io::Write;
 use std::ops::Not;
@@ -31,7 +30,7 @@ pub struct Bombadil {
 }
 
 impl Bombadil {
-    pub fn link_self_config(&self, config_path: Option<PathBuf>) -> Result<()> {
+    pub fn link_self_config(config_path: Option<PathBuf>) -> Result<()> {
         let xdg_config_dir = dirs::config_dir();
         if xdg_config_dir.is_none() {
             return Err(anyhow!("$XDG_CONFIG does not exists",));
@@ -125,15 +124,56 @@ impl Bombadil {
 
     pub fn from_settings() -> Result<Bombadil> {
         let settings = Settings::get()?;
-        let base_dir = home_dir().unwrap().join(&settings.dotfiles_dir);
+
+        let home_dir = dirs::home_dir();
+        if home_dir.is_none() {
+            return Err(anyhow!("$HOME directory not found"));
+        }
+
+        let base_dir = if settings.dotfiles_dir.is_absolute() {
+            settings.dotfiles_dir
+        } else {
+            home_dir.unwrap().join(&settings.dotfiles_dir)
+        };
+
+        if base_dir.exists().not() {
+            return Err(anyhow!(
+                "Dotfiles directory {:?} does not exists",
+                &base_dir
+            ));
+        }
+
+        // Get meta variables from config
+        let mut meta_vars = Variables::default();
+        if let Some(settings_meta_vars) = settings.meta {
+            for var in settings_meta_vars {
+                let variables = Variables::from_toml(&base_dir.join(var.path))?;
+                meta_vars.extend(variables);
+            }
+        }
+
         // Resolve variables from path
         let mut vars = Variables::default();
         if let Some(setting_vars) = settings.var {
             for var in setting_vars {
-                let template = Variables::from_toml(&base_dir.join(var.path))?;
-                vars.extend(template);
+                let variables = Variables::from_toml(&base_dir.join(var.path))?;
+                vars.extend(variables);
             }
         }
+
+        let var_copy = vars.variables.clone();
+
+        var_copy
+            .iter()
+            .filter(|var| {
+                meta_vars.variables.get(var.1).is_some()
+            })
+            .for_each(|var| {
+                let _ = vars.variables.insert(
+                    var.0.to_string(),
+                    meta_vars.variables.get(var.1).unwrap().to_string(),
+                );
+            });
 
         // Resolve hooks from config
         let mut hooks = vec![];
@@ -141,22 +181,8 @@ impl Bombadil {
             hooks.extend(setting_hooks);
         }
 
-        let home_dir = dirs::home_dir();
-        if home_dir.is_none() {
-            return Err(anyhow!("$HOME directory not found"));
-        }
-
-        let path = home_dir
-            .expect("Unexpected error")
-            .join(settings.dotfiles_dir)
-            .canonicalize()?;
-
-        if path.exists().not() {
-            return Err(anyhow!("Config file {:?} does not exists", &path));
-        }
-
         Ok(Self {
-            path,
+            path: base_dir,
             dots: settings.dot,
             vars,
             hooks,
@@ -307,20 +333,10 @@ mod tests {
     #[test]
     fn self_link_works() {
         // Arrange
-        let config = Bombadil {
-            path: Path::new("tests/dotfiles_simple")
-                .to_path_buf()
-                .canonicalize()
-                .unwrap(),
-            dots: vec![],
-            vars: Variables::default(),
-            hooks: vec![],
-        };
-
         let config_path = Path::new("tests/dotfiles_simple/bombadil.toml").to_path_buf();
 
         // Act
-        config.link_self_config(Some(config_path)).unwrap();
+        Bombadil::link_self_config(Some(config_path)).unwrap();
 
         // Assert
         let link = dirs::config_dir().unwrap().join("bombadil.toml");
@@ -449,5 +465,37 @@ mod tests {
 
         // Assert
         assert!(target.join("dummy").exists());
+    }
+
+    #[test]
+    fn meta_var_works() {
+        // Arrange
+        let tmp = TempDir::new("/tmp/bombadil_tests", false).to_path_buf();
+        // We need an absolute path to the test can pass anywhere
+        std::fs::copy("tests/vars/meta_vars.toml", &tmp.join("meta_vars.toml")).unwrap();
+        std::fs::copy("tests/vars/vars.toml", &tmp.join("vars.toml")).unwrap();
+        std::fs::copy("tests/vars/bombadil.toml", &tmp.join("bombadil.toml")).unwrap();
+
+        let config_path = tmp.join("bombadil.toml");
+
+        Bombadil::link_self_config(Some(config_path.clone())).unwrap();
+
+        // Act
+        let bombadil = Bombadil::from_settings().unwrap();
+
+        // Assert
+        assert_eq!(
+            bombadil.vars.variables.get("red"),
+            Some(&"#FF0000".to_string())
+        );
+        assert_eq!(
+            bombadil.vars.variables.get("black"),
+            Some(&"#000000".to_string())
+        );
+        assert_eq!(
+            bombadil.vars.variables.get("green"),
+            Some(&"#008000".to_string())
+        );
+        let _ = std::fs::remove_dir_all(tmp);
     }
 }
