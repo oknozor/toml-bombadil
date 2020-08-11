@@ -165,9 +165,7 @@ impl Bombadil {
 
         var_copy
             .iter()
-            .filter(|var| {
-                meta_vars.variables.get(var.1).is_some()
-            })
+            .filter(|var| meta_vars.variables.get(var.1).is_some())
             .for_each(|var| {
                 let _ = vars.variables.insert(
                     var.0.to_string(),

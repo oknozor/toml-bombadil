@@ -219,8 +219,10 @@ alacritty_cursor = "meta_green"
 # ...
 ```
 
+## Example repositories
+- [https://github.com/oknozor/dotfiles](https://github.com/oknozor/dotfiles)
   
-## Contributiing
+## Contributing
 
 Found a bug, have a suggestion for a new feature ? Please submit an [issue](https://github.com/oknozor/toml-bombadil/issues). 
 
