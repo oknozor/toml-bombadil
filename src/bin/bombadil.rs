@@ -49,11 +49,8 @@ fn main() {
                 let config_path = install_commmand
                     .value_of("CONFIG")
                     .map(|config_path| Path::new(config_path).to_path_buf());
-                let bombadil = Bombadil::from_settings().unwrap();
 
-                bombadil
-                    .link_self_config(config_path)
-                    .unwrap_or_else(|err| fatal!("{}", err));
+                Bombadil::link_self_config(config_path).unwrap_or_else(|err| fatal!("{}", err));
             }
 
             LINK => {

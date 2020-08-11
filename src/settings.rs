@@ -15,6 +15,8 @@ pub struct Settings {
     pub hook: Option<Vec<Hook>>,
     /// Variables to use in templates
     pub var: Option<Vec<Var>>,
+    /// Meta variables to replace variables definitions
+    pub meta: Option<Vec<Var>>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]

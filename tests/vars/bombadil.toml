@@ -1,0 +1,11 @@
+dotfiles_dir = "/tmp/bombadil_tests"
+
+[[dot]]
+source = "template.css"
+target = "template.css"
+
+[[var]]
+path = "vars.toml"
+
+[[meta]]
+path = "meta_vars.toml"

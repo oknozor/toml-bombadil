@@ -43,7 +43,7 @@ yay -S bombadil-bin
 
 By default Bombadil will look for a toml config file named `bombadil.toml`.
 
-```sh
+```shell script
 git clone https://github.com/my_org/my_dotfiles
 cd my_dotfiles && touch bombadil.toml
 ```
@@ -53,6 +53,8 @@ If you are using git you might want to add `.dots` to your `.gitignore`.
 **2. Configuration :**
 
 ```toml
+# {dotfiles}/bombadil.toml
+
 # Path to your dotfiles relative to your $HOME directory
 dotfiles_dir = "my_dotfiles"
 
@@ -69,11 +71,15 @@ target = ".config/alacritty/alacritty.yml"
 
 # Var hold the path to a toml file containing the variables to inject in your templatize dotfiles
 # You can have multiple var files as long as variable names does not colide. 
-[[var]]
+[[var]] # Optional
+path = "vars.toml"
+
+# Meta vars holds the definitive values for aliased variables. It allows to reuse and group variables.
+[[meta]] # Optional
 path = "vars.toml"
 
 # Post install commands
-[[hook]]
+[[hook]] # Optional
 command = "sway reload"
 ```
 
@@ -106,7 +112,9 @@ This command will do the following :
 
 ## Templatize you dotfiles
 
-Now that your dot files are symlinked with Bombadil you can define some variables to inject. A Bombadil var files
+### Variables 
+
+Now that your dot files are symlinked with Bombadil you can define some variables A Bombadil var files
 is a valid toml file containing only key with string values : 
 
 For example you have the following file in `{dotfiles_dir}/vars.toml`.
@@ -131,7 +139,7 @@ path = "vars.toml"
 ```
 
 Let's say you have the following dot entry : 
-```
+```toml
 [[dot]]
 source = "alacritty"
 target = ".config/alacritty/alacritty.yml"
@@ -140,6 +148,7 @@ target = ".config/alacritty/alacritty.yml"
 `alacritty.yaml` color scheme could look like this : 
 ```yaml
 ...
+# {dotfiles}/alacritty.yml
 colors:
    primary:
        background: "__[background]__"
@@ -154,6 +163,7 @@ And the output file actually linked to alacritty config would be this :
 
 ```yaml
 ...
+# {dotfiles}/.dots/alacritty.yml
 colors:
   primary:
     background: "#292C3E"
@@ -166,7 +176,53 @@ colors:
 
 To update variables and the current config simply run `bombadil link`.
 
-## Contributiing
+### Meta variables 
+
+Sometimes it could be handy to use different variables names for the same values.
+For instance if you want to define a system wide color scheme, you could define the following meta variables : 
+
+```toml
+# bombadil.toml
+[[meta]] 
+path = "meta_vars.toml"
+
+[[var]]
+path = "alacritty_vars.toml" 
+
+[[var]]
+path = "sway_vars.toml" 
+
+# ... 
+```
+
+A meta variable configuration looks exactly like a variables configuration file. The only difference is that meta vars
+are intended to be used in other var files : 
+
+```toml
+# meta_vars.toml
+meta_red = "#ff0000"
+meta_black = "#000000"
+meta_green = "#008000"
+```
+
+```toml
+# sway_vars.toml
+sway_client_focused_background = "meta_black"
+sway_client_focused_border = "#ffff00"
+# ...
+```
+
+```toml
+# alacritty_vars.toml
+alacritty_background = "meta_black"
+alacritty_cursor = "meta_green"
+# ...
+```
+
+## Example repositories
+- [https://github.com/oknozor/dotfiles](https://github.com/oknozor/dotfiles)
+  
+## Contributing
 
 Found a bug, have a suggestion for a new feature ? Please submit an [issue](https://github.com/oknozor/toml-bombadil/issues). 
 
