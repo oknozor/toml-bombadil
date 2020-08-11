@@ -76,7 +76,7 @@ path = "vars.toml"
 
 # Meta vars holds the definitive values for aliased variables. It allows to reuse and group variables.
 [[meta]] # Optional
-path = "vars.toml"
+path = "meta-vars.toml"
 
 # Post install commands
 [[hook]] # Optional
