@@ -24,6 +24,23 @@ You can have multiple value files in the same dotfile repository and change colo
 In addition this is completely optional, you could start using Toml Bombadil only to generate symlinks and templatize 
 your dot file progressively. 
 
+## Table of contents
+ - [Installation](#Installation)
+    - [Cargo](#using-cargo)
+    - [Archlinux](#archlinux)
+ - [Getting started](#getting-started)
+ - [Dotfile Templates](#dotfile-templates)
+    - [Variables](#variables)
+    - [Meta variables](#meta-variables)
+ - [Switching profile](#switching-profile)
+    - [Switching source](#switching-source)
+    - [Switching variables](#switching-variables)
+ - [Hooks](#hooks)
+    - [Limitations](#limitations)
+ - [Example repositories](#example-repositories)
+ - [Contributing](#contributing)
+ - [License](#license)
+
 ## Installation 
 
 ### Using [cargo](https://doc.rust-lang.org/cargo/)
@@ -110,7 +127,7 @@ This command will do the following :
 - Symlink dot entries.
 - Run post install hooks.
 
-## Templatize you dotfiles
+## Dotfile Templates
 
 ### Variables 
 
@@ -309,7 +326,7 @@ variables in that file they will be replaced as if you ran the `link` command.
 To revert to the default profile you can run `bomadil maven -s default`. Using `bomadil link` will also reset all defined
 profiles to their default values. 
 
-### Switching vars
+### Switching variables
 
 Switching variables is done the same way as switching source : 
 
@@ -397,7 +414,7 @@ target = ".config/alacritty"
 This will run  [neofetch](https://github.com/dylanaraps/neofetch) after updating your alacritty color scheme with the 
 nord color palette.
 
-### Limitation
+### Limitations
 
 - Hook are run in a sub-shell therefore, command meant to change your current shell environment won't work :
 
@@ -419,6 +436,9 @@ command = "zsh -c \"echo $HOME\"" # This works
 ```
 
 ## Example repositories
+
+If you use Bombadil please submit an issue or a PR to update this section, we will be happy to reference your dotfiles here !
+ 
 - [https://github.com/oknozor/dotfiles](https://github.com/oknozor/dotfiles)
   
 ## Contributing
