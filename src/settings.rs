@@ -1,4 +1,4 @@
-use crate::dots::DotLink;
+use crate::dots::Dot;
 use crate::hook::Hook;
 use anyhow::Result;
 use config::{Config, ConfigError, File};
@@ -10,7 +10,7 @@ pub struct Settings {
     /// User define dotfiles directory, usually your versioned dotfiles
     pub(crate) dotfiles_dir: PathBuf,
     /// A list of symlink to edit
-    pub(crate) dot: Vec<DotLink>,
+    pub dot: Vec<Dot>,
     /// Post install hook commands
     pub hook: Option<Vec<Hook>>,
     /// Variables to use in templates

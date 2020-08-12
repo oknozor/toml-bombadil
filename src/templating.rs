@@ -77,8 +77,8 @@ impl Variables {
         Ok(output)
     }
 
-    pub(crate) fn extend(&mut self, template: Variables) {
-        self.variables.extend(template.variables);
+    pub(crate) fn extend(&mut self, vars: Variables) {
+        self.variables.extend(vars.variables);
     }
 }
 

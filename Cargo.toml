@@ -23,6 +23,7 @@ pest_derive = "^2"
 anyhow = "^1"
 termion = "1.5.5"
 colored = "^2"
+cmd_lib = "0.8.2"
 clap = { version = "^2", optional = true }
 
 [features]
