@@ -1,6 +1,6 @@
 use clap::{App, AppSettings, Arg, SubCommand};
 use colored::Colorize;
-use std::path::Path;
+use std::path::PathBuf;
 use toml_bombadil::dots::Dot;
 use toml_bombadil::settings::Settings;
 use toml_bombadil::Bombadil;
@@ -88,9 +88,7 @@ fn main() {
         match subcommand {
             INSTALL => {
                 let install_commmand = matches.subcommand_matches(INSTALL).unwrap();
-                let config_path = install_commmand
-                    .value_of("CONFIG")
-                    .map(|config_path| Path::new(config_path).to_path_buf());
+                let config_path = install_commmand.value_of("CONFIG").map(PathBuf::from);
 
                 Bombadil::link_self_config(config_path).unwrap_or_else(|err| fatal!("{}", err));
             }

@@ -7,8 +7,7 @@ target = "template.css"
     [[dot.profile]]
       name = "profile_name"
       switch.vars = "/tmp/var.toml"
-    [[hook]]
-      command = "echo hello world"
+      hook = "echo hello world"
 
 [[var]]
 path = "vars.toml"
