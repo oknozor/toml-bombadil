@@ -5,7 +5,7 @@ extern crate anyhow;
 #[macro_use]
 extern crate pest_derive;
 
-use crate::dots::DotLink;
+use crate::dots::{Dot, Profile, ProfileSwitch};
 use crate::hook::Hook;
 use crate::settings::Settings;
 use crate::templating::Variables;
@@ -17,14 +17,14 @@ use std::ops::Not;
 use std::os::unix::fs;
 use std::path::{Path, PathBuf};
 
-pub(crate) mod dots;
+pub mod dots;
 pub(crate) mod hook;
-pub(crate) mod settings;
+pub mod settings;
 pub(crate) mod templating;
 
 pub struct Bombadil {
     path: PathBuf,
-    dots: Vec<DotLink>,
+    dots: Vec<Dot>,
     vars: Variables,
     hooks: Vec<Hook>,
 }
@@ -89,28 +89,8 @@ impl Bombadil {
 
             let target = &dot.target()?;
 
-            // Unlink if exists
-            if std::fs::symlink_metadata(target).is_ok() {
-                if target.is_dir() {
-                    std::fs::remove_dir_all(&target)?;
-                } else {
-                    std::fs::remove_file(&target)?;
-                }
-            }
-
-            fs::symlink(&dot_copy_path, target)
-                .map(|_result| {
-                    let source = format!("{:?}", &dot_copy_path).blue();
-                    let dest = format!("{:?}", target).green();
-                    println!("{} => {}", source, dest)
-                })
-                .map_err(|err| {
-                    let source = format!("{:?}", &dot_copy_path).blue();
-                    let dest = format!("{:?}", &target).red();
-                    let err = format!("{}", err).red().bold();
-                    anyhow!("{} => {} : {}", source, dest, err)
-                })
-                .unwrap_or_else(|err| eprintln!("{}", err));
+            Bombadil::unlink(&target)?;
+            Bombadil::link(&dot_copy_path, &target);
         }
 
         self.hooks.iter().map(Hook::run).for_each(|result| {
@@ -187,6 +167,35 @@ impl Bombadil {
         })
     }
 
+    pub fn update_profile(&mut self, dot_name: &str, profile_name: &str) -> Result<()> {
+        let dot_with_profiles: &Dot = self
+            .dots
+            .iter()
+            .filter(|dot| dot.profile.is_some() && dot.name.is_some())
+            .find(|dot| dot.name.as_ref().unwrap() == dot_name)
+            .as_ref()
+            .unwrap();
+
+        let dot_with_profiles = dot_with_profiles.clone();
+
+        if profile_name == "default" {
+            return self.set_profile(dot_with_profiles, None);
+        }
+
+        let selected_profile: &Profile = dot_with_profiles
+            .profile
+            .as_ref()
+            .unwrap()
+            .iter()
+            .find(|p| p.name == profile_name)
+            .as_ref()
+            .unwrap();
+
+        let selected_profile = selected_profile.clone();
+
+        self.set_profile(dot_with_profiles, Some(selected_profile))
+    }
+
     fn traverse_dots_and_copy(&self, source_path: &PathBuf, copy_path: &PathBuf) -> Result<()> {
         // Single file : inject vars and write to .dots/
         if source_path.is_file() {
@@ -216,7 +225,96 @@ impl Bombadil {
         Ok(())
     }
 
-    /// Resolve dot source copy path ({dotfiles/.dots/) against user defined dotfile directory
+    fn link(dot_copy_path: &PathBuf, target: &PathBuf) {
+        // Link
+        fs::symlink(&dot_copy_path, target)
+            .map(|_result| {
+                let source = format!("{:?}", &dot_copy_path).blue();
+                let dest = format!("{:?}", target).green();
+                println!("{} => {}", source, dest)
+            })
+            .map_err(|err| {
+                let source = format!("{:?}", &dot_copy_path).blue();
+                let dest = format!("{:?}", &target).red();
+                let err = format!("{}", err).red().bold();
+                anyhow!("{} => {} : {}", source, dest, err)
+            })
+            .unwrap_or_else(|err| eprintln!("{}", err));
+    }
+
+    fn unlink(target: &PathBuf) -> Result<()> {
+        if std::fs::symlink_metadata(target).is_ok() {
+            if target.is_dir() {
+                std::fs::remove_dir_all(&target)?;
+            } else {
+                std::fs::remove_file(&target)?;
+            }
+        }
+
+        Ok(())
+    }
+
+    fn remove_file_or_dir(target: &PathBuf) {
+        if target.is_dir() {
+            let _ = std::fs::remove_dir_all(&target);
+        } else {
+            let _ = std::fs::remove_file(&target);
+        }
+    }
+
+    fn set_profile(&mut self, mut dot: Dot, profile: Option<Profile>) -> Result<()> {
+        // Remove the previous symlink
+        let target = &dot.target()?;
+        Bombadil::unlink(target)?;
+
+        // Remove the previous dot copy
+        let dot_copy_path = &self.dot_copy_source_path(&dot.source);
+        Bombadil::remove_file_or_dir(dot_copy_path);
+
+        // Back to default profile
+        if profile.is_none() {
+            let dot_copy_path = self.dot_copy_source_path(&dot.source);
+            let source_path = self.source_path(&dot.source)?;
+
+            self.traverse_dots_and_copy(&source_path, &dot_copy_path)?;
+            Bombadil::link(&dot_copy_path, target);
+            return Ok(());
+        }
+
+        let profile = profile.unwrap();
+
+        // Mutate the dot state before relinking (either vars or source path)
+        match &profile.switch {
+            ProfileSwitch::Vars(var_path) => {
+                let var_path = self.source_path(var_path)?;
+                let variables = Variables::from_toml(&var_path)?;
+                self.vars.extend(variables)
+            }
+
+            ProfileSwitch::Source(source_path) => {
+                dot.source = source_path.to_owned();
+            }
+        }
+
+        // Write updated .dots and relink
+        let dot_copy_path = self.dot_copy_source_path(&dot.source);
+        let source_path = self.source_path(&dot.source)?;
+
+        self.traverse_dots_and_copy(&source_path, &dot_copy_path)?;
+        Bombadil::link(&dot_copy_path, target);
+
+        if let Some(command) = profile.hook {
+            let hook = Hook { command };
+            if let Err(err) = hook.run() {
+                let err = format!("{}", err).red();
+                eprintln!("{}", err);
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Resolve dot source copy path ({dotfiles/dotsource) against user defined dotfile directory
     /// Check if file exists
     fn source_path(&self, dot_source_path: &PathBuf) -> Result<PathBuf> {
         let path = self.path.join(&dot_source_path);
@@ -224,7 +322,11 @@ impl Bombadil {
         if path.exists() {
             Ok(path)
         } else {
-            Err(anyhow!("Path does not exists: {:?}", path))
+            Err(anyhow!(format!(
+                "{} {:?}",
+                "Path does not exists :".red(),
+                path
+            )))
         }
     }
 
@@ -253,9 +355,11 @@ mod tests {
                 .to_path_buf()
                 .canonicalize()
                 .unwrap(),
-            dots: vec![DotLink {
+            dots: vec![Dot {
+                name: None,
                 source: source.clone(),
                 target: target.clone(),
+                profile: None,
             }],
             vars: Variables::default(),
             hooks: vec![],
@@ -284,9 +388,11 @@ mod tests {
                 .to_path_buf()
                 .canonicalize()
                 .unwrap(),
-            dots: vec![DotLink {
+            dots: vec![Dot {
+                name: None,
                 source: source.clone(),
                 target: target.clone(),
+                profile: None,
             }],
             vars: Variables::default(),
             hooks: vec![],
@@ -354,9 +460,11 @@ mod tests {
                 .to_path_buf()
                 .canonicalize()
                 .unwrap(),
-            dots: vec![DotLink {
+            dots: vec![Dot {
+                name: None,
                 source: Path::new("template").to_path_buf(),
                 target: target.clone(),
+                profile: None,
             }],
             vars: Variables { variables: map },
             hooks: vec![],
@@ -387,9 +495,11 @@ mod tests {
                 .to_path_buf()
                 .canonicalize()
                 .unwrap(),
-            dots: vec![DotLink {
+            dots: vec![Dot {
+                name: None,
                 source: Path::new("sub_dir").to_path_buf(),
                 target: target.clone(),
+                profile: None,
             }],
             vars: Variables { variables: map },
             hooks: vec![],
@@ -421,9 +531,11 @@ mod tests {
                 .to_path_buf()
                 .canonicalize()
                 .unwrap(),
-            dots: vec![DotLink {
+            dots: vec![Dot {
+                name: None,
                 source: Path::new("sub_dir_1").to_path_buf(),
                 target: target.clone(),
+                profile: None,
             }],
             vars: Variables { variables: map },
             hooks: vec![],

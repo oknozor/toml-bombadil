@@ -1,5 +1,6 @@
 use anyhow::Result;
-use std::process::{Command, Stdio};
+use cmd_lib::{CmdResult, Process};
+use colored::*;
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Hook {
@@ -8,27 +9,12 @@ pub struct Hook {
 
 impl Hook {
     pub(crate) fn run(&self) -> Result<()> {
-        let args: Vec<&str> = self.command.split(' ').collect();
-        if args.is_empty() {
-            return Err(anyhow!("Cannot run empty hook"));
-        }
+        let command_display = format!("`{}`", &self.command.green());
+        println!("Running post install hook : {}", command_display);
 
-        let mut command = Command::new(args[0]);
-
-        let mut idx = 1;
-        while let Some(arg) = args.get(idx) {
-            command.arg(arg);
-            idx += 1;
-        }
-
-        println!("Running post install hook : {}", &self.command);
-        command
-            .stdout(Stdio::inherit())
-            .stderr(Stdio::inherit())
-            .spawn()?
-            .wait()?;
-
-        Ok(())
+        Process::new(self.command.clone())
+            .wait::<CmdResult>()
+            .map_err(|err| anyhow!(err))
     }
 }
 
