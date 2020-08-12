@@ -60,3 +60,81 @@ impl Dot {
             .unwrap_or_default()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::dots::{Dot, Profile, ProfileSwitch};
+    use std::path::PathBuf;
+
+    #[test]
+    fn should_get_target_path() {
+        // Arrange
+        let home = env!("HOME");
+
+        let dot = Dot {
+            name: None,
+            source: Default::default(),
+            target: PathBuf::from(".config/sway"),
+            profile: None,
+        };
+
+        // Act
+        let result = dot.target();
+
+        // Assert
+        assert!(result.is_ok());
+        let expected = PathBuf::from(home).join(".config").join("sway");
+
+        assert_eq!(result.unwrap(), expected);
+    }
+
+    #[test]
+    fn should_get_absolute_target_path() {
+        // Arrange
+        let dot = Dot {
+            name: None,
+            source: Default::default(),
+            target: PathBuf::from("/etc/profile"),
+            profile: None,
+        };
+
+        // Act
+        let result = dot.target();
+
+        // Assert
+        assert!(result.is_ok());
+
+        let expected = PathBuf::from("/etc/profile");
+        assert_eq!(result.unwrap(), expected);
+    }
+
+    #[test]
+    fn should_get_profile_names() {
+        // Arrange
+        let dot = Dot {
+            name: Some("dot".to_string()),
+            source: Default::default(),
+            target: Default::default(),
+            profile: Some(vec![
+                Profile {
+                    name: "profile_one".to_string(),
+                    switch: ProfileSwitch::Source(PathBuf::from("dummy")),
+                    hook: None,
+                },
+                Profile {
+                    name: "profile_two".to_string(),
+                    switch: ProfileSwitch::Source(PathBuf::from("dummy")),
+                    hook: None,
+                },
+            ]),
+        };
+
+        // Act
+        let profile_names = dot.get_profile_names();
+
+        // Assert
+        assert_eq!(profile_names.len(), 2);
+        assert!(profile_names.contains(&"profile_one"));
+        assert!(profile_names.contains(&"profile_two"));
+    }
+}
