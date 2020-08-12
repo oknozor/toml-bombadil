@@ -1,8 +1,13 @@
 dotfiles_dir = "/tmp/bombadil_tests"
 
 [[dot]]
+name = "dot_name"
 source = "template.css"
 target = "template.css"
+    [[dot.profile]]
+      name = "profile_name"
+      switch.vars = "/tmp/var.toml"
+      hook = "echo hello world"
 
 [[var]]
 path = "vars.toml"

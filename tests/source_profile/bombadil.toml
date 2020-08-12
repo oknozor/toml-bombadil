@@ -1,0 +1,10 @@
+dotfiles_dir = "/tmp/bombadil_tests_source_profile"
+
+[[dot]]
+name = "dot_name"
+source = "dot"
+target = "dot"
+[[dot.profile]]
+name = "profile_name"
+switch.source = "alt_dot"
+hook = "echo hello world"
