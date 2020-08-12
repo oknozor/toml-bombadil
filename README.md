@@ -311,7 +311,7 @@ As you can see the possible values for the `--set-profile` flag contains the pro
 We can now switch profile like so :  
 
 ```shell script
-bombadil maven --set-env corporate
+bombadil maven --set-profile corporate
 ```
 
 Or using the short flag version: 

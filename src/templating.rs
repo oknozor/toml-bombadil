@@ -117,4 +117,22 @@ mod test {
 
         assert!(content.is_err());
     }
+
+    #[test]
+    fn extend_should_overwrite_vars() {
+        let mut vars = HashMap::new();
+        vars.insert("white".to_string(), "#000000".to_string());
+
+        let mut extends = HashMap::new();
+        extends.insert("white".to_string(), "#FFFFFF".to_string());
+
+        let mut vars = Variables { variables: vars };
+
+        let extends = Variables { variables: extends };
+
+        vars.extend(extends);
+
+        assert_eq!(vars.variables.len(), 1);
+        assert_eq!(vars.variables.get("white"), Some(&"#FFFFFF".to_string()));
+    }
 }
