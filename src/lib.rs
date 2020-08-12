@@ -720,4 +720,36 @@ mod tests {
         assert!(result.is_ok());
         assert!(std::fs::symlink_metadata(home.join("test_template")).is_err());
     }
+
+    #[test]
+    fn should_remove_file() {
+        // Arrange
+        let tmp = TempDir::new("/tmp/test_remove", false).to_path_buf();
+        let path = PathBuf::from("/tmp/test_remove/file");
+        std::fs::File::create(&path).unwrap();
+        assert!(path.exists());
+
+        // Act
+        Bombadil::remove_file_or_dir(&path);
+
+        // Assert
+        assert!(path.exists().not());
+        let _ = std::fs::remove_dir(tmp);
+    }
+
+    #[test]
+    fn should_remove_dir() {
+        // Arrange
+        let tmp = TempDir::new("/tmp/test_remove", false).to_path_buf();
+        let path = PathBuf::from("/tmp/test_remove/dir");
+        std::fs::create_dir(&path).unwrap();
+        assert!(path.exists());
+
+        // Act
+        Bombadil::remove_file_or_dir(&path);
+
+        // Assert
+        assert!(path.exists().not());
+        let _ = std::fs::remove_dir(tmp);
+    }
 }
