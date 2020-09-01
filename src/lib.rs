@@ -73,6 +73,16 @@ impl Bombadil {
             return Err(anyhow!("Dotfiles base path : {}, not found"));
         }
 
+        if !self.path.is_dir() {
+            let err = format!(
+                "{} {:?} {}",
+                "Provided dotfiles directory".red(),
+                &self.path,
+                "is not a directory".red()
+            );
+            return Err(anyhow!(err));
+        }
+
         let dot_copy_dir = &self.path.join(".dots");
 
         if dot_copy_dir.exists() {
@@ -82,10 +92,16 @@ impl Bombadil {
         std::fs::create_dir(dot_copy_dir)?;
 
         for dot in self.dots.iter() {
-            let dot_source_path = self.source_path(&dot.source)?;
+            let dot_source_path = self.source_path(&dot.source);
+
+            if let Err(err) = dot_source_path {
+                eprintln!("{}", err);
+                continue;
+            }
+
             let dot_copy_path = self.dot_copy_source_path(&dot.source);
 
-            self.traverse_dots_and_copy(&dot_source_path, &dot_copy_path)?;
+            self.traverse_dots_and_copy(&dot_source_path?, &dot_copy_path)?;
 
             let target = &dot.target()?;
 
@@ -475,6 +491,42 @@ mod tests {
             std::fs::read_to_string(&target).unwrap(),
             "color: red_value".to_string()
         );
+    }
+
+    #[test]
+    fn install_should_failsafely_and_continue() {
+        // Arrange
+        let target = TempDir::new("/tmp/dot_target", false).to_path_buf();
+
+        let config = Bombadil {
+            path: PathBuf::from("tests/dotfiles_invalid_dot")
+                .canonicalize()
+                .unwrap(),
+            dots: vec![
+                Dot {
+                    name: None,
+                    source: PathBuf::from("template"),
+                    target: target.clone(),
+                    profile: None,
+                },
+                Dot {
+                    name: None,
+                    source: PathBuf::from("invalid_path"),
+                    target: PathBuf::from("somewhere"),
+                    profile: None,
+                },
+            ],
+            vars: Variables {
+                variables: HashMap::new(),
+            },
+            hooks: vec![],
+        };
+
+        // Act
+        config.install().unwrap();
+
+        // Assert
+        assert!(target.exists());
     }
 
     #[test]
