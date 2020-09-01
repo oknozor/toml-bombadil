@@ -1,0 +1,9 @@
+dotfiles_dir = "" # Replaced in test
+
+[[dot]]
+source = "template.css"
+target = "template.css"
+
+[[dot]]
+source = "invalid_path"
+target = "somewhere"
