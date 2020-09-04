@@ -1,5 +1,4 @@
 use clap::{App, AppSettings, Arg, SubCommand};
-use colored::Colorize;
 use std::path::PathBuf;
 use toml_bombadil::settings::Settings;
 use toml_bombadil::Bombadil;
@@ -44,7 +43,6 @@ fn main() {
             SubCommand::with_name(LINK)
                 .about("Symlink a copy of your dotfiles  and inject variables according to bombadil.toml config"),
         )
-        // .subcommands(profile_subcommands)
         .get_matches();
 
     if let Some(subcommand) = matches.subcommand_name() {

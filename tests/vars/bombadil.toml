@@ -1,8 +1,7 @@
 dotfiles_dir = "/tmp/bombadil_tests"
 
 [settings]
-vars = ["vars.toml"]
-meta = ["meta_vars.toml"]
+vars = ["vars.toml", "meta_vars.toml"]
 
 [settings.dots]
 dot_name = { source = "template.css", target = "template.css" }
