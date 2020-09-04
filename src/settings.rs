@@ -1,9 +1,9 @@
 use crate::dots::{Dot, DotOverride};
 use anyhow::Result;
-use config::{Config, ConfigError, File};
-use std::path::PathBuf;
 use colored::Colorize;
+use config::{Config, ConfigError, File};
 use std::collections::HashMap;
+use std::path::PathBuf;
 
 /// The Global bombadil configuration
 #[derive(Debug, Deserialize, Serialize)]
@@ -70,7 +70,7 @@ pub struct Profile {
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct ImportPath {
-    path: PathBuf
+    path: PathBuf,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -97,7 +97,8 @@ impl Settings {
                 if path.exists() {
                     let mut s = Config::new();
                     s.merge(File::from(path))?;
-                    let mut settings: Result<Settings> = s.try_into()
+                    let mut settings: Result<Settings> = s
+                        .try_into()
                         .map_err(|err| anyhow!("Config format error : {}", err));
 
                     if let Ok(settings) = settings.as_mut() {
@@ -117,7 +118,8 @@ impl Settings {
     }
 
     fn merge_imports(&mut self) -> Result<()> {
-        let import_paths: Vec<PathBuf> = self.import
+        let import_paths: Vec<PathBuf> = self
+            .import
             .iter()
             .map(|import| import.path.clone())
             .collect();
@@ -127,16 +129,22 @@ impl Settings {
                 let mut s = Config::new();
                 s.merge(File::from(path.to_owned()))?;
 
-                let sub_setting = s.try_into::<ImportedSettings>()
+                let sub_setting = s
+                    .try_into::<ImportedSettings>()
                     .map_err(|err| anyhow!("Config format error : {}", err));
 
                 match sub_setting {
                     Ok(sub_settings) => self.merge(sub_settings),
-                    Err(err) => eprintln!("{} {:?} {}", "Error loading settings from : ", path, err )
+                    Err(err) => {
+                        eprintln!("{} {:?} {}", "Error loading settings from : ", path, err)
+                    }
                 }
-
             } else {
-                eprintln!("{} {}", "Unable to find bombadil import file".red(), path.display());
+                eprintln!(
+                    "{} {}",
+                    "Unable to find bombadil import file".red(),
+                    path.display()
+                );
             }
         }
 
@@ -144,8 +152,12 @@ impl Settings {
     }
 
     fn merge(&mut self, sub_settings: ImportedSettings) {
-        self.settings.hooks.extend_from_slice(&sub_settings.settings.hooks);
-        self.settings.vars.extend_from_slice(&sub_settings.settings.vars);
+        self.settings
+            .hooks
+            .extend_from_slice(&sub_settings.settings.hooks);
+        self.settings
+            .vars
+            .extend_from_slice(&sub_settings.settings.vars);
         self.import.extend_from_slice(&sub_settings.import);
         self.settings.dots.extend(sub_settings.settings.dots);
         self.profiles.extend(sub_settings.profiles);
@@ -163,10 +175,10 @@ impl Settings {
 
 #[cfg(test)]
 mod tests {
-    use temp_testdir::TempDir;
-    use crate::Bombadil;
     use crate::settings::Settings;
+    use crate::Bombadil;
     use std::ops::Not;
+    use temp_testdir::TempDir;
 
     #[test]
     fn should_merge_import() {
