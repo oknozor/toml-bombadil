@@ -150,7 +150,7 @@ impl Bombadil {
         let entries: Vec<(String, Option<String>)> = vars
             .variables
             .iter()
-            .filter(|(_, value)| value.starts_with('$'))
+            .filter(|(_, value)| value.starts_with("%"))
             .map(|(key, value)| (key, &value[1..value.len()]))
             .map(|(key, ref_key)| (key.clone(), vars.variables.get(ref_key).cloned()))
             .collect();
