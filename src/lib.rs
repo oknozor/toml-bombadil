@@ -11,12 +11,12 @@ use crate::settings::Settings;
 use crate::templating::Variables;
 use anyhow::Result;
 use colored::*;
+use std::collections::HashMap;
 use std::fs::File;
 use std::io::Write;
 use std::ops::Not;
 use std::os::unix::fs;
 use std::path::PathBuf;
-use std::collections::HashMap;
 
 pub mod dots;
 pub(crate) mod hook;
@@ -147,28 +147,29 @@ impl Bombadil {
             vars.extend(variables);
         }
 
-        let entries: Vec<(String, Option<String>)> = vars.variables
+        let entries: Vec<(String, Option<String>)> = vars
+            .variables
             .iter()
             .filter(|(_, value)| value.starts_with('$'))
             .map(|(key, value)| (key, &value[1..value.len()]))
             .map(|(key, ref_key)| (key.clone(), vars.variables.get(ref_key).cloned()))
             .collect();
 
-        entries.iter()
-            .for_each(|(key, opt_value)| {
-                match opt_value {
-                    Some(value) => {
-                        let _ = vars.variables.insert(key.to_string(), value.to_string());
-                    },
-                    None => {
-                        let warning = format!("Reference ${} not found in config", &key).yellow();
-                        eprintln!("{}", warning);
-                    }
-                }
-            });
+        entries.iter().for_each(|(key, opt_value)| match opt_value {
+            Some(value) => {
+                let _ = vars.variables.insert(key.to_string(), value.to_string());
+            }
+            None => {
+                let warning = format!("Reference ${} not found in config", &key).yellow();
+                eprintln!("{}", warning);
+            }
+        });
 
         // Resolve hooks from config
-        let hooks = config.settings.hooks.iter()
+        let hooks = config
+            .settings
+            .hooks
+            .iter()
             .map(|cmd| Hook::new(cmd))
             .collect();
 
@@ -202,7 +203,7 @@ impl Bombadil {
                     &source_path.join(entry_name),
                     &copy_path.join(entry_name),
                 )
-                    .unwrap_or_else(|err| eprintln!("{}", err));
+                .unwrap_or_else(|err| eprintln!("{}", err));
             }
         }
 
@@ -283,10 +284,13 @@ mod tests {
         let mut dots = HashMap::new();
         let source = PathBuf::from("template");
 
-        dots.insert("dot".to_string(), Dot {
-            source: source.clone(),
-            target: target.clone(),
-        });
+        dots.insert(
+            "dot".to_string(),
+            Dot {
+                source: source.clone(),
+                target: target.clone(),
+            },
+        );
 
         let config = Bombadil {
             path: PathBuf::from("tests/dotfiles_simple")
@@ -317,10 +321,13 @@ mod tests {
 
         let mut dots = HashMap::new();
 
-        dots.insert("dot".to_string(), Dot {
-            source: source.clone(),
-            target: target.clone(),
-        });
+        dots.insert(
+            "dot".to_string(),
+            Dot {
+                source: source.clone(),
+                target: target.clone(),
+            },
+        );
 
         let config = Bombadil {
             path: PathBuf::from("tests/dotfiles_non_utf8")
@@ -388,10 +395,13 @@ mod tests {
         map.insert("red".to_string(), "red_value".to_string());
 
         let mut dots = HashMap::new();
-        dots.insert("dot".to_string(), Dot {
-            source: PathBuf::from("template"),
-            target: target.clone(),
-        });
+        dots.insert(
+            "dot".to_string(),
+            Dot {
+                source: PathBuf::from("template"),
+                target: target.clone(),
+            },
+        );
 
         let config = Bombadil {
             path: PathBuf::from("tests/dotfiles_simple")
@@ -420,14 +430,20 @@ mod tests {
 
         let mut dots = HashMap::new();
 
-        dots.insert("dot".to_string(), Dot {
-            source: PathBuf::from("template"),
-            target: target.clone(),
-        });
-        dots.insert("dot".to_string(), Dot {
-            source: PathBuf::from("invalid_path"),
-            target: PathBuf::from("somewhere"),
-        });
+        dots.insert(
+            "dot".to_string(),
+            Dot {
+                source: PathBuf::from("template"),
+                target: target.clone(),
+            },
+        );
+        dots.insert(
+            "dot".to_string(),
+            Dot {
+                source: PathBuf::from("invalid_path"),
+                target: PathBuf::from("somewhere"),
+            },
+        );
 
         let config = Bombadil {
             path: PathBuf::from("tests/dotfiles_invalid_dot")
@@ -458,10 +474,13 @@ mod tests {
 
         let mut dots = HashMap::new();
 
-        dots.insert("dot".to_string(), Dot {
-            source: PathBuf::from("sub_dir"),
-            target: target.clone(),
-        });
+        dots.insert(
+            "dot".to_string(),
+            Dot {
+                source: PathBuf::from("sub_dir"),
+                target: target.clone(),
+            },
+        );
 
         let config = Bombadil {
             path: PathBuf::from("tests/dotfiles_nested")
@@ -494,10 +513,13 @@ mod tests {
         map.insert("blue".to_string(), "blue_value".to_string());
 
         let mut dots = HashMap::new();
-        dots.insert("dot".to_string(), Dot {
-            source: PathBuf::from("sub_dir_1"),
-            target: target.clone(),
-        });
+        dots.insert(
+            "dot".to_string(),
+            Dot {
+                source: PathBuf::from("sub_dir_1"),
+                target: target.clone(),
+            },
+        );
         let config = Bombadil {
             path: PathBuf::from("tests/dotfiles_nested_2")
                 .canonicalize()

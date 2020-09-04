@@ -59,7 +59,7 @@ fn main() {
 
                 let _command_result = bombadil.install().unwrap_or_else(|err| fatal!("{}", err));
             }
-            _=> unreachable!()
+            _ => unreachable!(),
         }
     }
 }

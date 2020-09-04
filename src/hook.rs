@@ -24,9 +24,7 @@ impl Hook {
     }
     pub fn new(command: &String) -> Self {
         let command = command.to_owned();
-        Hook {
-            command
-        }
+        Hook { command }
     }
 }
 
