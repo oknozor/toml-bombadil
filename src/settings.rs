@@ -50,10 +50,6 @@ pub struct ActiveProfile {
     /// Variables to use in templates
     #[serde(default)]
     pub vars: Vec<PathBuf>,
-
-    /// Meta variables to replace variables definitions
-    #[serde(default)]
-    pub meta: Vec<PathBuf>,
 }
 
 /// An named profile meant to override the default one
@@ -70,10 +66,6 @@ pub struct Profile {
     /// Variables to use in templates
     #[serde(default)]
     pub vars: Vec<PathBuf>,
-
-    /// Meta variables to replace variables definitions
-    #[serde(default)]
-    pub meta: Vec<PathBuf>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -92,7 +84,6 @@ impl Default for ActiveProfile {
             dots: Default::default(),
             hooks: vec![],
             vars: vec![],
-            meta: vec![]
         }
     }
 }
@@ -135,6 +126,7 @@ impl Settings {
             if path.exists() {
                 let mut s = Config::new();
                 s.merge(File::from(path.to_owned()))?;
+
                 let sub_setting = s.try_into::<ImportedSettings>()
                     .map_err(|err| anyhow!("Config format error : {}", err));
 

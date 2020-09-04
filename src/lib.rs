@@ -140,13 +140,6 @@ impl Bombadil {
             ));
         }
 
-        // Get meta variables from config
-        let mut meta_vars = Variables::default();
-        for path in config.settings.meta {
-            let variables = Variables::from_toml(&base_dir.join(path))?;
-            meta_vars.extend(variables);
-        }
-
         // Resolve variables from path
         let mut vars = Variables::default();
         for path in config.settings.vars {
@@ -154,16 +147,24 @@ impl Bombadil {
             vars.extend(variables);
         }
 
-        let var_copy = vars.variables.clone();
-
-        var_copy
+        let entries: Vec<(String, Option<String>)> = vars.variables
             .iter()
-            .filter(|var| meta_vars.variables.get(var.1).is_some())
-            .for_each(|var| {
-                let _ = vars.variables.insert(
-                    var.0.to_string(),
-                    meta_vars.variables.get(var.1).unwrap().to_string(),
-                );
+            .filter(|(_, value)| value.starts_with('$'))
+            .map(|(key, value)| (key, &value[1..value.len()]))
+            .map(|(key, ref_key)| (key.clone(), vars.variables.get(ref_key).cloned()))
+            .collect();
+
+        entries.iter()
+            .for_each(|(key, opt_value)| {
+                match opt_value {
+                    Some(value) => {
+                        let _ = vars.variables.insert(key.to_string(), value.to_string());
+                    },
+                    None => {
+                        let warning = format!("Reference ${} not found in config", &key).yellow();
+                        eprintln!("{}", warning);
+                    }
+                }
             });
 
         // Resolve hooks from config
