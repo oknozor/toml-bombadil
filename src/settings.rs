@@ -6,6 +6,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 
 /// The Global bombadil configuration
+#[serde(deny_unknown_fields)]
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Settings {
     /// User define dotfiles directory, usually your versioned dotfiles
@@ -53,7 +54,7 @@ pub struct ActiveProfile {
 }
 
 /// An named profile meant to override the default one
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Profile {
     /// A list of symlink to edit
     #[serde(default)]
@@ -71,11 +72,6 @@ pub struct Profile {
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct ImportPath {
     path: PathBuf,
-}
-
-#[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct Var {
-    pub path: PathBuf,
 }
 
 impl Default for ActiveProfile {

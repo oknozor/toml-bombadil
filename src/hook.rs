@@ -22,7 +22,7 @@ impl Hook {
 
         command.output().map_err(|err| anyhow!(err)).map(|_| ())
     }
-    pub fn new(command: &String) -> Self {
+    pub fn new(command: &str) -> Self {
         let command = command.to_owned();
         Hook { command }
     }

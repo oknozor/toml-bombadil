@@ -15,8 +15,23 @@ macro_rules! fatal {
 }
 
 fn main() {
+    let profiles = Settings::get()
+        .map(|settings| settings.profiles)
+        .unwrap_or_default();
+
+    let profile_names = profiles
+        .iter()
+        .map(|profile| profile.0.as_str())
+        .collect::<Vec<&str>>();
+
     let app_settings = &[
         AppSettings::SubcommandRequiredElseHelp,
+        AppSettings::UnifiedHelpMessage,
+        AppSettings::ColoredHelp,
+        AppSettings::VersionlessSubcommands,
+    ];
+
+    let subcommand_settings = &[
         AppSettings::UnifiedHelpMessage,
         AppSettings::ColoredHelp,
         AppSettings::VersionlessSubcommands,
@@ -29,20 +44,26 @@ fn main() {
         .about("A dotfile template manager")
         .long_about("Toml is a dotfile template manager, written in rust. \
         For more info on how to configure it please go to https://github.com/oknozor/toml-bombadil")
-        .subcommand(
-            SubCommand::with_name(INSTALL)
-                .about("Link a given bombadil config to XDG_CONFIG_DIR/bombadil.toml")
-                .arg(Arg::with_name("CONFIG")
-                    .help("path to your bombadil.toml config file inside your dotfiles directory")
-                    .short("c")
-                    .long("config")
-                    .takes_value(true)
-                    .required(true)),
-        )
-        .subcommand(
-            SubCommand::with_name(LINK)
-                .about("Symlink a copy of your dotfiles  and inject variables according to bombadil.toml config"),
-        )
+        .subcommand(SubCommand::with_name(INSTALL)
+            .settings(subcommand_settings)
+            .about("Link a given bombadil config to XDG_CONFIG_DIR/bombadil.toml")
+            .arg(Arg::with_name("CONFIG")
+                .help("path to your bombadil.toml config file inside your dotfiles directory")
+                .short("c")
+                .long("config")
+                .takes_value(true)
+                .required(true)))
+        .subcommand(SubCommand::with_name(LINK)
+            .settings(subcommand_settings)
+            .about("Symlink a copy of your dotfiles and inject variables according to bombadil.toml config")
+            .arg(Arg::with_name("PROFILES")
+                .help("A list of comma separated profiles to activate")
+                .short("p")
+                .long("profiles")
+                .possible_values(profile_names.as_slice())
+                .takes_value(true)
+                .multiple(true)
+                .required(false)))
         .get_matches();
 
     if let Some(subcommand) = matches.subcommand_name() {
@@ -55,9 +76,19 @@ fn main() {
             }
 
             LINK => {
-                let bombadil = Bombadil::from_settings().unwrap_or_else(|err| fatal!("{}", err));
+                let mut bombadil =
+                    Bombadil::from_settings().unwrap_or_else(|err| fatal!("{}", err));
+                let link_command = matches.subcommand_matches(LINK).unwrap();
 
-                let _command_result = bombadil.install().unwrap_or_else(|err| fatal!("{}", err));
+                if link_command.is_present("PROFILES") {
+                    let profiles: Vec<_> = link_command.values_of("PROFILES").unwrap().collect();
+                    let _command_result = bombadil
+                        .enable_profiles(profiles)
+                        .unwrap_or_else(|err| fatal!("{}", err));
+                } else {
+                    let _command_result =
+                        bombadil.install().unwrap_or_else(|err| fatal!("{}", err));
+                }
             }
             _ => unreachable!(),
         }

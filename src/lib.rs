@@ -7,7 +7,7 @@ extern crate pest_derive;
 
 use crate::dots::Dot;
 use crate::hook::Hook;
-use crate::settings::Settings;
+use crate::settings::{Profile, Settings};
 use crate::templating::Variables;
 use anyhow::Result;
 use colored::*;
@@ -28,13 +28,14 @@ pub struct Bombadil {
     dots: HashMap<String, Dot>,
     vars: Variables,
     hooks: Vec<Hook>,
+    profiles: HashMap<String, Profile>,
 }
 
 impl Bombadil {
     pub fn link_self_config(config_path: Option<PathBuf>) -> Result<()> {
         let xdg_config_dir = dirs::config_dir();
         if xdg_config_dir.is_none() {
-            return Err(anyhow!("$XDG_CONFIG does not exists",));
+            return Err(anyhow!("$XDG_CONFIG does not exists"));
         }
 
         let xdg_config = Settings::bombadil_config_xdg_path()?;
@@ -70,20 +71,7 @@ impl Bombadil {
     }
 
     pub fn install(&self) -> Result<()> {
-        if !self.path.exists() {
-            return Err(anyhow!("Dotfiles base path : {}, not found"));
-        }
-
-        if !self.path.is_dir() {
-            let err = format!(
-                "{} {:?} {}",
-                "Provided dotfiles directory".red(),
-                &self.path,
-                "is not a directory".red()
-            );
-            return Err(anyhow!(err));
-        }
-
+        self.check_dotfile_dir()?;
         let dot_copy_dir = &self.path.join(".dots");
 
         if dot_copy_dir.exists() {
@@ -119,6 +107,93 @@ impl Bombadil {
         Ok(())
     }
 
+    pub fn enable_profiles(&mut self, profile_keys: Vec<&str>) -> Result<()> {
+        let profiles: Vec<Profile> = profile_keys
+            .iter()
+            // unwrap here is safe cause allowed profile keys are checked by clap
+            .map(|profile_key| self.profiles.get(&profile_key.to_string()).unwrap())
+            .cloned()
+            .collect();
+
+        // Merge profile dots
+        for profile in profiles.iter() {
+            profile.dots.iter().for_each(|(key, dot_override)| {
+                // Dot exist let's override
+                if let Some(dot) = self.dots.get_mut(key) {
+                    if let Some(source) = &dot_override.source {
+                        dot.source = source.clone()
+                    }
+
+                    if let Some(target) = &dot_override.target {
+                        dot.source = target.clone()
+                    }
+
+                    if let (None, None) = (&dot_override.source, &dot_override.target) {
+                        let warning = format!(
+                            "Skipping {}, no `source` or `target` value to override",
+                            key
+                        )
+                        .yellow();
+                        eprintln!("{}", warning);
+                    }
+                // Nothing to override, let's create a new dot entry
+                } else if let (Some(source), Some(target)) =
+                    (&dot_override.source, &dot_override.target)
+                {
+                    let source = source.clone();
+                    let target = target.clone();
+                    self.dots.insert(key.to_string(), Dot { source, target });
+                } else {
+                    if dot_override.source.is_none() {
+                        let warning = format!("`source` field missing for {}", key).yellow();
+                        eprintln!("{}", warning);
+                    }
+
+                    if dot_override.target.is_none() {
+                        let warning = format!("`target` field missing for {}", key).yellow();
+                        eprintln!("{}", warning);
+                    }
+                }
+            });
+
+            // Add profile vars
+            for path in &profile.vars {
+                let variables = Variables::from_toml(&path.join(path))?;
+                self.vars.extend(variables);
+            }
+
+            // Add profile hooks
+            let hooks = profile
+                .hooks
+                .iter()
+                .map(|command| command.as_ref())
+                .map(Hook::new)
+                .collect::<Vec<Hook>>();
+
+            self.hooks.extend(hooks);
+        }
+
+        self.install()
+    }
+
+    fn check_dotfile_dir(&self) -> Result<()> {
+        if !self.path.exists() {
+            return Err(anyhow!("Dotfiles base path : {}, not found"));
+        }
+
+        if !self.path.is_dir() {
+            let err = format!(
+                "{} {:?} {}",
+                "Provided dotfiles directory".red(),
+                &self.path,
+                "is not a directory".red()
+            );
+            return Err(anyhow!(err));
+        }
+
+        Ok(())
+    }
+
     pub fn from_settings() -> Result<Bombadil> {
         let config = Settings::get()?;
 
@@ -127,34 +202,33 @@ impl Bombadil {
             return Err(anyhow!("$HOME directory not found"));
         }
 
-        let base_dir = if config.dotfiles_dir.is_absolute() {
+        let path = if config.dotfiles_dir.is_absolute() {
             config.dotfiles_dir
         } else {
             home_dir.unwrap().join(&config.dotfiles_dir)
         };
 
-        if base_dir.exists().not() {
-            return Err(anyhow!(
-                "Dotfiles directory {:?} does not exists",
-                &base_dir
-            ));
+        if path.exists().not() {
+            return Err(anyhow!("Dotfiles directory {:?} does not exists", &path));
         }
 
         // Resolve variables from path
         let mut vars = Variables::default();
-        for path in config.settings.vars {
-            let variables = Variables::from_toml(&base_dir.join(path))?;
+        for var_path in config.settings.vars {
+            let variables = Variables::from_toml(&path.join(&var_path))?;
             vars.extend(variables);
         }
 
+        // Collect variable references
         let entries: Vec<(String, Option<String>)> = vars
             .variables
             .iter()
-            .filter(|(_, value)| value.starts_with("%"))
+            .filter(|(_, value)| value.starts_with('%'))
             .map(|(key, value)| (key, &value[1..value.len()]))
             .map(|(key, ref_key)| (key.clone(), vars.variables.get(ref_key).cloned()))
             .collect();
 
+        // insert value in place of references
         entries.iter().for_each(|(key, opt_value)| match opt_value {
             Some(value) => {
                 let _ = vars.variables.insert(key.to_string(), value.to_string());
@@ -173,11 +247,15 @@ impl Bombadil {
             .map(|cmd| Hook::new(cmd))
             .collect();
 
+        let dots = config.settings.dots;
+        let profiles = config.profiles;
+
         Ok(Self {
-            path: base_dir,
-            dots: config.settings.dots,
+            path,
+            dots,
             vars,
             hooks,
+            profiles,
         })
     }
 
@@ -239,14 +317,6 @@ impl Bombadil {
         Ok(())
     }
 
-    fn remove_file_or_dir(target: &PathBuf) {
-        if target.is_dir() {
-            let _ = std::fs::remove_dir_all(&target);
-        } else {
-            let _ = std::fs::remove_file(&target);
-        }
-    }
-
     /// Resolve dot source copy path ({dotfiles/dotsource) against user defined dotfile directory
     /// Check if file exists
     fn source_path(&self, dot_source_path: &PathBuf) -> Result<PathBuf> {
@@ -299,6 +369,7 @@ mod tests {
             dots,
             vars: Variables::default(),
             hooks: vec![],
+            profiles: Default::default(),
         };
 
         // Act
@@ -336,6 +407,7 @@ mod tests {
             dots,
             vars: Variables::default(),
             hooks: vec![],
+            profiles: Default::default(),
         };
 
         // Act
@@ -360,6 +432,7 @@ mod tests {
             dots: HashMap::new(),
             vars: Variables::default(),
             hooks: vec![],
+            profiles: Default::default(),
         };
 
         // Act
@@ -410,6 +483,7 @@ mod tests {
             dots,
             vars: Variables { variables: map },
             hooks: vec![],
+            profiles: Default::default(),
         };
 
         // Act
@@ -454,6 +528,7 @@ mod tests {
                 variables: HashMap::new(),
             },
             hooks: vec![],
+            profiles: Default::default(),
         };
 
         // Act
@@ -489,6 +564,7 @@ mod tests {
             dots,
             vars: Variables { variables: map },
             hooks: vec![],
+            profiles: Default::default(),
         };
 
         // Act
@@ -527,6 +603,7 @@ mod tests {
             dots,
             vars: Variables { variables: map },
             hooks: vec![],
+            profiles: Default::default(),
         };
 
         // Act
@@ -553,6 +630,7 @@ mod tests {
             hooks: vec![Hook {
                 command: format!("touch {}/dummy", target_str_path),
             }],
+            profiles: Default::default(),
         };
 
         // Act
@@ -630,37 +708,5 @@ mod tests {
         // Assert
         assert!(result.is_ok());
         assert!(std::fs::symlink_metadata(home.join("test_template")).is_err());
-    }
-
-    #[test]
-    fn should_remove_file() {
-        // Arrange
-        let tmp = TempDir::new("/tmp/test_remove", false).to_path_buf();
-        let path = PathBuf::from("/tmp/test_remove/file");
-        std::fs::File::create(&path).unwrap();
-        assert!(path.exists());
-
-        // Act
-        Bombadil::remove_file_or_dir(&path);
-
-        // Assert
-        assert!(path.exists().not());
-        let _ = std::fs::remove_dir(tmp);
-    }
-
-    #[test]
-    fn should_remove_dir() {
-        // Arrange
-        let tmp = TempDir::new("/tmp/test_remove", false).to_path_buf();
-        let path = PathBuf::from("/tmp/test_remove/dir");
-        std::fs::create_dir(&path).unwrap();
-        assert!(path.exists());
-
-        // Act
-        Bombadil::remove_file_or_dir(&path);
-
-        // Assert
-        assert!(path.exists().not());
-        let _ = std::fs::remove_dir(tmp);
     }
 }
