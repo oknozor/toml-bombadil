@@ -386,7 +386,8 @@ If you use Bombadil please submit an issue or a PR to update this section, we wi
   
 ## Contributing
 
-Found a bug, have a suggestion for a new feature ? Please submit an [issue](https://github.com/oknozor/toml-bombadil/issues). 
+Found a bug, have a suggestion for a new feature ? 
+Please read the [contribution guideline](CONTRIBUTING.md) and submit an [issue](https://github.com/oknozor/toml-bombadil/issues). 
 
 ## License
 
