@@ -1,7 +1,7 @@
 use anyhow::Result;
 use colored::*;
+use std::io::{BufRead, BufReader};
 use std::process::{Command, Stdio};
-use std::io::{BufReader, BufRead};
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Hook {
@@ -29,9 +29,7 @@ impl Hook {
             .lines()
             .for_each(|line| eprintln!("{}", line.unwrap_or_else(|_| "".into())));
 
-        child.wait()
-            .map(|_| ())
-            .map_err(|err| anyhow!(err))
+        child.wait().map(|_| ()).map_err(|err| anyhow!(err))
     }
 
     fn build_command(args: Vec<&str>) -> Command {
@@ -48,7 +46,9 @@ impl Hook {
 
     // TODO : generify for "'" and "`"
     fn split_args(&self) -> Result<Vec<&str>> {
-        let mut indices: Vec<usize> = self.command.rmatch_indices("\"")
+        let mut indices: Vec<usize> = self
+            .command
+            .rmatch_indices("\"")
             .map(|(idx, _)| idx)
             .collect();
 
@@ -140,7 +140,10 @@ mod tests {
         let result = hook.split_args();
 
         // Assert
-        assert_eq!(result.unwrap(), vec!["echo", "hello Tom", "||", "grep", "Toml"]);
+        assert_eq!(
+            result.unwrap(),
+            vec!["echo", "hello Tom", "||", "grep", "Toml"]
+        );
     }
 
     #[test]

@@ -3,8 +3,8 @@ use anyhow::Result;
 use colored::Colorize;
 use config::{Config, ConfigError, File};
 use std::collections::HashMap;
-use std::path::PathBuf;
 use std::ops::Not;
+use std::path::PathBuf;
 
 /// The Global bombadil configuration
 #[serde(deny_unknown_fields)]
@@ -169,7 +169,7 @@ impl Settings {
             .map(|path| path.join("bombadil.toml"))
     }
 
-    pub (crate) fn get_dotfiles_path(&self) -> Result<PathBuf> {
+    pub(crate) fn get_dotfiles_path(&self) -> Result<PathBuf> {
         let home_dir = dirs::home_dir();
         if home_dir.is_none() {
             return Err(anyhow!("$HOME directory not found"));
