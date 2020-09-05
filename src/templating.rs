@@ -22,8 +22,7 @@ impl Variables {
         let file = File::open(path);
 
         if let Err(err) = file {
-            let warning = format!("Could not open var file {:?} : {}", path, err).red();
-            eprintln!("{}", warning);
+            eprintln!("{} {:?} : {}", "Could not open var file".red(), path, err);
             Ok(Self::default())
         } else {
             let mut buf_reader = BufReader::new(file.unwrap());

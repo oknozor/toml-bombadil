@@ -14,7 +14,6 @@ use colored::*;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::Write;
-use std::ops::Not;
 use std::os::unix::fs;
 use std::path::PathBuf;
 
@@ -125,7 +124,7 @@ impl Bombadil {
                     }
 
                     if let Some(target) = &dot_override.target {
-                        dot.source = target.clone()
+                        dot.target = target.clone()
                     }
 
                     if let (None, None) = (&dot_override.source, &dot_override.target) {
@@ -158,7 +157,7 @@ impl Bombadil {
 
             // Add profile vars
             for path in &profile.vars {
-                let variables = Variables::from_toml(&path.join(path))?;
+                let variables = Variables::from_toml(&self.path.join(path))?;
                 self.vars.extend(variables);
             }
 
@@ -196,21 +195,7 @@ impl Bombadil {
 
     pub fn from_settings() -> Result<Bombadil> {
         let config = Settings::get()?;
-
-        let home_dir = dirs::home_dir();
-        if home_dir.is_none() {
-            return Err(anyhow!("$HOME directory not found"));
-        }
-
-        let path = if config.dotfiles_dir.is_absolute() {
-            config.dotfiles_dir
-        } else {
-            home_dir.unwrap().join(&config.dotfiles_dir)
-        };
-
-        if path.exists().not() {
-            return Err(anyhow!("Dotfiles directory {:?} does not exists", &path));
-        }
+        let path = config.get_dotfiles_path()?;
 
         // Resolve variables from path
         let mut vars = Variables::default();

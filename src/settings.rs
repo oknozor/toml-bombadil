@@ -4,6 +4,7 @@ use colored::Colorize;
 use config::{Config, ConfigError, File};
 use std::collections::HashMap;
 use std::path::PathBuf;
+use std::ops::Not;
 
 /// The Global bombadil configuration
 #[serde(deny_unknown_fields)]
@@ -95,7 +96,7 @@ impl Settings {
                     s.merge(File::from(path))?;
                     let mut settings: Result<Settings> = s
                         .try_into()
-                        .map_err(|err| anyhow!("Config format error : {}", err));
+                        .map_err(|err| anyhow!("{} : {}", "Config format error".red(), err));
 
                     if let Ok(settings) = settings.as_mut() {
                         settings.merge_imports()?;
@@ -127,7 +128,7 @@ impl Settings {
 
                 let sub_setting = s
                     .try_into::<ImportedSettings>()
-                    .map_err(|err| anyhow!("Config format error : {}", err));
+                    .map_err(|err| anyhow!("{} : {}", "Config format error".red(), err));
 
                 match sub_setting {
                     Ok(sub_settings) => self.merge(sub_settings),
@@ -166,6 +167,25 @@ impl Settings {
                 ConfigError::NotFound("Unable to find `$XDG_CONFIG/bombadil.toml`".into())
             })
             .map(|path| path.join("bombadil.toml"))
+    }
+
+    pub (crate) fn get_dotfiles_path(&self) -> Result<PathBuf> {
+        let home_dir = dirs::home_dir();
+        if home_dir.is_none() {
+            return Err(anyhow!("$HOME directory not found"));
+        }
+
+        let path = if self.dotfiles_dir.is_absolute() {
+            self.dotfiles_dir.to_owned()
+        } else {
+            home_dir.unwrap().join(&self.dotfiles_dir)
+        };
+
+        if path.exists().not() {
+            return Err(anyhow!("Dotfiles directory {:?} does not exists", &path));
+        }
+
+        Ok(path)
     }
 }
 
