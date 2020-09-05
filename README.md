@@ -33,8 +33,8 @@ your dot file progressively.
     - [Variables](#variables)
     - [Meta variables](#meta-variables)
  - [Switching profile](#switching-profile)
-    - [Switching source](#switching-source)
-    - [Switching variables](#switching-variables)
+    - [Overriding dot entries](#overriding-dot-entries)
+    - [Adding variables](#adding-variables)
  - [Hooks](#hooks)
     - [Limitations](#limitations)
  - [Example repositories](#example-repositories)
@@ -58,10 +58,8 @@ yay -S bombadil-bin
 
 **1. Setup :** 
 
-By default Bombadil will look for a toml config file named `bombadil.toml`.
-
 ```shell script
-git clone https://github.com/my_org/my_dotfiles
+git clone https://github.com/my_org/dotfiles
 cd my_dotfiles && touch bombadil.toml
 ```
 
@@ -69,35 +67,26 @@ If you are using git you might want to add `.dots` to your `.gitignore`.
 
 **2. Configuration :**
 
+Toml bombadil needs a toml config file, along this readme we will call it `bombadil.toml`. 
+
 ```toml
 # {dotfiles}/bombadil.toml
 
 # Path to your dotfiles relative to your $HOME directory
 dotfiles_dir = "my_dotfiles"
-
-# A dot entry representing a symlink, `source` is relative to `dotfiles_dir` 
-# and target shall be relative to $HOME directory or absolute.
-[[dot]]
-source = "sway"
-target = ".config/sway"
-
-# You can have as many dot entry as you want, linking files or directories
-[[dot]]
-source = "alacritty"
-target = ".config/alacritty/alacritty.yml"
-
-# Var hold the path to a toml file containing the variables to inject in your templatize dotfiles
+[settings]
+# An array of toml files paths containing the variables to inject in your templatize dotfiles
 # You can have multiple var files as long as variable names does not colide. 
-[[var]] # Optional
-path = "vars.toml"
+vars = [ "vars.toml" ]
 
-# Meta vars holds the definitive values for aliased variables. It allows to reuse and group variables.
-[[meta]] # Optional
-path = "meta-vars.toml"
-
-# Post install commands
-[[hook]] # Optional
-command = "sway reload"
+# An array of post install shell commands
+hooks = [ "sway reload" ]
+[settings.dots]
+# A dot entry representing a symlink, `source` is relative to `dotfiles_dir` 
+# and `target` shall be relative to $HOME directory or absolute.
+sway = { source = "sway", target = ".config/sway" }
+# You can have as many dot entry as you want, linking files or directories
+alacritty = { source = "alacritty", target = ".config/alacritty/alacritty.yml" }
 ```
 
 **3. Linking bombadil :**
@@ -112,7 +101,7 @@ bombadil install -c my_dotfiles/bombadil.toml
 If you want to switch to another config simply run : 
 ```shell script
 bombadil install -c my_dotfiles/bombadil-i3.toml
-```
+``` 
 
 **4. Install template and symlink :**
 
@@ -131,8 +120,8 @@ This command will do the following :
 
 ### Variables 
 
-Now that your dot files are symlinked with Bombadil you can define some variables A Bombadil var files
-is a valid toml file containing only key with string values : 
+Now that your dot files are symlinked with Bombadil you can define some variables. 
+A Bombadil var files is a valid toml file containing only key with string values : 
 
 For example you have the following file in `{dotfiles_dir}/vars.toml`.
 
@@ -151,15 +140,14 @@ blue = "#1BA6FA"
 
 You can use the var file by adding the following to your Bombadil config : 
 ```toml
-[[var]]
-path = "vars.toml"
+[settings]
+vars = [ "vars.toml" ]
 ```
 
 Let's say you have the following dot entry : 
 ```toml
-[[dot]]
-source = "alacritty"
-target = ".config/alacritty/alacritty.yml"
+[settings.dots]
+alacritty = { source = "alacritty", target = ".config/alacritty/alacritty.yml" }
 ```
 
 `alacritty.yaml` color scheme could look like this : 
@@ -193,57 +181,50 @@ colors:
 
 To update variables and the current config simply run `bombadil link`.
 
-### Meta variables 
+### Referencing variables 
 
 Sometimes it could be handy to use different variables names for the same values.
-For instance if you want to define a system wide color scheme, you could define the following meta variables : 
+For instance if you want to define a system wide color scheme, you could define the following variables references : 
 
 ```toml
 # bombadil.toml
-[[meta]] 
-path = "meta_vars.toml"
-
-[[var]]
-path = "alacritty_vars.toml" 
-
-[[var]]
-path = "sway_vars.toml" 
-
+[settings]
+vars = [ "vars.toml", "theme_vars.toml", "alacritty_vars.toml", "sway_vars.toml" ]
 # ... 
 ```
 
-A meta variable configuration looks exactly like a variables configuration file. The only difference is that meta vars
-are intended to be used in other var files : 
+By prefixing a variable value with `%` you tell bombadil to look for a variable reference.
+Here `%red`, `%black` and `%green` will be replaced with the actual `red`, `black` and `green` values.
 
 ```toml
-# meta_vars.toml
-meta_red = "#ff0000"
-meta_black = "#000000"
-meta_green = "#008000"
+# theme_vars.toml
+red = "#ff0000"
+black = "#000000"
+green = "#008000"
 ```
 
 ```toml
 # sway_vars.toml
-sway_client_focused_background = "meta_black"
+sway_client_focused_background = "%black"
 sway_client_focused_border = "#ffff00"
 # ...
 ```
 
 ```toml
 # alacritty_vars.toml
-alacritty_background = "meta_black"
-alacritty_cursor = "meta_green"
+alacritty_background = "%black"
+alacritty_cursor = "%green"
 # ...
 ```
 
 ## Switching profile
 
 As we saw Bombadil allows to define global variables for all your dotfiles. For some programs you might want to 
-set alternate configurations for a single config file and change it without reloading the whole bombadil config.
+set an alternate configuration.
 Bombadil allow you two do this in two different way : by changing the source file linked against user configuration or 
 by overriding variables only for this specific file.  
 
-### Switching source
+### Overriding dot entries
 
 Let's say you are using [maven](https://maven.apache.org/) for several java projects, some of them are open source 
 and some of them uses a corporate repository : 
@@ -265,70 +246,42 @@ Your bombadil config contains a single dot entry with an alternate profile :
 
 ```toml
 # bombadil.toml
-dotile_dir = "bombadil-example"
+dotfile_dir = "bombadil-example"
+[settings.dots]
+maven = { source = "maven/settings.xml", target = ".m2/settings.xml"}
 
-[[dot]]
- name = "maven" # dot entry with profiles require to be named in order to generate bombadil command
- source = "settings.xml" 
- target = ".m2/settings.xml"
-    [[dot.profile]] # A profile entry for the maven dotfile (you can define as many as you want) 
-     name = "corporate" # name of the profile, required to generate bombadil command
-     switch.source = "settings.corporate.xml" # we are going to use alternate dot source to "settings.corporate.xml"
-     hook = "echo changed mvn env" # post install hook
+[profiles.corporate.dots]
+maven = { source = "maven/settings.corporate.xml" }
 ```
 
-If you now run `bombadil --help` you should notice a new subcommand named after your dot entry name as been generated : 
+When defining dots under a profile section you can override a dot entry, in that case, `source` and `target` are optional
+and the default profile value will be used if not specified. You can also define a new dot entry in which case `source`
+and `target` are required. 
+
+If you now run `bombadil link --help` you should notice a new profile value is available : 
 
 ```
 USAGE:
-    bombadil <SUBCOMMAND>
-
-... 
-
-SUBCOMMANDS:
-    help       Prints this message or the help of the given subcommand(s)
-    install    Link a given bombadil config to XDG_CONFIG_DIR/bombadil.toml
-    link       Symlink a copy of your dotfiles  and inject variables according to bombadil.toml config
-    maven      User defined profile command
-```
-
-Let's now run `bombadil maven --help` : 
-
-```
-User defined profile command
-
-USAGE:
-    bombadil maven --set-profile <PROFILE>
+    bombadil link
 
 OPTIONS:
-    -s, --set-profile <PROFILE>    Switch to a valid profile defined in your bombadil config [possible values:
-                                   corporate, default]
-    -h, --help                     Prints help information
+    -p, --profiles <PROFILES>...    A list of comma separated profiles to activate [possible values: corporate]
+    -h, --help                      Prints help information
 ```
 
-As you can see the possible values for the `--set-profile` flag contains the profile we defined and a default profile which correspond to the default source. 
-
-We can now switch profile like so :  
-
+`bombadil link` would produce the following link : 
 ```shell script
-bombadil maven --set-profile corporate
+❯ bombadil link
+"/home/okno/dotfiles/.dots/maven/settings.xml" => "/home/okno/.m2/settings.xml"
 ```
 
-Or using the short flag version: 
-
+Linking with the `corporate` profile would use the alternate source for `.m2/settings.xml` : 
 ```shell script
-bombadil maven -s corporate
+❯ bombadil link -p corporate
+"/home/okno/dotfiles/.dots/maven/settings.corporate.xml" => "/home/okno/.m2/settings.xml"
 ```
 
-This will update the file linked to `$HOME/.m2/settings.xml` to use `settings.corporate.xml`. If you defined template 
-variables in that file they will be replaced as if you ran the `link` command.
-
-To revert to the default profile you can run `bomadil maven -s default`. Using `bomadil link` will also reset all defined
-profiles to their default values. 
-
-### Switching variables
-
-Switching variables is done the same way as switching source : 
+### Adding variables 
 
 Here is an example bombadil config : 
 
@@ -342,47 +295,42 @@ Here is an example bombadil config :
 └── vars.toml
 ```
 
+Adding or overriding variables can be done this way :
+
+```toml
+# bombadil.toml
+dotfile_dir = "bombadil-example"
+[settings]
+vars = [ "vars.toml" ]
+
+[settings.dots]
+bashrc = { source = "bashrc", target = ".bashrc"}
+
+[profiles.corporate]
+vars = [ "java10-vars.toml" ]
+``` 
+
 ```shell script
 # ~/bombadil-example/bashrc
 export JAVA_HOME=__[java_home]__
 # ...
 ```
 
-```toml
-# vars.toml
+```shell script
+# ~/bombadil-example/vars.toml
 java_home = "/etc/java-openjdk"
+# ...
 ```
 
-```toml
-# java10-vars.toml
+```shell script
+# ~/bombadil-example/java10-vars.toml
 java_home = "/etc/java10-openjdk"
+# ...
 ```
 
-Switching profile by var would be done like this : 
-
-```toml
-# bombadil.toml
-dotfiles_dir = "bombadil-example"
-
-[[dot]] 
-name = "bash"
-source = "bashrc"
-target = ".bashrc"
-[[dot.profile]]
-    name = "java10"
-    switch.vars = "java10-vars.toml" # This is the only difference with the switch source method  
-```
-
-We could now override the variable with our `java10` profile by running the following :
-
+Running `bombadil link -p corporate` would produce the following `.bashrc` : 
 ```shell script
-bombadil bash -s java10
-```
-
-And switch back to default : 
-
-```shell script
-bombadil bash -s default
+export JAVA_HOME=/etc/java10-openjdk
 ```
 
 ## Hooks
@@ -390,49 +338,44 @@ bombadil bash -s default
 So far we have no talked about hooks, as we saw they can be invoked as an entry in the config : 
 
 ```toml
-[[hook]]
-command = "sway reload"
+dotfiles_dir = "bombadil-example.toml"
+[settings]
+hooks = [ "sway reload" ]
 ```
 
 This will invoke the `sway reload` command after `bombadil link` has updated your dotfiles.
 
-You can also define post install hook for custom profile :
+The default hooks will always be run regardless of the activated profiles.
+You can also add hooks for a specific profile.
 
 ```toml
-dotfiles_dir = "bombadil-example"
+dotfiles_dir = "bombadil-example.toml"
 
-[[dot]] 
-name = "alacritty"
-source = "allacritty"
-target = ".config/alacritty"
-[[dot.profile]]
-    name = "nord"
-    switch.vars = "nord-colors.toml" 
-    hook = "neofetch"
+[settings]
+# This reside in the default profile an will always be executed after bombadil link
+hooks = [ "sway reload", "echo 42" ]
+
+[profiles.corporate]
+# This will only be executed when activating the `corporate` 
+hooks = [ "echo \"Welcome to evil corp\"" ]
 ```
-
-This will run  [neofetch](https://github.com/dylanaraps/neofetch) after updating your alacritty color scheme with the 
-nord color palette.
 
 ### Limitations
 
-- Hook are run in a sub-shell therefore, command meant to change your current shell environment won't work :
+- Hook are run in a sub-shell therefore, *command meant to change your current shell environment won't work* :
 
 ```toml
-[[hook]]
-command = "source /home/user/.zshrc" # This does not work ! 
+hooks = [ "source /home/user/.zshrc" ] # This does not work ! 
 ```
 
 - Environment variable won't be expanded unless you explicitly call a sub-shell : 
 
 ```toml
-[[hook]]
-command = "echo $HOME" # This will print "$HOME" unexpanded
+hooks = [ "echo $HOME" ] # This will print "$HOME"
 ```
 
 ```toml
-[[hook]]
-command = "zsh -c \"echo $HOME\"" # This works
+hooks = [ "zsh -c \"echo $HOME\"" ] # This works
 ```
 
 ## Example repositories
