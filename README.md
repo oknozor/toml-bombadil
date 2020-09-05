@@ -31,10 +31,11 @@ your dot file progressively.
  - [Getting started](#getting-started)
  - [Dotfile Templates](#dotfile-templates)
     - [Variables](#variables)
-    - [Meta variables](#meta-variables)
+    - [Variable references](#variable-references)
  - [Switching profile](#switching-profile)
     - [Overriding dot entries](#overriding-dot-entries)
     - [Adding variables](#adding-variables)
+    - [Adding hooks](#adding-hooks)
  - [Hooks](#hooks)
     - [Limitations](#limitations)
  - [Example repositories](#example-repositories)
@@ -181,7 +182,7 @@ colors:
 
 To update variables and the current config simply run `bombadil link`.
 
-### Referencing variables 
+### Variable references 
 
 Sometimes it could be handy to use different variables names for the same values.
 For instance if you want to define a system wide color scheme, you could define the following variables references : 
@@ -219,10 +220,15 @@ alacritty_cursor = "%green"
 
 ## Switching profile
 
-As we saw Bombadil allows to define global variables for all your dotfiles. For some programs you might want to 
+As we saw Bombadil allows to define a default profile. For some programs you might want to 
 set an alternate configuration.
-Bombadil allow you two do this in two different way : by changing the source file linked against user configuration or 
-by overriding variables only for this specific file.  
+
+Bombadil allow you two do this in several ways : 
+- overriding a dot entry `source` and/or `target` value.
+- adding a new dot entry.
+- adding new variables.
+- overriding existing variable.
+- adding hooks to the profile. 
 
 ### Overriding dot entries
 
@@ -254,8 +260,8 @@ maven = { source = "maven/settings.xml", target = ".m2/settings.xml"}
 maven = { source = "maven/settings.corporate.xml" }
 ```
 
-When defining dots under a profile section you can override a dot entry, in that case, `source` and `target` are optional
-and the default profile value will be used if not specified. You can also define a new dot entry in which case `source`
+When overriding a default dot entry under a new profile `source` and `target` property are optional,
+the default profile value will be used if not specified. You can also define a new dot entry in which case `source`
 and `target` are required. 
 
 If you now run `bombadil link --help` you should notice a new profile value is available : 
@@ -332,6 +338,22 @@ Running `bombadil link -p corporate` would produce the following `.bashrc` :
 ```shell script
 export JAVA_HOME=/etc/java10-openjdk
 ```
+
+### Adding hooks 
+
+To add hooks for a profile simply add them under the `profiles.{profile_name}` section. Note that the default ones will
+alway be run. 
+
+```toml
+# bombadil.toml
+dotfile_dir = "bombadil-example"
+[settings]
+hooks = [ "echo \"default profile\"" ]
+
+[profiles.corporate]
+hooks = [ "echo \"corporate profile\"" ]
+``` 
+
 
 ## Hooks
 
