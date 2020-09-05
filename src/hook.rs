@@ -48,7 +48,7 @@ impl Hook {
     fn split_args(&self) -> Result<Vec<&str>> {
         let mut indices: Vec<usize> = self
             .command
-            .rmatch_indices("\"")
+            .rmatch_indices('\"')
             .map(|(idx, _)| idx)
             .collect();
 
