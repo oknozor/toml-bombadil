@@ -38,6 +38,7 @@ your dot file progressively.
     - [Adding hooks](#adding-hooks)
  - [Hooks](#hooks)
     - [Limitations](#limitations)
+ - [Managing imports](#managing-imports)
  - [Example repositories](#example-repositories)
  - [Contributing](#contributing)
  - [License](#license)
@@ -398,6 +399,42 @@ hooks = [ "echo $HOME" ] # This will print "$HOME"
 
 ```toml
 hooks = [ "zsh -c \"echo $HOME\"" ] # This works
+```
+
+## Managing imports
+
+As your dotfiles configuration grows bigger, it might be useful to split it into multiple files. 
+To achieve this you can use the `[[import]]` option in your bombadil config : 
+
+```toml
+# bombadil.toml
+dotfiles_dir = "bombadil-example"
+
+[settings]
+hooks = ["sway reload"]
+
+[settings.dots]
+alacritty = { source = "alacritty", target = ".config/alacritty" }
+wofi = { source = "wofi", target = ".config/wofi" }
+sway = { source = "sway", target = ".config/sway" }
+waybar = { source = "waybar", target = ".config/waybar" }
+
+[[import]]
+path = "bombadil-example/shell-config.toml"
+```
+
+Given the following imported file, both config will be merged before running any bombadil command.
+
+```toml
+# bombadil/shell-config.toml
+[settings]
+
+vars = [ "bombadil-example/vars.toml" ]
+
+[settings.dots]
+zsh = { source = "zsh/zshrc", target = ".zshrc" }
+zsh_env = { source = "zsh/zshenv", target = ".zshenv" }
+starship = { source = "zsh/starship.toml", target = ".config/starhip.toml" }
 ```
 
 ## Example repositories

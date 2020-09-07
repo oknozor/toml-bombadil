@@ -119,6 +119,13 @@ impl Settings {
             .import
             .iter()
             .map(|import| import.path.clone())
+            .map(|path| {
+                if path.is_absolute() {
+                    path
+                } else {
+                    self.get_dotfiles_path().unwrap().join(path)
+                }
+            })
             .collect();
 
         for path in import_paths.iter() {
