@@ -12,9 +12,10 @@ use crate::templating::Variables;
 use anyhow::Result;
 use colored::*;
 use std::collections::HashMap;
+use std::fs;
 use std::fs::File;
 use std::io::Write;
-use std::os::unix::fs;
+use std::os::unix::fs as unixfs;
 use std::path::PathBuf;
 
 pub mod dots;
@@ -39,8 +40,8 @@ impl Bombadil {
 
         let xdg_config = Settings::bombadil_config_xdg_path()?;
 
-        if std::fs::symlink_metadata(&xdg_config).is_ok() {
-            std::fs::remove_file(&xdg_config)?;
+        if fs::symlink_metadata(&xdg_config).is_ok() {
+            fs::remove_file(&xdg_config)?;
         }
 
         let config_path = &config_path
@@ -53,7 +54,7 @@ impl Bombadil {
             config_path.to_owned()
         };
 
-        fs::symlink(&config_path, &xdg_config)
+        unixfs::symlink(&config_path, &xdg_config)
             .map_err(|err| {
                 anyhow!(
                     "Unable to symlink {:?} to {:?} : {}",
@@ -74,10 +75,10 @@ impl Bombadil {
         let dot_copy_dir = &self.path.join(".dots");
 
         if dot_copy_dir.exists() {
-            std::fs::remove_dir_all(&dot_copy_dir)?;
+            fs::remove_dir_all(&dot_copy_dir)?;
         }
 
-        std::fs::create_dir(dot_copy_dir)?;
+        fs::create_dir(dot_copy_dir)?;
 
         for dot in self.dots.iter() {
             let dot_source_path = self.source_path(&dot.1.source);
@@ -247,18 +248,19 @@ impl Bombadil {
     fn traverse_dots_and_copy(&self, source_path: &PathBuf, copy_path: &PathBuf) -> Result<()> {
         // Single file : inject vars and write to .dots/
         if source_path.is_file() {
-            std::fs::create_dir_all(&copy_path.parent().unwrap())?;
-
+            fs::create_dir_all(&copy_path.parent().unwrap())?;
             if let Ok(content) = self.vars.to_dot(&source_path) {
+                let permissions = fs::metadata(source_path)?.permissions();
                 let mut dot_copy = File::create(&copy_path)?;
                 dot_copy.write_all(content.as_bytes())?;
+                dot_copy.set_permissions(permissions)?;
             } else {
                 // Something went wrong parsing or reading the source path,
                 // We just copy the file in place
-                std::fs::copy(&source_path, &copy_path)?;
+                fs::copy(&source_path, &copy_path)?;
             }
         } else if source_path.is_dir() {
-            std::fs::create_dir_all(copy_path)?;
+            fs::create_dir_all(copy_path)?;
             for entry in source_path.read_dir()? {
                 let entry_name = entry?.path();
                 let entry_name = entry_name.file_name().unwrap().to_str().unwrap();
@@ -275,7 +277,7 @@ impl Bombadil {
 
     fn link(dot_copy_path: &PathBuf, target: &PathBuf) {
         // Link
-        fs::symlink(&dot_copy_path, target)
+        unixfs::symlink(&dot_copy_path, target)
             .map(|_result| {
                 let source = format!("{:?}", &dot_copy_path).blue();
                 let dest = format!("{:?}", target).green();
@@ -291,11 +293,11 @@ impl Bombadil {
     }
 
     fn unlink(target: &PathBuf) -> Result<()> {
-        if std::fs::symlink_metadata(target).is_ok() {
+        if fs::symlink_metadata(target).is_ok() {
             if target.is_dir() {
-                std::fs::remove_dir_all(&target)?;
+                fs::remove_dir_all(&target)?;
             } else {
-                std::fs::remove_file(&target)?;
+                fs::remove_file(&target)?;
             }
         }
 
@@ -329,6 +331,7 @@ impl Bombadil {
 mod tests {
     use super::*;
     use std::collections::HashMap;
+    use std::fs;
     use std::path::Path;
     use temp_testdir::TempDir;
 
@@ -477,7 +480,7 @@ mod tests {
         // Assert
         assert!(target.exists());
         assert_eq!(
-            std::fs::read_to_string(&target).unwrap(),
+            fs::read_to_string(&target).unwrap(),
             "color: red_value".to_string()
         );
     }
@@ -558,8 +561,8 @@ mod tests {
         // Assert
         assert!(target.exists());
         let path = &target.read_link().unwrap();
-        let red_dot = std::fs::read_to_string(path.join("template_1")).unwrap();
-        let blue_dot = std::fs::read_to_string(path.join("template_2")).unwrap();
+        let red_dot = fs::read_to_string(path.join("template_1")).unwrap();
+        let blue_dot = fs::read_to_string(path.join("template_2")).unwrap();
         assert_eq!(red_dot, "color: red_value".to_string());
         assert_eq!(blue_dot, "color: blue_value".to_string());
     }
@@ -597,8 +600,8 @@ mod tests {
         // Assert
         assert!(target.exists());
         let path = &target.read_link().unwrap();
-        let red_dot = std::fs::read_to_string(path.join("template_1")).unwrap();
-        let blue_dot = std::fs::read_to_string(path.join("subdir_2").join("template_2")).unwrap();
+        let red_dot = fs::read_to_string(path.join("template_1")).unwrap();
+        let blue_dot = fs::read_to_string(path.join("subdir_2").join("template_2")).unwrap();
         assert_eq!(red_dot, "color: red_value".to_string());
         assert_eq!(blue_dot, "color: blue_value".to_string());
     }
@@ -630,9 +633,9 @@ mod tests {
         // Arrange
         let tmp = TempDir::new("/tmp/bombadil_tests", false).to_path_buf();
         // We need an absolute path to the test can pass anywhere
-        std::fs::copy("tests/vars/meta_vars.toml", &tmp.join("meta_vars.toml")).unwrap();
-        std::fs::copy("tests/vars/vars.toml", &tmp.join("vars.toml")).unwrap();
-        std::fs::copy("tests/vars/bombadil.toml", &tmp.join("bombadil.toml")).unwrap();
+        fs::copy("tests/vars/meta_vars.toml", &tmp.join("meta_vars.toml")).unwrap();
+        fs::copy("tests/vars/vars.toml", &tmp.join("vars.toml")).unwrap();
+        fs::copy("tests/vars/bombadil.toml", &tmp.join("bombadil.toml")).unwrap();
 
         let config_path = tmp.join("bombadil.toml");
 
@@ -655,7 +658,7 @@ mod tests {
             Some(&"#008000".to_string())
         );
 
-        let _ = std::fs::remove_dir_all(tmp);
+        let _ = fs::remove_dir_all(tmp);
     }
 
     #[test]
@@ -663,7 +666,7 @@ mod tests {
         // Arrange
         let home = dirs::home_dir().unwrap();
         let tmp = TempDir::new("/tmp/test_link", false).to_path_buf();
-        std::fs::copy("tests/dotfiles_simple/template", &tmp.join("template")).unwrap();
+        fs::copy("tests/dotfiles_simple/template", &tmp.join("template")).unwrap();
 
         // Act
         Bombadil::link(
@@ -672,7 +675,7 @@ mod tests {
         );
 
         // Assert
-        assert!(std::fs::symlink_metadata(&home.join("test_template")).is_ok());
+        assert!(fs::symlink_metadata(&home.join("test_template")).is_ok());
         let _ = Bombadil::unlink(&home.join("test_template"));
     }
 
@@ -681,7 +684,7 @@ mod tests {
         // Arrange
         let home = dirs::home_dir().unwrap();
         let tmp = TempDir::new("/tmp/test_link", false).to_path_buf();
-        std::fs::copy("tests/dotfiles_simple/template", &tmp.join("template")).unwrap();
+        fs::copy("tests/dotfiles_simple/template", &tmp.join("template")).unwrap();
         Bombadil::link(
             &PathBuf::from("/tmp/test_link/template"),
             &home.join("test_template"),
@@ -692,6 +695,6 @@ mod tests {
 
         // Assert
         assert!(result.is_ok());
-        assert!(std::fs::symlink_metadata(home.join("test_template")).is_err());
+        assert!(fs::symlink_metadata(home.join("test_template")).is_err());
     }
 }
