@@ -13,6 +13,8 @@ pub struct Settings {
     /// User define dotfiles directory, usually your versioned dotfiles
     pub(crate) dotfiles_dir: PathBuf,
 
+    pub gpg_user_id: Option<String>,
+
     #[serde(default)]
     pub settings: ActiveProfile,
 
