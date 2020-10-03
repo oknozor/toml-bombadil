@@ -1,22 +1,20 @@
 # Path to your dotfiles relative to your $HOME directory
 dotfiles_dir = "my_dotfiles"
 
-# A dot entry representing a symlink, `source` is relative to `dotfiles_dir` 
-# and target shall be relative to $HOME directory or absolute.
-[[dot]]
-source = "sway"
-target = ".config/sway"
-
-# You can have as many dot entry as you want, linking files or directories
-[[dot]]
-source = "alacritty"
-target = ".config/alacritty/alacritty.yml"
-
-# Var hold the path to a toml file containing the variables to inject in your templatize dotfiles
-# You can have multiple var files as long as variable names does not colide. 
-[[var]]
-path = "vars.toml"
-
+[settings]
 # Post install commands
-[[hook]]
-command = "sway reload"
+hooks = [ "sway reload" ]
+
+# Vars hold  an array of pathes to a toml file containing the variables to inject in your templatize dotfiles.
+vars = [
+    "bombadil/themes/default.toml",
+    "bombadil/vars.toml",
+    "bombadil/themes/palette.toml"
+]
+
+# A dot entry representing a symlink, `source` is relative to `dotfiles_dir`
+# and target shall be relative to $HOME directory or absolute.
+[settings.dots]
+alacritty = { source = "alacritty", target = ".config/alacritty" }
+sway = { source = "sway", target = ".config/sway" }
+zsh = { source = "zsh/zshrc", target = ".zshrc" }
