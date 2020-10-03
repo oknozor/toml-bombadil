@@ -3,8 +3,10 @@
 [![codecov](https://codecov.io/gh/oknozor/toml-bombadil/branch/master/graph/badge.svg)](https://codecov.io/gh/oknozor/toml-bombadil)
 ![crates.io](https://img.shields.io/crates/v/toml-bombadil.svg)
 ![aur](https://img.shields.io/aur/version/bombadil-bin)
+[![Conventional Commits](https://img.shields.io/badge/Conventional%20Commits-1.0.0-yellow.svg)](https://conventionalcommits.org)
 
-Toml Bombadil is a dotfile manager written in rust. 
+
+![logo](asset/logo.png) Toml Bombadil is a dotfile manager written in rust. 
 
 ##  Why another dotfile manager ? 
 
