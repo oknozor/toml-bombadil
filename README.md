@@ -1,6 +1,6 @@
 # Toml Bombadil 
-![CI](https://github.com/oknozor/toml-bombadil/workflows/CI/badge.svg?branch=master)
-[![codecov](https://codecov.io/gh/oknozor/toml-bombadil/branch/master/graph/badge.svg)](https://codecov.io/gh/oknozor/toml-bombadil)
+![CI](https://github.com/oknozor/toml-bombadil/workflows/CI/badge.svg?branch=main)
+[![codecov](https://codecov.io/gh/oknozor/toml-bombadil/branch/main/graph/badge.svg)](https://codecov.io/gh/oknozor/toml-bombadil)
 ![crates.io](https://img.shields.io/crates/v/toml-bombadil.svg)
 ![aur](https://img.shields.io/aur/version/bombadil-bin)
 [![Conventional Commits](https://img.shields.io/badge/Conventional%20Commits-1.0.0-yellow.svg)](https://conventionalcommits.org)

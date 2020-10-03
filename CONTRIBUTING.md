@@ -29,16 +29,16 @@ on the issue board.
 
 ## Making a PR
 
-Toml bombadil respect the following coding standard for any code addition to the master : 
+Toml bombadil respect the following coding standard for any code addition to the main branch : 
 - We use [clippy](https://github.com/rust-lang/rust-clippy) to spot lints.
 - We enforce code formating with [rustfmt](https://github.com/rust-lang/rustfmt).
-- We write test (Code coverage must never decrease when merging to the master branch).
+- We write test (Code coverage must never decrease when merging to the main branch).
 - Commit shall respect the [conventional commit](https://www.conventionalcommits.org/en/v1.0.0/) specification
 
 You have picked an issue and started to work on your fork. Time to make a pull request ! 
 If your issue is referenced in the next version milesstone, your are expected to submit a pull request to the corresponding 
 version branch (following semver format and prefixed by "v", ex : "v2.0.0"). 
-If your issue is a bug fix you can submit your PR to master directly and increase the minor version. 
+If your issue is a bug fix you can submit your PR to main directly and increase the minor version. 
 
 
  
