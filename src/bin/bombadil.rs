@@ -5,6 +5,7 @@ use toml_bombadil::Bombadil;
 
 const LINK: &str = "link";
 const INSTALL: &str = "install";
+const ADD_SECRET: &str = "add-secret";
 
 macro_rules! fatal {
     ($($tt:tt)*) => {{
@@ -64,6 +65,22 @@ fn main() {
                 .takes_value(true)
                 .multiple(true)
                 .required(false)))
+        .subcommand(SubCommand::with_name(ADD_SECRET)
+            .settings(subcommand_settings)
+            .about("Add a secret var to bombadil environment")
+            .arg(Arg::with_name("key")
+                .help("Key of the secret variable to create")
+                .short("k")
+                .long("key")
+                .takes_value(true)
+                .required(true))
+            .arg(Arg::with_name("value")
+                .help("Value of the secret variable to create")
+                .short("v")
+                .long("value")
+                .takes_value(true)
+                .required(true))
+        )
         .get_matches();
 
     if let Some(subcommand) = matches.subcommand_name() {
@@ -90,6 +107,18 @@ fn main() {
                         bombadil.install().unwrap_or_else(|err| fatal!("{}", err));
                 }
             }
+            ADD_SECRET => {
+                let add_secret_subcommand = matches.subcommand_matches(ADD_SECRET).unwrap();
+                let key = add_secret_subcommand.value_of("key").unwrap();
+                let value = add_secret_subcommand.value_of("value").unwrap();
+
+                let bombadil = Bombadil::from_settings().unwrap_or_else(|err| fatal!("{}", err));
+
+                bombadil
+                    .add_secret(key, value)
+                    .unwrap_or_else(|err| fatal!("{}", err));
+            }
+
             _ => unreachable!(),
         }
     }

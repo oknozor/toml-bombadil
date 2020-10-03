@@ -6,6 +6,7 @@ extern crate anyhow;
 extern crate pest_derive;
 
 use crate::dots::Dot;
+use crate::gpg::Gpg;
 use crate::hook::Hook;
 use crate::settings::{Profile, Settings};
 use crate::templating::Variables;
@@ -19,6 +20,7 @@ use std::os::unix::fs as unixfs;
 use std::path::PathBuf;
 
 pub mod dots;
+mod gpg;
 pub(crate) mod hook;
 pub mod settings;
 pub(crate) mod templating;
@@ -29,6 +31,7 @@ pub struct Bombadil {
     vars: Variables,
     hooks: Vec<Hook>,
     profiles: HashMap<String, Profile>,
+    gpg_user_id: Option<String>,
 }
 
 impl Bombadil {
@@ -105,6 +108,15 @@ impl Bombadil {
         });
 
         Ok(())
+    }
+
+    pub fn add_secret(&self, key: &str, value: &str) -> Result<()> {
+        if let Some(user_id) = &self.gpg_user_id {
+            let gpg = Gpg::new(user_id);
+            gpg.push_secret(key, value)
+        } else {
+            Err(anyhow!("No gpg_user_id in bombadil config"))
+        }
     }
 
     pub fn enable_profiles(&mut self, profile_keys: Vec<&str>) -> Result<()> {
@@ -235,6 +247,14 @@ impl Bombadil {
 
         let dots = config.settings.dots;
         let profiles = config.profiles;
+        let gpg_user_id = config.gpg_user_id;
+
+        if let Some(user_id) = gpg_user_id.as_ref() {
+            let encrypted_vars = Gpg::new(&user_id).decrypt()?;
+            vars.extend(Variables {
+                variables: encrypted_vars,
+            })
+        }
 
         Ok(Self {
             path,
@@ -242,6 +262,7 @@ impl Bombadil {
             vars,
             hooks,
             profiles,
+            gpg_user_id,
         })
     }
 
@@ -358,6 +379,7 @@ mod tests {
             vars: Variables::default(),
             hooks: vec![],
             profiles: Default::default(),
+            gpg_user_id: None,
         };
 
         // Act
@@ -396,6 +418,7 @@ mod tests {
             vars: Variables::default(),
             hooks: vec![],
             profiles: Default::default(),
+            gpg_user_id: None,
         };
 
         // Act
@@ -421,6 +444,7 @@ mod tests {
             vars: Variables::default(),
             hooks: vec![],
             profiles: Default::default(),
+            gpg_user_id: None,
         };
 
         // Act
@@ -472,6 +496,7 @@ mod tests {
             vars: Variables { variables: map },
             hooks: vec![],
             profiles: Default::default(),
+            gpg_user_id: None,
         };
 
         // Act
@@ -517,6 +542,7 @@ mod tests {
             },
             hooks: vec![],
             profiles: Default::default(),
+            gpg_user_id: None,
         };
 
         // Act
@@ -553,6 +579,7 @@ mod tests {
             vars: Variables { variables: map },
             hooks: vec![],
             profiles: Default::default(),
+            gpg_user_id: None,
         };
 
         // Act
@@ -592,6 +619,7 @@ mod tests {
             vars: Variables { variables: map },
             hooks: vec![],
             profiles: Default::default(),
+            gpg_user_id: None,
         };
 
         // Act
@@ -619,6 +647,7 @@ mod tests {
                 command: format!("touch {}/dummy", target_str_path),
             }],
             profiles: Default::default(),
+            gpg_user_id: None,
         };
 
         // Act
