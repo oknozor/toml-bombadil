@@ -34,6 +34,7 @@ your dot file progressively.
  - [Dotfile Templates](#dotfile-templates)
     - [Variables](#variables)
     - [Variable references](#variable-references)
+    - [Manage secrets](#Manage-secrets)
  - [Switching profile](#switching-profile)
     - [Overriding dot entries](#overriding-dot-entries)
     - [Adding variables](#adding-variables)
@@ -220,6 +221,45 @@ alacritty_background = "%black"
 alacritty_cursor = "%green"
 # ...
 ```
+
+### Manage secrets
+
+Bombadil maintain a pgp encrypted variable store called `secret_store.gpg` at the root of your dotfile directory.
+This allows to safely commit encrypted secret on a public repository. 
+
+**Before going further with this ensure `.dots` is in dotfiles repository's `.gitignore`!**
+
+To use encryption this you need to have [gnupg](https://gnupg.org/) installed, and a pair of gpg keys.
+
+1. Add your gpg user id to your bombadil config : 
+
+    ```toml
+    dotfile_dir = "bombadil-example"
+    gpg_user_id = "me@example.org"
+    
+    [settings.dots]
+    maven = { source = "maven/settings.xml", target = ".m2/settings.xml"}
+    ```
+
+2. Add secret variable : 
+
+    ```
+    bombadil add-secret -k "server_password" -v "hunter2"
+    ```
+
+3. Use the secret value in any dot entry : 
+    ```xml
+        <server>
+          <id>my.server</id>
+          <username>Tom</username>
+          <password>__[server_password]__</password>
+        </server>
+    ```
+
+4. Relink your dotfile to inject the secret values in your dotfiles :
+    ```
+    bombadil link
+    ```
 
 ## Switching profile
 
