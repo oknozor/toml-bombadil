@@ -1,0 +1,9 @@
+# Optional github repository url, used mainly to generate changelog links
+github = "https://github.com/oknozor/toml-bombadil"
+
+# Optional contributor list
+# intended to map git signature to github username
+# and generate changelog links to their github profiles
+authors = [
+    { signature = "Paul Delafosse", username = "oknozor" },
+]
