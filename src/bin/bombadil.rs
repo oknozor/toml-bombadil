@@ -6,6 +6,8 @@ use toml_bombadil::Bombadil;
 const LINK: &str = "link";
 const INSTALL: &str = "install";
 const ADD_SECRET: &str = "add-secret";
+const REMOVE_SECRET: &str = "remove-secret";
+const LIST_SECRETS: &str = "list-secrets";
 
 macro_rules! fatal {
     ($($tt:tt)*) => {{
@@ -81,6 +83,19 @@ fn main() {
                 .takes_value(true)
                 .required(true))
         )
+        .subcommand(SubCommand::with_name(REMOVE_SECRET)
+                        .settings(subcommand_settings)
+                        .about("Remove a secret var from bombadil environment")
+                        .arg(Arg::with_name("key")
+                            .help("Key of the secret variable to remove")
+                            .short("k")
+                            .long("key")
+                            .takes_value(true)
+                            .required(true))
+        )
+        .subcommand(SubCommand::with_name(LIST_SECRETS)
+            .settings(subcommand_settings)
+            .about("List all vars in bombadil secret store"))
         .get_matches();
 
     if let Some(subcommand) = matches.subcommand_name() {
@@ -116,6 +131,23 @@ fn main() {
 
                 bombadil
                     .add_secret(key, value)
+                    .unwrap_or_else(|err| fatal!("{}", err));
+            }
+            REMOVE_SECRET => {
+                let remove_secret = matches.subcommand_matches(REMOVE_SECRET).unwrap();
+                let key = remove_secret.value_of("key").unwrap();
+
+                let bombadil = Bombadil::from_settings().unwrap_or_else(|err| fatal!("{}", err));
+
+                bombadil
+                    .remove_secret(key)
+                    .unwrap_or_else(|err| fatal!("{}", err));
+            }
+            LIST_SECRETS => {
+                let bombadil = Bombadil::from_settings().unwrap_or_else(|err| fatal!("{}", err));
+
+                bombadil
+                    .list_secrets()
                     .unwrap_or_else(|err| fatal!("{}", err));
             }
 

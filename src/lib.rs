@@ -119,6 +119,24 @@ impl Bombadil {
         }
     }
 
+    pub fn remove_secret(&self, key: &str) -> Result<()> {
+        if let Some(user_id) = &self.gpg_user_id {
+            let gpg = Gpg::new(user_id);
+            gpg.remove_secret(key)
+        } else {
+            Err(anyhow!("No gpg_user_id in bombadil config"))
+        }
+    }
+
+    pub fn list_secrets(&self) -> Result<()> {
+        if let Some(user_id) = &self.gpg_user_id {
+            let gpg = Gpg::new(user_id);
+            gpg.pretty_print()
+        } else {
+            Err(anyhow!("No gpg_user_id in bombadil config"))
+        }
+    }
+
     pub fn enable_profiles(&mut self, profile_keys: Vec<&str>) -> Result<()> {
         let profiles: Vec<Profile> = profile_keys
             .iter()

@@ -1,4 +1,5 @@
 use anyhow::Result;
+use colored::*;
 use std::collections::HashMap;
 use std::io::Write;
 use std::path::Path;
@@ -17,7 +18,29 @@ impl Gpg {
         }
     }
 
-    pub fn push_secret(self, key: &str, value: &str) -> Result<()> {
+    pub fn remove_secret(&self, key: &str) -> Result<()> {
+        let mut secrets = if Path::new(STORE_PATH).exists() {
+            self.decrypt()?
+        } else {
+            return Err(anyhow!("Secret store not found"));
+        };
+
+        let secret = secrets.remove(key);
+
+        if secret.is_some() {
+            println!("Removed `{}`", key)
+        } else {
+            return Err(anyhow!("Secret not found `{}`", key.yellow()));
+        }
+
+        let toml = toml::to_string(&secrets)?;
+        let encrypted = self.encrypt(&toml)?;
+        std::fs::write(STORE_PATH, encrypted)?;
+
+        Ok(())
+    }
+
+    pub fn push_secret(&self, key: &str, value: &str) -> Result<()> {
         let mut secrets = if Path::new(STORE_PATH).exists() {
             self.decrypt()?
         } else {
@@ -27,7 +50,7 @@ impl Gpg {
         secrets.insert(key.to_string(), value.to_string());
 
         let toml = toml::to_string(&secrets)?;
-        println!("{}", toml);
+        println!("Added {}:{}", key, value);
         let encrypted = self.encrypt(&toml)?;
         std::fs::write(STORE_PATH, encrypted)?;
 
@@ -66,5 +89,13 @@ impl Gpg {
         let content = String::from_utf8(output.stdout)?;
         toml::from_str::<HashMap<String, String>>(&content)
             .map_err(|err| anyhow!("Failed to decrypt secret store {}", err))
+    }
+
+    pub fn pretty_print(&self) -> Result<()> {
+        let secrets = self.decrypt()?;
+        secrets
+            .iter()
+            .for_each(|secret| println!("{} = {}", secret.0.blue(), secret.1));
+        Ok(())
     }
 }
