@@ -1,3 +1,4 @@
+use crate::gpg::Gpg;
 use anyhow::Result;
 use colored::Colorize;
 use pest::Parser;
@@ -18,7 +19,7 @@ pub(crate) struct Variables {
 
 impl Variables {
     /// Deserialize a toml file struct Variables
-    pub(crate) fn from_toml(path: &Path) -> Result<Self> {
+    pub(crate) fn from_toml(path: &Path, gpg: Option<&Gpg>) -> Result<Self> {
         let file = File::open(path);
 
         if let Err(err) = file {
@@ -35,7 +36,13 @@ impl Variables {
             let variables: HashMap<String, String> = toml::from_str(&contents)
                 .map_err(|err| anyhow!("parse error in {:?} :  {}", path, err))?;
 
-            Ok(Self { variables })
+            let mut vars = Self { variables };
+
+            if let Some(gpg) = gpg {
+                vars.decrypt_values(gpg)?;
+            }
+
+            Ok(vars)
         }
     }
 
@@ -78,6 +85,28 @@ impl Variables {
 
     pub(crate) fn extend(&mut self, vars: Variables) {
         self.variables.extend(vars.variables);
+    }
+
+    pub(crate) fn insert(&mut self, key: String, value: String) {
+        self.variables.insert(key, value);
+    }
+
+    fn decrypt_values(&mut self, gpg: &Gpg) -> Result<()> {
+        let encrypted_vars = self
+            .variables
+            .iter()
+            .filter(|(_, value)| value.starts_with("gpg:"));
+
+        let mut decrypted = HashMap::new();
+
+        for (key, value) in encrypted_vars {
+            let value = value.strip_prefix("gpg:").unwrap();
+            let value = gpg.decrypt(value)?;
+            let _ = decrypted.insert(key.clone(), value);
+        }
+
+        self.variables.extend(decrypted);
+        Ok(())
     }
 }
 

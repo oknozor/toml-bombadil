@@ -6,8 +6,7 @@ use toml_bombadil::Bombadil;
 const LINK: &str = "link";
 const INSTALL: &str = "install";
 const ADD_SECRET: &str = "add-secret";
-const REMOVE_SECRET: &str = "remove-secret";
-const LIST_SECRETS: &str = "list-secrets";
+const SHOW_VARS: &str = "show-vars";
 
 macro_rules! fatal {
     ($($tt:tt)*) => {{
@@ -82,20 +81,15 @@ fn main() {
                 .long("value")
                 .takes_value(true)
                 .required(true))
-        )
-        .subcommand(SubCommand::with_name(REMOVE_SECRET)
-                        .settings(subcommand_settings)
-                        .about("Remove a secret var from bombadil environment")
-                        .arg(Arg::with_name("key")
-                            .help("Key of the secret variable to remove")
-                            .short("k")
-                            .long("key")
-                            .takes_value(true)
-                            .required(true))
-        )
-        .subcommand(SubCommand::with_name(LIST_SECRETS)
+            .arg(Arg::with_name("file")
+                .help("Path of the var file to modify")
+                .short("f")
+                .long("file")
+                .takes_value(true)
+                .required(true)))
+        .subcommand(SubCommand::with_name(SHOW_VARS)
             .settings(subcommand_settings)
-            .about("List all vars in bombadil secret store"))
+            .about("Display all var including decrypted secrets"))
         .get_matches();
 
     if let Some(subcommand) = matches.subcommand_name() {
@@ -126,29 +120,17 @@ fn main() {
                 let add_secret_subcommand = matches.subcommand_matches(ADD_SECRET).unwrap();
                 let key = add_secret_subcommand.value_of("key").unwrap();
                 let value = add_secret_subcommand.value_of("value").unwrap();
+                let var_file = add_secret_subcommand.value_of("file").unwrap();
 
                 let bombadil = Bombadil::from_settings().unwrap_or_else(|err| fatal!("{}", err));
 
                 bombadil
-                    .add_secret(key, value)
+                    .add_secret(key, value, var_file)
                     .unwrap_or_else(|err| fatal!("{}", err));
             }
-            REMOVE_SECRET => {
-                let remove_secret = matches.subcommand_matches(REMOVE_SECRET).unwrap();
-                let key = remove_secret.value_of("key").unwrap();
-
+            SHOW_VARS => {
                 let bombadil = Bombadil::from_settings().unwrap_or_else(|err| fatal!("{}", err));
-
-                bombadil
-                    .remove_secret(key)
-                    .unwrap_or_else(|err| fatal!("{}", err));
-            }
-            LIST_SECRETS => {
-                let bombadil = Bombadil::from_settings().unwrap_or_else(|err| fatal!("{}", err));
-
-                bombadil
-                    .list_secrets()
-                    .unwrap_or_else(|err| fatal!("{}", err));
+                bombadil.display_vars();
             }
 
             _ => unreachable!(),

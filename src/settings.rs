@@ -10,7 +10,7 @@ use std::path::PathBuf;
 #[serde(deny_unknown_fields)]
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Settings {
-    /// User define dotfiles directory, usually your versioned dotfiles
+    /// User defined dotfiles directory, usually your versioned dotfiles
     pub(crate) dotfiles_dir: PathBuf,
 
     pub gpg_user_id: Option<String>,

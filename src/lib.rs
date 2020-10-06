@@ -17,7 +17,7 @@ use std::fs;
 use std::fs::File;
 use std::io::Write;
 use std::os::unix::fs as unixfs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 pub mod dots;
 mod gpg;
@@ -31,7 +31,7 @@ pub struct Bombadil {
     vars: Variables,
     hooks: Vec<Hook>,
     profiles: HashMap<String, Profile>,
-    gpg_user_id: Option<String>,
+    gpg: Option<Gpg>,
 }
 
 impl Bombadil {
@@ -110,31 +110,24 @@ impl Bombadil {
         Ok(())
     }
 
-    pub fn add_secret(&self, key: &str, value: &str) -> Result<()> {
-        if let Some(user_id) = &self.gpg_user_id {
-            let gpg = Gpg::new(user_id);
-            gpg.push_secret(key, value)
+    pub fn add_secret<S: AsRef<Path> + ?Sized>(
+        &self,
+        key: &str,
+        value: &str,
+        var_file: &S,
+    ) -> Result<()> {
+        if let Some(gpg) = &self.gpg {
+            gpg.push_secret(key, value, var_file)
         } else {
             Err(anyhow!("No gpg_user_id in bombadil config"))
         }
     }
 
-    pub fn remove_secret(&self, key: &str) -> Result<()> {
-        if let Some(user_id) = &self.gpg_user_id {
-            let gpg = Gpg::new(user_id);
-            gpg.remove_secret(key)
-        } else {
-            Err(anyhow!("No gpg_user_id in bombadil config"))
-        }
-    }
-
-    pub fn list_secrets(&self) -> Result<()> {
-        if let Some(user_id) = &self.gpg_user_id {
-            let gpg = Gpg::new(user_id);
-            gpg.pretty_print()
-        } else {
-            Err(anyhow!("No gpg_user_id in bombadil config"))
-        }
+    pub fn display_vars(&self) {
+        self.vars
+            .variables
+            .iter()
+            .for_each(|(key, value)| println!("{} = {}", key.red(), value))
     }
 
     pub fn enable_profiles(&mut self, profile_keys: Vec<&str>) -> Result<()> {
@@ -188,7 +181,7 @@ impl Bombadil {
 
             // Add profile vars
             for path in &profile.vars {
-                let variables = Variables::from_toml(&self.path.join(path))?;
+                let variables = Variables::from_toml(&self.path.join(path), self.gpg.as_ref())?;
                 self.vars.extend(variables);
             }
 
@@ -227,11 +220,11 @@ impl Bombadil {
     pub fn from_settings() -> Result<Bombadil> {
         let config = Settings::get()?;
         let path = config.get_dotfiles_path()?;
-
+        let gpg = config.gpg_user_id.map(|user_id| Gpg::new(&user_id));
         // Resolve variables from path
         let mut vars = Variables::default();
         for var_path in config.settings.vars {
-            let variables = Variables::from_toml(&path.join(&var_path))?;
+            let variables = Variables::from_toml(&path.join(&var_path), gpg.as_ref())?;
             vars.extend(variables);
         }
 
@@ -265,14 +258,6 @@ impl Bombadil {
 
         let dots = config.settings.dots;
         let profiles = config.profiles;
-        let gpg_user_id = config.gpg_user_id;
-
-        if let Some(user_id) = gpg_user_id.as_ref() {
-            let encrypted_vars = Gpg::new(&user_id).decrypt()?;
-            vars.extend(Variables {
-                variables: encrypted_vars,
-            })
-        }
 
         Ok(Self {
             path,
@@ -280,7 +265,7 @@ impl Bombadil {
             vars,
             hooks,
             profiles,
-            gpg_user_id,
+            gpg,
         })
     }
 
@@ -397,7 +382,7 @@ mod tests {
             vars: Variables::default(),
             hooks: vec![],
             profiles: Default::default(),
-            gpg_user_id: None,
+            gpg: None,
         };
 
         // Act
@@ -436,7 +421,7 @@ mod tests {
             vars: Variables::default(),
             hooks: vec![],
             profiles: Default::default(),
-            gpg_user_id: None,
+            gpg: None,
         };
 
         // Act
@@ -462,7 +447,7 @@ mod tests {
             vars: Variables::default(),
             hooks: vec![],
             profiles: Default::default(),
-            gpg_user_id: None,
+            gpg: None,
         };
 
         // Act
@@ -514,7 +499,7 @@ mod tests {
             vars: Variables { variables: map },
             hooks: vec![],
             profiles: Default::default(),
-            gpg_user_id: None,
+            gpg: None,
         };
 
         // Act
@@ -560,7 +545,7 @@ mod tests {
             },
             hooks: vec![],
             profiles: Default::default(),
-            gpg_user_id: None,
+            gpg: None,
         };
 
         // Act
@@ -597,7 +582,7 @@ mod tests {
             vars: Variables { variables: map },
             hooks: vec![],
             profiles: Default::default(),
-            gpg_user_id: None,
+            gpg: None,
         };
 
         // Act
@@ -637,7 +622,7 @@ mod tests {
             vars: Variables { variables: map },
             hooks: vec![],
             profiles: Default::default(),
-            gpg_user_id: None,
+            gpg: None,
         };
 
         // Act
@@ -665,7 +650,7 @@ mod tests {
                 command: format!("touch {}/dummy", target_str_path),
             }],
             profiles: Default::default(),
-            gpg_user_id: None,
+            gpg: None,
         };
 
         // Act
