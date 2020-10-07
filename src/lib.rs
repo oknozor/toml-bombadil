@@ -110,6 +110,39 @@ impl Bombadil {
         Ok(())
     }
 
+    pub fn uninstall(&self) -> Result<()> {
+        let mut success_paths: Vec<PathBuf> = Vec::new();
+        let mut error_paths: Vec<PathBuf> = Vec::new();
+
+        for dot in self.dots.iter() {
+            let target = &dot.1.target()?;
+
+            if let Ok(()) = Bombadil::unlink(&dot.1.target()?) {
+                success_paths.push(target.clone());
+            } else {
+                error_paths.push(target.clone());
+            }
+        }
+
+        if !success_paths.is_empty() {
+            println!("{}", format!("Removed symlinks:").green());
+            success_paths.iter().for_each(|path| {
+                let path_string = format!("\t{:?}", path).green();
+                println!("{}", path_string);
+            });
+        }
+
+        if !error_paths.is_empty() {
+            println!("{}", format!("Error removing symlinks:").red());
+            error_paths.iter().for_each(|path| {
+                let path_string = format!("\t{:?}", path).red();
+                println!("{}", path_string);
+            });
+        }
+
+        Ok(())
+    }
+
     pub fn add_secret(&self, key: &str, value: &str) -> Result<()> {
         if let Some(user_id) = &self.gpg_user_id {
             let gpg = Gpg::new(user_id);
@@ -632,6 +665,42 @@ mod tests {
         let blue_dot = fs::read_to_string(path.join("subdir_2").join("template_2")).unwrap();
         assert_eq!(red_dot, "color: red_value".to_string());
         assert_eq!(blue_dot, "color: blue_value".to_string());
+    }
+
+    #[test]
+    fn uninstall_works() {
+        // Arrange
+        let target = TempDir::new("/tmp/dot_unlink_target", false).to_path_buf();
+
+        let mut dots = HashMap::new();
+        dots.insert(
+            "dot_1".to_string(),
+            Dot {
+                source: PathBuf::from("dot_1"),
+                target: target.clone(),
+            },
+        );
+
+        let config = Bombadil {
+            path: PathBuf::from("tests/dotfiles_unlink")
+                .canonicalize()
+                .unwrap(),
+            dots,
+            vars: Variables {
+                variables: HashMap::new(),
+            },
+            hooks: vec![],
+            profiles: Default::default(),
+            gpg_user_id: None,
+        };
+
+        config.install().unwrap();
+
+        // Act
+        config.uninstall().unwrap();
+
+        // Assert
+        assert!(!target.exists());
     }
 
     #[test]
