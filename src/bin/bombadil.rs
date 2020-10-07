@@ -4,6 +4,7 @@ use toml_bombadil::settings::Settings;
 use toml_bombadil::Bombadil;
 
 const LINK: &str = "link";
+const UNLINK: &str = "unlink";
 const INSTALL: &str = "install";
 const ADD_SECRET: &str = "add-secret";
 
@@ -65,6 +66,9 @@ fn main() {
                 .takes_value(true)
                 .multiple(true)
                 .required(false)))
+        .subcommand(SubCommand::with_name(UNLINK))
+            .settings(subcommand_settings)
+            .about("Remove all symlinks defined in your bombadil.toml")
         .subcommand(SubCommand::with_name(ADD_SECRET)
             .settings(subcommand_settings)
             .about("Add a secret var to bombadil environment")
@@ -106,6 +110,10 @@ fn main() {
                     let _command_result =
                         bombadil.install().unwrap_or_else(|err| fatal!("{}", err));
                 }
+            }
+            UNLINK => {
+                let bombadil = Bombadil::from_settings().unwrap_or_else(|err| fatal!("{}", err));
+                bombadil.uninstall().unwrap_or_else(|err| fatal!("{}", err));
             }
             ADD_SECRET => {
                 let add_secret_subcommand = matches.subcommand_matches(ADD_SECRET).unwrap();

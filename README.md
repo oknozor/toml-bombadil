@@ -479,11 +479,20 @@ zsh_env = { source = "zsh/zshenv", target = ".zshenv" }
 starship = { source = "zsh/starship.toml", target = ".config/starhip.toml" }
 ```
 
+## Unlinking
+
+If you'd like to remove all dotfile symlinks defined in your bombadil.toml configuration, simply run:
+
+```shell script
+❯ bombadil unlink
+```
+
 ## Example repositories
 
 If you use Bombadil please submit an issue or a PR to update this section, we will be happy to reference your dotfiles here !
  
 - [https://github.com/oknozor/dotfiles](https://github.com/oknozor/dotfiles)
+- [https://github.com/DSpeckhals/dotfiles](https://github.com/DSpeckhals/dotfiles)
   
 ## Contributing
 
