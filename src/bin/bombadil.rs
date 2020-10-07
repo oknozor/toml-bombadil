@@ -1,4 +1,5 @@
 use clap::{App, AppSettings, Arg, SubCommand};
+use std::io::BufRead;
 use std::path::PathBuf;
 use toml_bombadil::settings::Settings;
 use toml_bombadil::Bombadil;
@@ -80,7 +81,13 @@ fn main() {
                 .short("v")
                 .long("value")
                 .takes_value(true)
-                .required(true))
+                .required_unless("ask"))
+            .arg(Arg::with_name("ask")
+                .help("Get the secret value from stdin")
+                .short("a")
+                .long("ask")
+                .takes_value(false)
+                .required_unless("value"))
             .arg(Arg::with_name("file")
                 .help("Path of the var file to modify")
                 .short("f")
@@ -119,13 +126,20 @@ fn main() {
             ADD_SECRET => {
                 let add_secret_subcommand = matches.subcommand_matches(ADD_SECRET).unwrap();
                 let key = add_secret_subcommand.value_of("key").unwrap();
-                let value = add_secret_subcommand.value_of("value").unwrap();
+
+                let value = if add_secret_subcommand.is_present("ask") {
+                    println!("Type the value and press enter to confirm :");
+                    std::io::stdin().lock().lines().next().unwrap().unwrap()
+                } else {
+                    add_secret_subcommand.value_of("value").unwrap().to_string()
+                };
+
                 let var_file = add_secret_subcommand.value_of("file").unwrap();
 
                 let bombadil = Bombadil::from_settings().unwrap_or_else(|err| fatal!("{}", err));
 
                 bombadil
-                    .add_secret(key, value, var_file)
+                    .add_secret(key, &value, var_file)
                     .unwrap_or_else(|err| fatal!("{}", err));
             }
             SHOW_VARS => {
