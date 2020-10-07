@@ -1,0 +1,4 @@
+dotfiles_dir = "" # Replaced in test
+[[dot]]
+source = "dot_1"
+target = "dot_1"
