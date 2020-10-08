@@ -39,6 +39,7 @@ your dot file progressively.
     - [Overriding dot entries](#overriding-dot-entries)
     - [Adding variables](#adding-variables)
     - [Adding hooks](#adding-hooks)
+    - [Helper scripts](#helper-scripts)
  - [Hooks](#hooks)
     - [Limitations](#limitations)
  - [Managing imports](#managing-imports)
@@ -396,7 +397,11 @@ hooks = [ "echo \"default profile\"" ]
 
 [profiles.corporate]
 hooks = [ "echo \"corporate profile\"" ]
-``` 
+```
+
+## Helper scripts
+
+If you use [Wofi](https://hg.sr.ht/~scoopta/wofi) as a menu/launcher, you can run the user script [`contrib/wofi-bombadil-switch-profile.sh`](https://github.com/oknozor/toml-bombadil/tree/main/contrib/wofi-bombadil-switch-profile.sh). Create a keyboard shortcut for this script to make switching Toml Bombadil profiles even more convenient. 
 
 
 ## Hooks
