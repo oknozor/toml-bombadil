@@ -42,6 +42,7 @@ your dot file progressively.
  - [Hooks](#hooks)
     - [Limitations](#limitations)
  - [Managing imports](#managing-imports)
+ - [Unlinking](#unlinking)
  - [Example repositories](#example-repositories)
  - [Contributing](#contributing)
  - [License](#license)
