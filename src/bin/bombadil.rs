@@ -1,12 +1,13 @@
 use clap::{App, AppSettings, Arg, SubCommand};
 use std::path::PathBuf;
 use toml_bombadil::settings::Settings;
-use toml_bombadil::Bombadil;
+use toml_bombadil::{Bombadil, MetadataType};
 
 const LINK: &str = "link";
 const UNLINK: &str = "unlink";
 const INSTALL: &str = "install";
 const ADD_SECRET: &str = "add-secret";
+const GET: &str = "get";
 
 macro_rules! fatal {
     ($($tt:tt)*) => {{
@@ -85,6 +86,15 @@ fn main() {
                 .takes_value(true)
                 .required(true))
         )
+        .subcommand(SubCommand::with_name(GET)
+            .settings(subcommand_settings)
+            .about("Get metadata about dots, hooks, path, profiles, or vars")
+            .arg(Arg::with_name("value")
+                .possible_values(&["dots", "hooks", "path", "profiles", "vars"])
+                .default_value("dots")
+                .takes_value(true)
+                .help("Metadata to get"))
+        )
         .get_matches();
 
     if let Some(subcommand) = matches.subcommand_name() {
@@ -125,6 +135,19 @@ fn main() {
                 bombadil
                     .add_secret(key, value)
                     .unwrap_or_else(|err| fatal!("{}", err));
+            }
+            GET => {
+                let bombadil = Bombadil::from_settings().unwrap_or_else(|err| fatal!("{}", err));
+                let get_subcommand = matches.subcommand_matches(GET).unwrap();
+                let metadata_type = match get_subcommand.value_of("value").unwrap() {
+                    "dots" => MetadataType::Dots,
+                    "hooks" => MetadataType::Hooks,
+                    "path" => MetadataType::Path,
+                    "profiles" => MetadataType::Profiles,
+                    "vars" => MetadataType::Vars,
+                    _ => unreachable!()
+                };
+                bombadil.print_metadata(metadata_type);
             }
 
             _ => unreachable!(),
