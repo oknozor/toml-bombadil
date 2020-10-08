@@ -6,6 +6,6 @@ vars = ["vars.toml", "meta_vars.toml"]
 [settings.dots]
 dot_name = { source = "template.css", target = "template.css" }
 
-[settings.profiles.profile_name]
+[profiles.profile_name]
 vars = ["/tmp/var.toml"]
 hooks = ["echo hello world"]

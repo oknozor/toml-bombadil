@@ -358,6 +358,40 @@ impl Bombadil {
         Ok(())
     }
 
+    pub fn print_metadata(&self, metadata_type: MetadataType) {
+        let rows = match metadata_type {
+            MetadataType::Dots => self
+                .dots
+                .iter()
+                .map(|(k, v)| {
+                    format!(
+                        "{}: {} => {}",
+                        k,
+                        self.path.join(&v.source).display(),
+                        v.target().unwrap_or_else(|_| v.target.clone()).display()
+                    )
+                })
+                .collect(),
+            MetadataType::Hooks => self.hooks.iter().map(|h| h.command.clone()).collect(),
+            MetadataType::Path => vec![self.path.display().to_string()],
+            MetadataType::Profiles => {
+                let mut profiles = vec!["default".to_string()];
+                profiles.extend(self.profiles.iter().map(|(k, _)| k.clone()));
+                profiles
+            }
+            MetadataType::Vars => self
+                .vars
+                .variables
+                .iter()
+                .map(|(k, v)| format!("{}: {}", k, v))
+                .collect(),
+        };
+
+        if !rows.is_empty() {
+            println!("{}", rows.join("\n"));
+        }
+    }
+
     /// Resolve dot source copy path ({dotfiles/dotsource) against user defined dotfile directory
     /// Check if file exists
     fn source_path(&self, dot_source_path: &PathBuf) -> Result<PathBuf> {
@@ -379,6 +413,14 @@ impl Bombadil {
     pub(crate) fn dot_copy_source_path(&self, source: &PathBuf) -> PathBuf {
         self.path.join(".dots").join(source)
     }
+}
+
+pub enum MetadataType {
+    Dots,
+    Hooks,
+    Path,
+    Profiles,
+    Vars,
 }
 
 #[cfg(test)]
@@ -794,5 +836,32 @@ mod tests {
         // Assert
         assert!(result.is_ok());
         assert!(fs::symlink_metadata(home.join("test_template")).is_err());
+    }
+
+    #[test]
+    fn should_print_metadata() {
+        // Arrange
+        let tmp = TempDir::new("/tmp/bombadil_tests", false).to_path_buf();
+        // We need an absolute path to the test can pass anywhere
+        fs::copy("tests/vars/meta_vars.toml", &tmp.join("meta_vars.toml")).unwrap();
+        fs::copy("tests/vars/vars.toml", &tmp.join("vars.toml")).unwrap();
+        fs::copy("tests/vars/bombadil.toml", &tmp.join("bombadil.toml")).unwrap();
+
+        let config_path = tmp.join("bombadil.toml");
+
+        Bombadil::link_self_config(Some(config_path.clone())).unwrap();
+        let bombadil = Bombadil::from_settings().unwrap();
+
+        // Act
+        bombadil.print_metadata(MetadataType::Dots);
+        bombadil.print_metadata(MetadataType::Hooks);
+        bombadil.print_metadata(MetadataType::Path);
+        bombadil.print_metadata(MetadataType::Profiles);
+        bombadil.print_metadata(MetadataType::Vars);
+
+        // Assert
+        // STDOUT should be asserted once those test facilities are in place.
+
+        let _ = fs::remove_dir_all(tmp);
     }
 }
