@@ -1,7 +1,8 @@
 use clap::{App, AppSettings, Arg, SubCommand};
+use std::io::BufRead;
 use std::path::PathBuf;
 use toml_bombadil::settings::Settings;
-use toml_bombadil::{Bombadil, MetadataType};
+use toml_bombadil::{Bombadil, MetadataType, Mode};
 
 const LINK: &str = "link";
 const UNLINK: &str = "unlink";
@@ -84,13 +85,24 @@ fn main() {
                 .short("v")
                 .long("value")
                 .takes_value(true)
-                .required(true))
-        )
+                .required_unless("ask"))
+            .arg(Arg::with_name("ask")
+                .help("Get the secret value from stdin")
+                .short("a")
+                .long("ask")
+                .takes_value(false)
+                .required_unless("value"))
+            .arg(Arg::with_name("file")
+                .help("Path of the var file to modify")
+                .short("f")
+                .long("file")
+                .takes_value(true)
+                .required(true)))
         .subcommand(SubCommand::with_name(GET)
             .settings(subcommand_settings)
             .about("Get metadata about dots, hooks, path, profiles, or vars")
             .arg(Arg::with_name("value")
-                .possible_values(&["dots", "hooks", "path", "profiles", "vars"])
+                .possible_values(&["dots", "hooks", "path", "profiles", "vars", "secrets"])
                 .default_value("dots")
                 .takes_value(true)
                 .help("Metadata to get"))
@@ -108,7 +120,7 @@ fn main() {
 
             LINK => {
                 let mut bombadil =
-                    Bombadil::from_settings().unwrap_or_else(|err| fatal!("{}", err));
+                    Bombadil::from_settings(Mode::Gpg).unwrap_or_else(|err| fatal!("{}", err));
                 let link_command = matches.subcommand_matches(LINK).unwrap();
 
                 if link_command.is_present("PROFILES") {
@@ -122,22 +134,31 @@ fn main() {
                 }
             }
             UNLINK => {
-                let bombadil = Bombadil::from_settings().unwrap_or_else(|err| fatal!("{}", err));
+                let bombadil =
+                    Bombadil::from_settings(Mode::NoGpg).unwrap_or_else(|err| fatal!("{}", err));
                 bombadil.uninstall().unwrap_or_else(|err| fatal!("{}", err));
             }
             ADD_SECRET => {
                 let add_secret_subcommand = matches.subcommand_matches(ADD_SECRET).unwrap();
                 let key = add_secret_subcommand.value_of("key").unwrap();
-                let value = add_secret_subcommand.value_of("value").unwrap();
 
-                let bombadil = Bombadil::from_settings().unwrap_or_else(|err| fatal!("{}", err));
+                let value = if add_secret_subcommand.is_present("ask") {
+                    println!("Type the value and press enter to confirm :");
+                    std::io::stdin().lock().lines().next().unwrap().unwrap()
+                } else {
+                    add_secret_subcommand.value_of("value").unwrap().to_string()
+                };
+
+                let var_file = add_secret_subcommand.value_of("file").unwrap();
+
+                let bombadil =
+                    Bombadil::from_settings(Mode::Gpg).unwrap_or_else(|err| fatal!("{}", err));
 
                 bombadil
-                    .add_secret(key, value)
+                    .add_secret(key, &value, var_file)
                     .unwrap_or_else(|err| fatal!("{}", err));
             }
             GET => {
-                let bombadil = Bombadil::from_settings().unwrap_or_else(|err| fatal!("{}", err));
                 let get_subcommand = matches.subcommand_matches(GET).unwrap();
                 let metadata_type = match get_subcommand.value_of("value").unwrap() {
                     "dots" => MetadataType::Dots,
@@ -145,8 +166,16 @@ fn main() {
                     "path" => MetadataType::Path,
                     "profiles" => MetadataType::Profiles,
                     "vars" => MetadataType::Vars,
+                    "secrets" => MetadataType::Secrets,
                     _ => unreachable!(),
                 };
+
+                let bombadil = match metadata_type {
+                    MetadataType::Secrets => Bombadil::from_settings(Mode::Gpg),
+                    _ => Bombadil::from_settings(Mode::NoGpg),
+                }
+                .unwrap_or_else(|err| fatal!("{}", err));
+
                 bombadil.print_metadata(metadata_type);
             }
 
