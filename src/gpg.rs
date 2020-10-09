@@ -1,10 +1,12 @@
+use crate::templating::Variables;
 use anyhow::Result;
-use std::collections::HashMap;
 use std::io::Write;
 use std::path::Path;
 use std::process::{Command, Stdio};
 
-pub const STORE_PATH: &str = "secret_store.gpg";
+const PGP_HEADER: &str = "-----BEGIN PGP MESSAGE-----\n\n";
+const PGP_FOOTER: &str = "\n-----END PGP MESSAGE-----";
+pub(crate) const GPG_PREFIX: &str = "gpg:";
 
 pub struct Gpg {
     pub user_id: String,
@@ -17,26 +19,36 @@ impl Gpg {
         }
     }
 
-    pub fn push_secret(self, key: &str, value: &str) -> Result<()> {
-        let mut secrets = if Path::new(STORE_PATH).exists() {
-            self.decrypt()?
-        } else {
-            HashMap::new()
-        };
+    pub(crate) fn push_secret<S: AsRef<Path> + ?Sized>(
+        &self,
+        key: &str,
+        value: &str,
+        var_file: &S,
+    ) -> Result<()> {
+        let mut vars = Variables::from_toml(var_file.as_ref(), Some(&self))?;
+        println!("Added {} : {}", key, value);
+        let encrypted = self.encrypt(value)?;
+        let encrypted = encrypted.replace(PGP_HEADER, "");
+        let encrypted = encrypted.replace(PGP_FOOTER, "");
 
-        secrets.insert(key.to_string(), value.to_string());
+        let encrypted = format!("gpg:{}", encrypted);
+        vars.insert(key.to_string(), encrypted);
 
-        let toml = toml::to_string(&secrets)?;
-        println!("{}", toml);
-        let encrypted = self.encrypt(&toml)?;
-        std::fs::write(STORE_PATH, encrypted)?;
+        let toml = toml::to_string(&vars.variables)?;
+        std::fs::write(&var_file, toml)?;
 
         Ok(())
     }
 
-    pub fn encrypt(&self, content: &str) -> Result<Vec<u8>> {
+    pub(crate) fn decrypt_secret(&self, content: &str) -> Result<String> {
+        let pgp_message = format!("{}{}{}", PGP_HEADER, content, PGP_FOOTER);
+        self.decrypt(&pgp_message)
+    }
+
+    fn encrypt(&self, content: &str) -> Result<String> {
         let mut child = Command::new("gpg")
             .arg("--encrypt")
+            .arg("--armor")
             .arg("-r")
             .arg(&self.user_id)
             .stdin(Stdio::piped())
@@ -49,22 +61,147 @@ impl Gpg {
             stdin.write_all(content.as_bytes())?;
         }
 
-        child
-            .wait_with_output()
-            .map(|result| result.stdout)
-            .map_err(|err| anyhow!("Error encrypting content : {}", err))
+        let output = child.wait_with_output();
+
+        match output {
+            Ok(output) => {
+                if output.status.success() {
+                    Ok(String::from_utf8(output.stdout).expect("Error getting encrypted value"))
+                } else {
+                    Err(anyhow!(
+                        String::from_utf8(output.stdout).expect("Error getting encrypted value")
+                    ))
+                }
+            }
+            Err(err) => Err(anyhow!("Error encrypting content : {}", err)),
+        }
     }
 
-    pub fn decrypt(&self) -> Result<HashMap<String, String>> {
-        let output = Command::new("gpg")
+    fn decrypt(&self, content: &str) -> Result<String> {
+        let mut child = Command::new("gpg")
             .arg("--decrypt")
+            .arg("--armor")
             .arg("-r")
             .arg(&self.user_id)
-            .arg(&STORE_PATH)
+            .arg("-q")
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .spawn()
+            .expect("error calling gpg command, is gpg installed ?");
+
+        {
+            let stdin = child.stdin.as_mut().unwrap();
+            stdin.write_all(content.as_bytes())?;
+        }
+
+        let output = child.wait_with_output();
+
+        match output {
+            Ok(output) => {
+                if output.status.success() {
+                    Ok(String::from_utf8(output.stdout).expect("Error decrypting content"))
+                } else {
+                    Err(anyhow!(
+                        String::from_utf8(output.stdout).expect("Error getting decrypting value")
+                    ))
+                }
+            }
+            Err(err) => Err(anyhow!("{}", err)),
+        }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::gpg::Gpg;
+    use anyhow::Result;
+    use std::process::Command;
+    use temp_testdir::TempDir;
+    use toml::Value;
+
+    const GPG_ID: &str = "test@toml.bombadil.org";
+
+    fn import_keys() -> Result<()> {
+        Command::new("gpg")
+            .arg("--import")
+            .arg("tests/gpg/public.gpg")
             .output()?;
 
-        let content = String::from_utf8(output.stdout)?;
-        toml::from_str::<HashMap<String, String>>(&content)
-            .map_err(|err| anyhow!("Failed to decrypt secret store {}", err))
+        Command::new("gpg")
+            .arg("--import")
+            .arg("tests/gpg/private.gpg")
+            .output()?;
+
+        Ok(())
+    }
+
+    #[test]
+    fn should_encrypt() {
+        import_keys().unwrap();
+        let gpg = Gpg::new(GPG_ID);
+
+        let result = gpg.encrypt("test");
+
+        assert!(result.is_ok())
+    }
+
+    #[test]
+    fn should_not_encrypt_unkown_gpg_user() {
+        let gpg = Gpg::new("unknown.user ");
+
+        let result = gpg.encrypt("test");
+
+        assert!(result.is_err())
+    }
+
+    #[test]
+    fn should_decrypt() -> Result<()> {
+        import_keys().unwrap();
+        let gpg = Gpg::new(GPG_ID);
+
+        let encrypted = gpg.encrypt("value")?;
+        let decrypted = gpg.decrypt(&encrypted);
+
+        assert!(decrypted.is_ok());
+        assert_eq!(decrypted?, "value");
+        Ok(())
+    }
+
+    #[test]
+    fn should_push_to_var() -> Result<()> {
+        import_keys().unwrap();
+        let gpg = Gpg::new(GPG_ID);
+        let dir = TempDir::default();
+        let path = dir.join("vars.toml");
+        std::fs::write(&path, "")?;
+        gpg.push_secret("key", "value", &path)?;
+
+        let result = std::fs::read_to_string(&path)?;
+        let toml: Value = toml::from_str(&result)?;
+        let value = toml.get("key");
+        assert!(value.is_some());
+        assert!(value.unwrap().as_str().unwrap().starts_with("gpg:"));
+        Ok(())
+    }
+
+    #[test]
+    fn should_decrypt_from_file() -> Result<()> {
+        import_keys().unwrap();
+        let gpg = Gpg::new(GPG_ID);
+        let dir = TempDir::default();
+        let path = dir.join("vars.toml");
+        std::fs::write(&path, "")?;
+        gpg.push_secret("key", "value", &path)?;
+
+        let result = std::fs::read_to_string(&path)?;
+        let toml: Value = toml::from_str(&result)?;
+        let value = toml.get("key");
+        let value = value.unwrap().as_str().unwrap();
+        let value = value.strip_prefix("gpg:").unwrap();
+
+        let decrypted = gpg.decrypt_secret(value)?;
+
+        assert_eq!(decrypted, "value");
+        Ok(())
     }
 }
