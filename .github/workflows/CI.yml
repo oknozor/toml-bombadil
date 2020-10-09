@@ -12,6 +12,9 @@ jobs:
     name: Tests
     runs-on: ubuntu-latest
     steps:
+      - name: Install gnupg2
+        run: sudo apt-get install gnupg2
+
       - name: Checkout sources
         uses: actions/checkout@v2
 
