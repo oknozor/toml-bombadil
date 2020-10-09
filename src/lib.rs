@@ -125,7 +125,7 @@ impl Bombadil {
         }
 
         if !success_paths.is_empty() {
-            println!("{}", format!("Removed symlinks:").green());
+            println!("{}", "Removed symlinks:".green());
             success_paths.iter().for_each(|path| {
                 let path_string = format!("\t{:?}", path).green();
                 println!("{}", path_string);
@@ -133,7 +133,7 @@ impl Bombadil {
         }
 
         if !error_paths.is_empty() {
-            println!("{}", format!("Error removing symlinks:").red());
+            println!("{}", "Error removing symlinks:".red());
             error_paths.iter().for_each(|path| {
                 let path_string = format!("\t{:?}", path).red();
                 println!("{}", path_string);
