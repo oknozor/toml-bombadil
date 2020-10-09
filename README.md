@@ -44,6 +44,7 @@ your dot file progressively.
     - [Limitations](#limitations)
  - [Managing imports](#managing-imports)
  - [Unlinking](#unlinking)
+ - [Troubleshooting](#Troubleshooting)
  - [Example repositories](#example-repositories)
  - [Contributing](#contributing)
  - [License](#license)
@@ -226,9 +227,6 @@ alacritty_cursor = "%green"
 
 ### Manage secrets
 
-Bombadil maintain a pgp encrypted variable store called `secret_store.gpg` at the root of your dotfile directory.
-This allows to safely commit encrypted secret on a public repository. 
-
 **Before going further with this ensure `.dots` is in dotfiles repository's `.gitignore`!**
 
 To use encryption this you need to have [gnupg](https://gnupg.org/) installed, and a pair of gpg keys.
@@ -237,7 +235,10 @@ To use encryption this you need to have [gnupg](https://gnupg.org/) installed, a
 
     ```toml
     dotfile_dir = "bombadil-example"
-    gpg_user_id = "me@example.org"
+    # The gpg user associated with the key pair you want to use
+    gpg_user_id = "me@example.org" 
+   
+    vars = [ "vars.toml" ]
     
     [settings.dots]
     maven = { source = "maven/settings.xml", target = ".m2/settings.xml"}
@@ -246,7 +247,11 @@ To use encryption this you need to have [gnupg](https://gnupg.org/) installed, a
 2. Add secret variable : 
 
     ```
-    bombadil add-secret -k "server_password" -v "hunter2"
+    bombadil add-secret -k "server_password" -v "hunter2" -f vars.toml
+    ```
+    or if you want to avoid having secrets in your shell history : 
+    ```
+    bombadil add-secret -k "server_password" -f vars.toml --ask
     ```
 
 3. Use the secret value in any dot entry : 
@@ -257,11 +262,22 @@ To use encryption this you need to have [gnupg](https://gnupg.org/) installed, a
           <password>__[server_password]__</password>
         </server>
     ```
+4. Make sure the secret has been written and encrypted : 
+   - Get the decrypted value :
+   ```
+   bombadil get secrets
+   ```
+   - Get the raw encrypted value :
+   ```
+   bombadil get vars | grep server_password
+   ```
 
-4. Relink your dotfile to inject the secret values in your dotfiles :
+5. Relink your dotfile to inject the secret value :
     ```
     bombadil link
     ```
+   
+This is it, you can now commit your secret safely to your dot file repo !
 
 ## Switching profile
 
@@ -492,10 +508,16 @@ If you'd like to remove all dotfile symlinks defined in your bombadil.toml confi
 ```shell script
 ❯ bombadil unlink
 ```
+# Troubleshooting
+
+If you get lost you can use `bombadil get {resource_name}` to see what is currently configured. 
+Available resources are `dots`, `hooks`, `path`, `profiles`, `vars`, `secrets`.
+
+Optionally you can display resources for a profile with the `--profiles` flag.
 
 ## Example repositories
 
-If you use Bombadil please submit an issue or a PR to update this section, we will be happy to reference your dotfiles here !
+If you use Bombadil please submit an issue, or a PR to update this section, we will be happy to reference your dotfiles here !
  
 - [https://github.com/oknozor/dotfiles](https://github.com/oknozor/dotfiles)
 - [https://github.com/DSpeckhals/dotfiles](https://github.com/DSpeckhals/dotfiles)
