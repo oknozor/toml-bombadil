@@ -18,14 +18,14 @@ impl Gpg {
         }
     }
 
-    pub fn push_secret<S: AsRef<Path> + ?Sized>(
+    pub(crate) fn push_secret<S: AsRef<Path> + ?Sized>(
         &self,
         key: &str,
         value: &str,
         var_file: &S,
     ) -> Result<()> {
         let mut vars = Variables::from_toml(var_file.as_ref(), Some(&self))?;
-        println!("Added {}:{}", key, value);
+        println!("Added {} : {}", key, value);
         let encrypted = self.encrypt(value)?;
         let encrypted = encrypted.replace(PGP_HEADER, "");
         let encrypted = encrypted.replace(PGP_FOOTER, "");
@@ -37,6 +37,11 @@ impl Gpg {
         std::fs::write(&var_file, toml)?;
 
         Ok(())
+    }
+
+    pub(crate) fn decrypt_secret(&self, content: &str) -> Result<String> {
+        let pgp_message = format!("{}{}{}", PGP_HEADER, content, PGP_FOOTER);
+        self.decrypt(&pgp_message)
     }
 
     fn encrypt(&self, content: &str) -> Result<String> {
@@ -55,13 +60,23 @@ impl Gpg {
             stdin.write_all(content.as_bytes())?;
         }
 
-        child
-            .wait_with_output()
-            .map(|result| String::from_utf8(result.stdout).expect("Error getting encrypted value"))
-            .map_err(|err| anyhow!("Error encrypting content : {}", err))
+        let output = child.wait_with_output();
+
+        match output {
+            Ok(output) => {
+                if output.status.success() {
+                    Ok(String::from_utf8(output.stdout).expect("Error getting encrypted value"))
+                } else {
+                    Err(anyhow!(
+                        String::from_utf8(output.stdout).expect("Error getting encrypted value")
+                    ))
+                }
+            }
+            Err(err) => Err(anyhow!("Error encrypting content : {}", err)),
+        }
     }
 
-    pub(crate) fn decrypt(&self, content: &str) -> Result<String> {
+    fn decrypt(&self, content: &str) -> Result<String> {
         let mut child = Command::new("gpg")
             .arg("--decrypt")
             .arg("--armor")
@@ -73,15 +88,79 @@ impl Gpg {
             .spawn()
             .expect("error calling gpg command, is gpg installed ?");
 
-        let pgp_message = format!("{}{}{}", PGP_HEADER, content, PGP_FOOTER);
         {
             let stdin = child.stdin.as_mut().unwrap();
-            stdin.write_all(pgp_message.as_bytes())?;
+            stdin.write_all(content.as_bytes())?;
         }
 
-        child
-            .wait_with_output()
-            .map(|result| String::from_utf8(result.stdout).expect("Error getting encrypted value"))
-            .map_err(|err| anyhow!("Error encrypting content : {}", err))
+        let output = child.wait_with_output();
+
+        match output {
+            Ok(output) => {
+                if output.status.success() {
+                    Ok(String::from_utf8(output.stdout).expect("Error decrypting content"))
+                } else {
+                    Err(anyhow!(
+                        String::from_utf8(output.stdout).expect("Error getting decrypting value")
+                    ))
+                }
+            }
+            Err(err) => Err(anyhow!("{}", err)),
+        }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::gpg::Gpg;
+    use anyhow::Result;
+    use std::process::Command;
+
+    const GPG_ID: &str = "test@toml.bombadil.org";
+
+    fn import_keys() -> Result<()> {
+        Command::new("gpg")
+            .arg("--import")
+            .arg("tests/gpg/public.gpg")
+            .output()?;
+
+        Command::new("gpg")
+            .arg("--import")
+            .arg("tests/gpg/private.gpg")
+            .output()?;
+
+        Ok(())
+    }
+
+    #[test]
+    fn should_encrypt() {
+        import_keys().unwrap();
+        let gpg = Gpg::new(GPG_ID);
+
+        let result = gpg.encrypt("test");
+
+        assert!(result.is_ok())
+    }
+
+    #[test]
+    fn should_not_encrypt_unkown_gpg_user() {
+        let gpg = Gpg::new("unknown.user ");
+
+        let result = gpg.encrypt("test");
+
+        assert!(result.is_err())
+    }
+
+    #[test]
+    fn should_decrypt() -> Result<()> {
+        import_keys().unwrap();
+        let gpg = Gpg::new(GPG_ID);
+
+        let encrypted = gpg.encrypt("value")?;
+        let decrypted = gpg.decrypt(&encrypted);
+
+        assert!(decrypted.is_ok());
+        assert_eq!(decrypted?, "value");
+        Ok(())
     }
 }

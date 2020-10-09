@@ -101,7 +101,7 @@ impl Variables {
 
         for (key, value) in encrypted_vars {
             let value = value.strip_prefix("gpg:").unwrap();
-            let value = gpg.decrypt(value)?;
+            let value = gpg.decrypt_secret(value)?;
             let _ = decrypted.insert(key.clone(), value);
         }
 
