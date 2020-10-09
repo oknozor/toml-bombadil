@@ -222,4 +222,10 @@ mod tests {
 
         std::fs::remove_dir_all(tmp).unwrap();
     }
+
+    #[test]
+    fn should_get_bombadil_path() {
+        let path = Settings::bombadil_config_xdg_path();
+        assert!(path.is_ok());
+    }
 }

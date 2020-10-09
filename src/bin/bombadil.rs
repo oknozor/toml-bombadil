@@ -60,7 +60,7 @@ fn main() {
         .subcommand(SubCommand::with_name(LINK)
             .settings(subcommand_settings)
             .about("Symlink a copy of your dotfiles and inject variables according to bombadil.toml config")
-            .arg(Arg::with_name("PROFILES")
+            .arg(Arg::with_name("profiles")
                 .help("A list of comma separated profiles to activate")
                 .short("p")
                 .long("profiles")
@@ -106,6 +106,14 @@ fn main() {
                 .default_value("dots")
                 .takes_value(true)
                 .help("Metadata to get"))
+            .arg(Arg::with_name("profiles")
+                .short("p")
+                .long("profiles")
+                .takes_value(true)
+                .possible_values(profile_names.as_slice())
+                .multiple(true)
+                .help("Get metadata for specific profiles")
+            )
         )
         .get_matches();
 
@@ -123,15 +131,14 @@ fn main() {
                     Bombadil::from_settings(Mode::Gpg).unwrap_or_else(|err| fatal!("{}", err));
                 let link_command = matches.subcommand_matches(LINK).unwrap();
 
-                if link_command.is_present("PROFILES") {
-                    let profiles: Vec<_> = link_command.values_of("PROFILES").unwrap().collect();
+                if link_command.is_present("profiles") {
+                    let profiles: Vec<_> = link_command.values_of("profiles").unwrap().collect();
                     let _command_result = bombadil
                         .enable_profiles(profiles)
                         .unwrap_or_else(|err| fatal!("{}", err));
-                } else {
-                    let _command_result =
-                        bombadil.install().unwrap_or_else(|err| fatal!("{}", err));
                 }
+
+                bombadil.install().unwrap_or_else(|err| fatal!("{}", err));
             }
             UNLINK => {
                 let bombadil =
@@ -170,11 +177,18 @@ fn main() {
                     _ => unreachable!(),
                 };
 
-                let bombadil = match metadata_type {
+                let mut bombadil = match metadata_type {
                     MetadataType::Secrets => Bombadil::from_settings(Mode::Gpg),
                     _ => Bombadil::from_settings(Mode::NoGpg),
                 }
                 .unwrap_or_else(|err| fatal!("{}", err));
+
+                if get_subcommand.is_present("profiles") {
+                    let profiles: Vec<_> = get_subcommand.values_of("profiles").unwrap().collect();
+                    let _command_result = bombadil
+                        .enable_profiles(profiles)
+                        .unwrap_or_else(|err| fatal!("{}", err));
+                }
 
                 bombadil.print_metadata(metadata_type);
             }
