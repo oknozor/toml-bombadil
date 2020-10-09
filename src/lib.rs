@@ -232,7 +232,7 @@ impl Bombadil {
             self.hooks.extend(hooks);
         }
 
-        self.install()
+        Ok(())
     }
 
     fn check_dotfile_dir(&self) -> Result<()> {
