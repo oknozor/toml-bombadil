@@ -5,7 +5,7 @@ dotfiles_dir = "my_dotfiles"
 # Post install commands
 hooks = [ "sway reload" ]
 
-# Vars hold  an array of pathes to a toml file containing the variables to inject in your templatize dotfiles.
+# Vars hold  an array of paths to a toml file containing the variables to inject in your templatize dotfiles.
 vars = [
     "bombadil/themes/default.toml",
     "bombadil/vars.toml",
