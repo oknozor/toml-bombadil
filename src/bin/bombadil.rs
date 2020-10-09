@@ -145,7 +145,7 @@ fn main() {
                     "path" => MetadataType::Path,
                     "profiles" => MetadataType::Profiles,
                     "vars" => MetadataType::Vars,
-                    _ => unreachable!()
+                    _ => unreachable!(),
                 };
                 bombadil.print_metadata(metadata_type);
             }
