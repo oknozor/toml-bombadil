@@ -1,6 +1,6 @@
-% BOMBADIL(1) bombadil 1.11.2
+% BOMBADIL(1) bombadil {{version}}
 % Paul Delafosse
-% Oct 2020
+% {{date_released}}
 
 # NAME
 
