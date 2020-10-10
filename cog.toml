@@ -1,10 +1,13 @@
-# Optional github repository url, used mainly to generate changelog links
 github = "https://github.com/oknozor/toml-bombadil"
 
-# Optional contributor list
-# intended to map git signature to github username
-# and generate changelog links to their github profiles
+hooks = [
+    "cargo bump %version",
+    "cargo package",
+    "cargo publish"
+]
+
 authors = [
     { signature = "Paul Delafosse", username = "oknozor" },
     { signature = "Dustin Speckhals", username = "DSpeckhals" },
+    { signature = "Lucas Declercq", username = "lucas-dclrcq" },
 ]
