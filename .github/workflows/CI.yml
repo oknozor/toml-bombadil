@@ -15,6 +15,12 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v2
 
+      - name: Add gpg test key pair
+        run: |
+          gpg --import tests/gpg/public.gpg
+          gpg --import tests/gpg/private.gpg
+          echo -e "5\ny\n" | gpg --no-tty --command-fd 0 --expert --edit-key test@toml.bombadil.org trust
+
       - name: Install stable toolchain
         uses: actions-rs/toolchain@v1
         with:

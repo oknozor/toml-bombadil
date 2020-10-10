@@ -115,29 +115,19 @@ impl Gpg {
 mod test {
     use crate::gpg::Gpg;
     use anyhow::Result;
-    use std::process::Command;
     use temp_testdir::TempDir;
     use toml::Value;
 
+    // IMPORTANT :
+    // gpg keys pair needs to be imported to run this locally
+    // `gpg --import test/gpg/public.gpg`
+    // `gpg --import test/gpg/private.gpg`
+    // `echo -e "5\ny\n" | gpg --command-fd 0 --expert --edit-key test@toml.bombadil.org trust`
+
     const GPG_ID: &str = "test@toml.bombadil.org";
-
-    fn import_keys() -> Result<()> {
-        Command::new("gpg")
-            .arg("--import")
-            .arg("tests/gpg/public.gpg")
-            .output()?;
-
-        Command::new("gpg")
-            .arg("--import")
-            .arg("tests/gpg/private.gpg")
-            .output()?;
-
-        Ok(())
-    }
 
     #[test]
     fn should_encrypt() {
-        import_keys().unwrap();
         let gpg = Gpg::new(GPG_ID);
 
         let result = gpg.encrypt("test");
@@ -156,7 +146,6 @@ mod test {
 
     #[test]
     fn should_decrypt() -> Result<()> {
-        import_keys().unwrap();
         let gpg = Gpg::new(GPG_ID);
 
         let encrypted = gpg.encrypt("value")?;
@@ -169,7 +158,6 @@ mod test {
 
     #[test]
     fn should_push_to_var() -> Result<()> {
-        import_keys().unwrap();
         let gpg = Gpg::new(GPG_ID);
         let dir = TempDir::default();
         let path = dir.join("vars.toml");
@@ -186,7 +174,6 @@ mod test {
 
     #[test]
     fn should_decrypt_from_file() -> Result<()> {
-        import_keys().unwrap();
         let gpg = Gpg::new(GPG_ID);
         let dir = TempDir::default();
         let path = dir.join("vars.toml");
