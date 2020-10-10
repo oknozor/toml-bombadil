@@ -2,13 +2,13 @@
 set -euo pipefail
 
 TEMP_FILE=/tmp/bombadil_man.md
+DATE=$(date +"%dth %B, %Y")
 
-while getopts v:d:i:o: option
+while getopts v:i:o: option
 do
 case "${option}"
 in
 v) VERSION=${OPTARG};;
-d) DATE=${OPTARG};;
 i) INPUT_PATH=${OPTARG};;
 o) OUTPUT_PATH=${OPTARG};;
 *) echo "invalid flag"
