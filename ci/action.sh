@@ -10,6 +10,7 @@ echoerr() {
 release() {
 
    TAR_DIR="${BOMBADIL_HOME}/target/tar"
+   VERSION="$2"
 
    target="${1:-}"
    if [[ $target == *"osx"* ]]; then
@@ -29,6 +30,8 @@ release() {
       cargo build --release
       bin_folder="release"
    fi
+
+   ."/$BOMBADIL_HOME/ci/build_manpage.sh" -i man/bombadil.1.md -o "$TAR_DIR/bombadil.1" -v "$VERSION"
 
    bin_path="${BOMBADIL_HOME}/target/${bin_folder}/bombadil"
    chmod +x "$bin_path"

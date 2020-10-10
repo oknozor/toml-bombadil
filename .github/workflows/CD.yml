@@ -32,11 +32,11 @@ jobs:
         with:
           rust-version: stable
       - uses: actions/checkout@v1
-      - name: Build
-        run: ci/action.sh release ${{ matrix.target }}
       - name: Get the version
         id: get_version
         run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
+      - name: Build
+        run: ci/action.sh release ${{ matrix.target }} ${{ steps.get_version.outputs.VERSION }}
       - name: Upload binaries to release
         uses: svenstaro/upload-release-action@v1-release
         with:
