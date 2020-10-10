@@ -34,6 +34,27 @@ impl Gpg {
         Ok(())
     }
 
+    pub fn remove_secret(&self, key: &str) -> Result<()> {
+        let mut secrets = if Path::new(STORE_PATH).exists() {
+            self.decrypt()?
+        } else {
+            return Err(anyhow!("Secret store not found"));
+        };
+
+        if secrets.contains_key(key) {
+            secrets.remove(key);
+        } else {
+            return Err(anyhow!("Given key wasn't found in the secret store"));
+        }
+
+        let toml = toml::to_string(&secrets)?;
+        println!("{}", toml);
+        let encrypted = self.encrypt(&toml)?;
+        std::fs::write(STORE_PATH, encrypted)?;
+
+        Ok(())
+    }
+
     pub fn encrypt(&self, content: &str) -> Result<Vec<u8>> {
         let mut child = Command::new("gpg")
             .arg("--encrypt")
