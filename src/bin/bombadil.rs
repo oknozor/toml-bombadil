@@ -1,4 +1,4 @@
-use clap::{App, AppSettings, Arg, SubCommand};
+use clap::{App, AppSettings, Arg, Shell, SubCommand};
 use std::io::BufRead;
 use std::path::PathBuf;
 use toml_bombadil::settings::Settings;
@@ -9,6 +9,7 @@ const UNLINK: &str = "unlink";
 const INSTALL: &str = "install";
 const ADD_SECRET: &str = "add-secret";
 const GET: &str = "get";
+const GENERATE_COMPLETIONS: &str = "generate-completions";
 
 macro_rules! fatal {
     ($($tt:tt)*) => {{
@@ -18,16 +19,10 @@ macro_rules! fatal {
     }}
 }
 
-fn main() {
-    let profiles = Settings::get()
-        .map(|settings| settings.profiles)
-        .unwrap_or_default();
-
-    let profile_names = profiles
-        .iter()
-        .map(|profile| profile.0.as_str())
-        .collect::<Vec<&str>>();
-
+fn build_cli<'a, 'b>(profile_names: Vec<&'a str>) -> App<'a, 'b>
+where
+    'a: 'b,
+{
     let app_settings = &[
         AppSettings::SubcommandRequiredElseHelp,
         AppSettings::UnifiedHelpMessage,
@@ -41,7 +36,7 @@ fn main() {
         AppSettings::VersionlessSubcommands,
     ];
 
-    let matches = App::new("Toml Bombadil")
+    App::new("Toml Bombadil")
         .settings(app_settings)
         .version(env!("CARGO_PKG_VERSION"))
         .author("Paul D. <paul.delafosse@protonmail.com>")
@@ -115,7 +110,29 @@ fn main() {
                 .help("Get metadata for specific profiles")
             )
         )
-        .get_matches();
+        .subcommand(SubCommand::with_name(GENERATE_COMPLETIONS)
+            .settings(subcommand_settings)
+            .about("Generate shell completions")
+            .arg(Arg::with_name("type")
+                .possible_values(&["bash", "elvish", "fish", "zsh"])
+                .required(true)
+                .takes_value(true)
+                .help("Type of completions to generate")
+            )
+        )
+}
+
+fn main() {
+    let profiles = Settings::get()
+        .map(|settings| settings.profiles)
+        .unwrap_or_default();
+
+    let profile_names = profiles
+        .iter()
+        .map(|profile| profile.0.as_str())
+        .collect::<Vec<&str>>();
+
+    let matches = build_cli(profile_names.clone()).get_matches();
 
     if let Some(subcommand) = matches.subcommand_name() {
         match subcommand {
@@ -192,7 +209,21 @@ fn main() {
 
                 bombadil.print_metadata(metadata_type);
             }
-
+            GENERATE_COMPLETIONS => {
+                let generate_subcommand = matches.subcommand_matches(GENERATE_COMPLETIONS).unwrap();
+                let for_shell = match generate_subcommand.value_of("type").unwrap() {
+                    "bash" => Shell::Bash,
+                    "elvish" => Shell::Elvish,
+                    "fish" => Shell::Fish,
+                    "zsh" => Shell::Zsh,
+                    _ => unreachable!(),
+                };
+                build_cli(profile_names).gen_completions_to(
+                    "bombadil",
+                    for_shell,
+                    &mut std::io::stdout(),
+                );
+            }
             _ => unreachable!(),
         }
     }
