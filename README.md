@@ -23,7 +23,7 @@ a symlink from a dotfile to the actual config path of a program, it will create 
 This additional step allow to use your original dotfile as a template and inject variables in the copy. 
 You can have multiple value files in the same dotfile repository and change color scheme, or any value on the fly.
 
-In addition this is completely optional, you could start using Toml Bombadil only to generate symlinks and templatize 
+In addition, this is completely optional, you could start using Toml Bombadil only to generate symlinks and templatize 
 your dot file progressively. 
 
 ## Table of contents
@@ -83,7 +83,7 @@ Toml bombadil needs a toml config file, along this readme we will call it `bomba
 # Path to your dotfiles relative to your $HOME directory
 dotfiles_dir = "my_dotfiles"
 [settings]
-# An array of toml files paths containing the variables to inject in your templatize dotfiles
+# An array of toml files paths containing the variables to inject in your templatized dotfiles
 # You can have multiple var files as long as variable names does not colide. 
 vars = [ "vars.toml" ]
 
@@ -172,7 +172,7 @@ colors:
 ...
 ```
 
-And the output file actually linked to alacritty config would be this :
+The output file actually linked to alacritty config would be this :
 
 ```yaml
 ...
@@ -187,7 +187,7 @@ colors:
 ...
 ```
 
-To update variables and the current config simply run `bombadil link`.
+To update variables, and the current config simply run `bombadil link`.
 
 ### Variable references 
 
@@ -231,7 +231,7 @@ alacritty_cursor = "%green"
 
 To use encryption this you need to have [gnupg](https://gnupg.org/) installed, and a pair of gpg keys.
 
-1. Add your gpg user id to your bombadil config : 
+1. Add your gpg user id to bombadil's config : 
 
     ```toml
     dotfile_dir = "bombadil-example"
@@ -277,7 +277,7 @@ To use encryption this you need to have [gnupg](https://gnupg.org/) installed, a
     bombadil link
     ```
    
-This is it, you can now commit your secret safely to your dot file repo !
+This is it, you can now commit your secret safely to your dotfile repository !
 
 ## Switching profile
 
@@ -293,11 +293,11 @@ Bombadil allow you two do this in several ways :
 
 ### Overriding dot entries
 
-Let's say you are using [maven](https://maven.apache.org/) for several java projects, some of them are open source 
+Let's say you are using [maven](https://maven.apache.org/) for several java projects, some of them are open source,
 and some of them uses a corporate repository : 
 
 
-let's assume your dotfiles are the following : 
+let's assume your dotfiles have the following structure : 
 
 ```shell script
 ~/bombadil-example
@@ -403,7 +403,7 @@ export JAVA_HOME=/etc/java10-openjdk
 ### Adding hooks 
 
 To add hooks for a profile simply add them under the `profiles.{profile_name}` section. Note that the default ones will
-alway be run. 
+always be run. 
 
 ```toml
 # bombadil.toml
@@ -415,14 +415,16 @@ hooks = [ "echo \"default profile\"" ]
 hooks = [ "echo \"corporate profile\"" ]
 ```
 
-## Helper scripts
+### Helper scripts
 
-If you use [Wofi](https://hg.sr.ht/~scoopta/wofi) as a menu/launcher, you can run the user script [`contrib/wofi-bombadil-switch-profile.sh`](https://github.com/oknozor/toml-bombadil/tree/main/contrib/wofi-bombadil-switch-profile.sh). Create a keyboard shortcut for this script to make switching Toml Bombadil profiles even more convenient. 
+If you use [Wofi](https://hg.sr.ht/~scoopta/wofi) as a menu/launcher, you can run the user script 
+[`contrib/wofi-bombadil-switch-profile.sh`](https://github.com/oknozor/toml-bombadil/tree/main/contrib/wofi-bombadil-switch-profile.sh). 
+Create a keyboard shortcut for this script to make switching Toml Bombadil profiles even more convenient. 
 
 
 ## Hooks
 
-So far we have no talked about hooks, as we saw they can be invoked as an entry in the config : 
+So far we have not talked about hooks, as we saw they can be declared as an entry in the config : 
 
 ```toml
 dotfiles_dir = "bombadil-example.toml"
@@ -432,14 +434,14 @@ hooks = [ "sway reload" ]
 
 This will invoke the `sway reload` command after `bombadil link` has updated your dotfiles.
 
-The default hooks will always be run regardless of the activated profiles.
+The default hooks will always run regardless of the activated profiles.
 You can also add hooks for a specific profile.
 
 ```toml
 dotfiles_dir = "bombadil-example.toml"
 
 [settings]
-# This reside in the default profile an will always be executed after bombadil link
+# This resides in the default profile an will always be executed after bombadil link
 hooks = [ "sway reload", "echo 42" ]
 
 [profiles.corporate]
@@ -449,13 +451,13 @@ hooks = [ "echo \"Welcome to evil corp\"" ]
 
 ### Limitations
 
-- Hook are run in a sub-shell therefore, *command meant to change your current shell environment won't work* :
+- Hooks run in a sub-shell therefore, **command meant to change your current shell environment won't work** :
 
 ```toml
 hooks = [ "source /home/user/.zshrc" ] # This does not work ! 
 ```
 
-- Environment variable won't be expanded unless you explicitly call a sub-shell : 
+- Environment variables won't be expanded unless you explicitly call a sub-shell : 
 
 ```toml
 hooks = [ "echo $HOME" ] # This will print "$HOME"
@@ -530,7 +532,6 @@ Please read the [contribution guideline](CONTRIBUTING.md) and submit an [issue](
 ## License
 
 All the code in this repository is released under the MIT License, for more information take a look at the [LICENSE](LICENSE) file.
-
 
 
 
