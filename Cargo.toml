@@ -21,13 +21,13 @@ serde = "^1"
 pest = "^2"
 pest_derive = "^2"
 anyhow = "^1"
-termion = "1.5.5"
 colored = "^2"
+globwalk = "0.8.0"
 clap = { version = "^2", optional = true }
 
 [features]
 default = ["cli"]
-cli = [ "clap"]
+cli = ["clap"]
 
 [[bin]]
 name = "bombadil"
