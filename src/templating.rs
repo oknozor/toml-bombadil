@@ -109,8 +109,8 @@ impl Variables {
         self.secrets.extend(vars.secrets);
     }
 
-    pub(crate) fn insert(&mut self, key: String, value: String) {
-        self.variables.insert(key, value);
+    pub(crate) fn insert(&mut self, key: &str, value: &str) {
+        self.variables.insert(key.to_string(), value.to_string());
     }
 
     fn decrypt_values(

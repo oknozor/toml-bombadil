@@ -14,8 +14,6 @@ use anyhow::Result;
 use colored::*;
 use std::collections::HashMap;
 use std::fs;
-use std::fs::File;
-use std::io::Write;
 use std::os::unix::fs as unixfs;
 use std::path::{Path, PathBuf};
 
@@ -88,22 +86,14 @@ impl Bombadil {
 
         fs::create_dir(dot_copy_dir)?;
 
-        for dot in self.dots.iter() {
-            let dot_source_path = self.source_path(&dot.1.source);
-
-            if let Err(err) = dot_source_path {
+        for (_name, dot) in self.dots.iter() {
+            if let Err(err) = dot.install(&self.dotfiles_absolute_path()?, &self.vars) {
                 eprintln!("{}", err);
                 continue;
             }
 
-            let dot_copy_path = self.dot_copy_source_path(&dot.1.source);
-
-            self.traverse_dots_and_copy(&dot_source_path?, &dot_copy_path)?;
-
-            let target = &dot.1.target()?;
-
-            Bombadil::unlink(&target)?;
-            Bombadil::link(&dot_copy_path, &target);
+            dot.unlink()?;
+            dot.symlink(&self.dotfiles_absolute_path()?)?;
         }
 
         self.hooks.iter().map(Hook::run).for_each(|result| {
@@ -119,10 +109,10 @@ impl Bombadil {
         let mut success_paths: Vec<PathBuf> = Vec::new();
         let mut error_paths: Vec<PathBuf> = Vec::new();
 
-        for dot in self.dots.iter() {
-            let target = &dot.1.target()?;
+        for (_, dot) in self.dots.iter() {
+            let target = &dot.target_path()?;
 
-            if let Ok(()) = Bombadil::unlink(&dot.1.target()?) {
+            if let Ok(()) = dot.unlink() {
                 success_paths.push(target.clone());
             } else {
                 error_paths.push(target.clone());
@@ -203,7 +193,15 @@ impl Bombadil {
                 {
                     let source = source.clone();
                     let target = target.clone();
-                    self.dots.insert(key.to_string(), Dot { source, target });
+                    let ignore = dot_override.ignore.clone();
+                    self.dots.insert(
+                        key.to_string(),
+                        Dot {
+                            source,
+                            target,
+                            ignore,
+                        },
+                    );
                 } else {
                     if dot_override.source.is_none() {
                         let warning = format!("`source` field missing for {}", key).yellow();
@@ -306,63 +304,10 @@ impl Bombadil {
         })
     }
 
-    fn traverse_dots_and_copy(&self, source_path: &PathBuf, copy_path: &PathBuf) -> Result<()> {
-        // Single file : inject vars and write to .dots/
-        if source_path.is_file() {
-            fs::create_dir_all(&copy_path.parent().unwrap())?;
-            if let Ok(content) = self.vars.to_dot(&source_path) {
-                let permissions = fs::metadata(source_path)?.permissions();
-                let mut dot_copy = File::create(&copy_path)?;
-                dot_copy.write_all(content.as_bytes())?;
-                dot_copy.set_permissions(permissions)?;
-            } else {
-                // Something went wrong parsing or reading the source path,
-                // We just copy the file in place
-                fs::copy(&source_path, &copy_path)?;
-            }
-        } else if source_path.is_dir() {
-            fs::create_dir_all(copy_path)?;
-            for entry in source_path.read_dir()? {
-                let entry_name = entry?.path();
-                let entry_name = entry_name.file_name().unwrap().to_str().unwrap();
-                self.traverse_dots_and_copy(
-                    &source_path.join(entry_name),
-                    &copy_path.join(entry_name),
-                )
-                .unwrap_or_else(|err| eprintln!("{}", err));
-            }
-        }
-
-        Ok(())
-    }
-
-    fn link(dot_copy_path: &PathBuf, target: &PathBuf) {
-        // Link
-        unixfs::symlink(&dot_copy_path, target)
-            .map(|_result| {
-                let source = format!("{:?}", &dot_copy_path).blue();
-                let dest = format!("{:?}", target).green();
-                println!("{} => {}", source, dest)
-            })
-            .map_err(|err| {
-                let source = format!("{:?}", &dot_copy_path).blue();
-                let dest = format!("{:?}", &target).red();
-                let err = format!("{}", err).red().bold();
-                anyhow!("{} => {} : {}", source, dest, err)
-            })
-            .unwrap_or_else(|err| eprintln!("{}", err));
-    }
-
-    fn unlink(target: &PathBuf) -> Result<()> {
-        if fs::symlink_metadata(target).is_ok() {
-            if target.is_dir() {
-                fs::remove_dir_all(&target)?;
-            } else {
-                fs::remove_file(&target)?;
-            }
-        }
-
-        Ok(())
+    fn dotfiles_absolute_path(&self) -> Result<PathBuf> {
+        dirs::home_dir()
+            .ok_or_else(|| anyhow!("$HOME dir not found"))
+            .map(|path| path.join(&self.path))
     }
 
     pub fn print_metadata(&self, metadata_type: MetadataType) {
@@ -375,7 +320,9 @@ impl Bombadil {
                         "{}: {} => {}",
                         k,
                         self.path.join(&v.source).display(),
-                        v.target().unwrap_or_else(|_| v.target.clone()).display()
+                        v.target_path()
+                            .unwrap_or_else(|_| v.target.clone())
+                            .display()
                     )
                 })
                 .collect(),
@@ -404,28 +351,6 @@ impl Bombadil {
             println!("{}", rows.join("\n"));
         }
     }
-
-    /// Resolve dot source copy path ({dotfiles/dotsource) against user defined dotfile directory
-    /// Check if file exists
-    fn source_path(&self, dot_source_path: &PathBuf) -> Result<PathBuf> {
-        let path = self.path.join(&dot_source_path);
-
-        if path.exists() {
-            Ok(path)
-        } else {
-            Err(anyhow!(format!(
-                "{} {:?}",
-                "Path does not exists :".red(),
-                path
-            )))
-        }
-    }
-
-    /// Resolve dot source copy path ({dotfiles/.dots/) against user defined dotfile directory
-    /// Does not check if file exists
-    pub(crate) fn dot_copy_source_path(&self, source: &PathBuf) -> PathBuf {
-        self.path.join(".dots").join(source)
-    }
 }
 
 pub enum MetadataType {
@@ -443,110 +368,7 @@ mod tests {
     use crate::Mode::NoGpg;
     use std::collections::HashMap;
     use std::fs;
-    use std::path::Path;
     use temp_testdir::TempDir;
-
-    #[test]
-    fn should_copy_dotfiles() {
-        // Arrange
-        let target = TempDir::new("/tmp/dot_target", false).to_path_buf();
-        let mut dots = HashMap::new();
-        let source = PathBuf::from("template");
-
-        dots.insert(
-            "dot".to_string(),
-            Dot {
-                source: source.clone(),
-                target: target.clone(),
-            },
-        );
-
-        let config = Bombadil {
-            path: PathBuf::from("tests/dotfiles_simple")
-                .canonicalize()
-                .unwrap(),
-            dots,
-            vars: Variables::default(),
-            hooks: vec![],
-            profiles: Default::default(),
-            gpg: None,
-        };
-
-        // Act
-        config
-            .traverse_dots_and_copy(
-                &config.source_path(&source).unwrap(),
-                &config.dot_copy_source_path(&source),
-            )
-            .unwrap();
-
-        // Assert
-        assert!(Path::new("tests/dotfiles_simple/.dots/template").exists());
-    }
-
-    #[test]
-    fn should_copy_non_utf8_dotfiles() {
-        // Arrange
-        let target = TempDir::new("/tmp/dot_target", false).to_path_buf();
-        let source = PathBuf::from("ferris.png");
-
-        let mut dots = HashMap::new();
-
-        dots.insert(
-            "dot".to_string(),
-            Dot {
-                source: source.clone(),
-                target: target.clone(),
-            },
-        );
-
-        let config = Bombadil {
-            path: PathBuf::from("tests/dotfiles_non_utf8")
-                .canonicalize()
-                .unwrap(),
-            dots,
-            vars: Variables::default(),
-            hooks: vec![],
-            profiles: Default::default(),
-            gpg: None,
-        };
-
-        // Act
-        config
-            .traverse_dots_and_copy(
-                &config.source_path(&source).unwrap(),
-                &config.dot_copy_source_path(&source),
-            )
-            .unwrap();
-
-        // Assert
-        assert!(Path::new("tests/dotfiles_simple/.dots/template").exists());
-    }
-
-    #[test]
-    fn should_return_dot_path() {
-        // Arrange
-        let config = Bombadil {
-            path: PathBuf::from("tests/dotfiles_simple")
-                .canonicalize()
-                .unwrap(),
-            dots: HashMap::new(),
-            vars: Variables::default(),
-            hooks: vec![],
-            profiles: Default::default(),
-            gpg: None,
-        };
-
-        // Act
-        let path = config.dot_copy_source_path(&PathBuf::from("template"));
-
-        // Assert
-        assert!(path
-            .to_str()
-            .unwrap()
-            .contains("tests/dotfiles_simple/.dots/template"));
-        assert!(path.is_absolute());
-    }
 
     #[test]
     fn self_link_works() {
@@ -575,6 +397,7 @@ mod tests {
             Dot {
                 source: PathBuf::from("template"),
                 target: target.clone(),
+                ignore: vec![],
             },
         );
 
@@ -615,6 +438,7 @@ mod tests {
             Dot {
                 source: PathBuf::from("template"),
                 target: target.clone(),
+                ignore: vec![],
             },
         );
         dots.insert(
@@ -622,6 +446,7 @@ mod tests {
             Dot {
                 source: PathBuf::from("invalid_path"),
                 target: PathBuf::from("somewhere"),
+                ignore: vec![],
             },
         );
 
@@ -662,6 +487,7 @@ mod tests {
             Dot {
                 source: PathBuf::from("sub_dir"),
                 target: target.clone(),
+                ignore: vec![],
             },
         );
 
@@ -706,6 +532,7 @@ mod tests {
             Dot {
                 source: PathBuf::from("sub_dir_1"),
                 target: target.clone(),
+                ignore: vec![],
             },
         );
         let config = Bombadil {
@@ -745,6 +572,7 @@ mod tests {
             Dot {
                 source: PathBuf::from("dot_1"),
                 target: target.clone(),
+                ignore: vec![],
             },
         );
 
@@ -825,43 +653,6 @@ mod tests {
         );
 
         let _ = fs::remove_dir_all(tmp);
-    }
-
-    #[test]
-    fn should_symlink() {
-        // Arrange
-        let home = dirs::home_dir().unwrap();
-        let tmp = TempDir::new("/tmp/test_link", false).to_path_buf();
-        fs::copy("tests/dotfiles_simple/template", &tmp.join("template")).unwrap();
-
-        // Act
-        Bombadil::link(
-            &PathBuf::from("/tmp/test_link/template"),
-            &home.join("test_template"),
-        );
-
-        // Assert
-        assert!(fs::symlink_metadata(&home.join("test_template")).is_ok());
-        let _ = Bombadil::unlink(&home.join("test_template"));
-    }
-
-    #[test]
-    fn should_unlink() {
-        // Arrange
-        let home = dirs::home_dir().unwrap();
-        let tmp = TempDir::new("/tmp/test_link", false).to_path_buf();
-        fs::copy("tests/dotfiles_simple/template", &tmp.join("template")).unwrap();
-        Bombadil::link(
-            &PathBuf::from("/tmp/test_link/template"),
-            &home.join("test_template"),
-        );
-
-        // Act
-        let result = Bombadil::unlink(&home.join("test_template"));
-
-        // Assert
-        assert!(result.is_ok());
-        assert!(fs::symlink_metadata(home.join("test_template")).is_err());
     }
 
     #[test]

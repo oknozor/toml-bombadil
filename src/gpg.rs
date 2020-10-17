@@ -32,7 +32,7 @@ impl Gpg {
         let encrypted = encrypted.replace(PGP_FOOTER, "");
 
         let encrypted = format!("gpg:{}", encrypted);
-        vars.insert(key.to_string(), encrypted);
+        vars.insert(key, &encrypted);
 
         let toml = toml::to_string(&vars.variables)?;
         std::fs::write(&var_file, toml)?;
@@ -120,8 +120,8 @@ mod test {
 
     // IMPORTANT :
     // gpg keys pair needs to be imported to run this locally
-    // `gpg --import test/gpg/public.gpg`
-    // `gpg --import test/gpg/private.gpg`
+    // `gpg --import tests/gpg/public.gpg`
+    // `gpg --import tests/gpg/private.gpg`
     // `echo -e "5\ny\n" | gpg --command-fd 0 --expert --edit-key test@toml.bombadil.org trust`
 
     const GPG_ID: &str = "test@toml.bombadil.org";
