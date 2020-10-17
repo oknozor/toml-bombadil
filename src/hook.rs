@@ -44,7 +44,7 @@ impl Hook {
         command
     }
 
-    // TODO : generify for "'" and "`"
+    // TODO : use shell words
     fn split_args(&self) -> Result<Vec<&str>> {
         let mut indices: Vec<usize> = self
             .command

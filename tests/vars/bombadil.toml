@@ -1,11 +1,7 @@
 dotfiles_dir = "/tmp/bombadil_tests"
 
 [settings]
-vars = ["vars.toml", "meta_vars.toml"]
-
-[settings.dots]
-dot_name = { source = "template.css", target = "template.css" }
-
-[profiles.profile_name]
-vars = ["/tmp/var.toml"]
-hooks = ["echo hello world"]
+vars = [
+    "meta_vars.toml",
+    "vars.toml",
+]
