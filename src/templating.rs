@@ -105,6 +105,28 @@ impl Variables {
         Ok(output)
     }
 
+    pub(crate) fn resolve_ref(&mut self) {
+        // Collect variable references
+        let entries: Vec<(String, Option<String>)> = self
+            .variables
+            .iter()
+            .filter(|(_, value)| value.starts_with('%'))
+            .map(|(key, value)| (key, &value[1..value.len()]))
+            .map(|(key, ref_key)| (key.clone(), self.variables.get(ref_key).cloned()))
+            .collect();
+
+        // insert value in place of references
+        entries.iter().for_each(|(key, opt_value)| match opt_value {
+            Some(value) => {
+                let _ = self.variables.insert(key.to_string(), value.to_string());
+            }
+            None => {
+                let warning = format!("Reference ${} not found in config", &key).yellow();
+                eprintln!("{}", warning);
+            }
+        });
+    }
+
     pub(crate) fn extend(&mut self, vars: Variables) {
         self.variables.extend(vars.variables);
         self.secrets.extend(vars.secrets);
