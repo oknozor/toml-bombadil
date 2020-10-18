@@ -81,6 +81,9 @@ impl Dot {
             vars.extend(local_vars);
         };
 
+        // Resolve % reference
+        vars.resolve_ref();
+
         // Recursively copy dotfile to .dots directory
         self.traverse_and_copy(source, target, ignored_paths.as_slice(), &vars)
     }

@@ -276,25 +276,8 @@ impl Bombadil {
         // Resolve variables from path
         let mut vars = Variables::from_paths(&path, &config.settings.vars, gpg.as_ref())?;
 
-        // Collect variable references
-        let entries: Vec<(String, Option<String>)> = vars
-            .variables
-            .iter()
-            .filter(|(_, value)| value.starts_with('%'))
-            .map(|(key, value)| (key, &value[1..value.len()]))
-            .map(|(key, ref_key)| (key.clone(), vars.variables.get(ref_key).cloned()))
-            .collect();
-
-        // insert value in place of references
-        entries.iter().for_each(|(key, opt_value)| match opt_value {
-            Some(value) => {
-                let _ = vars.variables.insert(key.to_string(), value.to_string());
-            }
-            None => {
-                let warning = format!("Reference ${} not found in config", &key).yellow();
-                eprintln!("{}", warning);
-            }
-        });
+        // Replace % reference with their ref value
+        vars.resolve_ref();
 
         // Resolve hooks from config
         let hooks = config
