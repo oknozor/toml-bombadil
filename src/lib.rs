@@ -86,10 +86,11 @@ impl Bombadil {
 
         fs::create_dir(dot_copy_dir)?;
 
-        for (_name, dot) in self.dots.iter() {
+        for (key, dot) in self.dots.iter() {
             if let Err(err) = dot.install(
                 &self.dotfiles_absolute_path()?,
                 &self.vars,
+                self.get_auto_ignored_files(key),
                 self.gpg.as_ref(),
             ) {
                 eprintln!("{}", err);
@@ -184,7 +185,7 @@ impl Bombadil {
                     }
 
                     if let Some(vars) = &dot_override.vars {
-                        dot.vars = Some(vars.clone());
+                        dot.vars = vars.clone();
                     }
 
                     if let (None, None, None) = (
@@ -212,7 +213,7 @@ impl Bombadil {
                             source,
                             target,
                             ignore,
-                            vars: None,
+                            vars: Default::default(),
                         },
                     );
                 } else {
@@ -347,6 +348,28 @@ impl Bombadil {
             println!("{}", rows.join("\n"));
         }
     }
+
+    fn get_auto_ignored_files(&self, dot_key: &str) -> Vec<PathBuf> {
+        let dot_origin = self.dots.get(dot_key);
+        let origin_source = dot_origin.map(|dot| &dot.source);
+
+        let mut ignored: Vec<PathBuf> = self
+            .profiles
+            .iter()
+            .map(|(_, profile)| profile.dots.get(dot_key))
+            .filter(Option::is_some)
+            .map(|dot| dot.unwrap())
+            .filter(|dot| dot.vars.is_some())
+            .filter_map(|dot| dot.resolve_var_path(&self.path, origin_source))
+            .collect();
+
+        let _ = dot_origin.map(|dot| {
+            dot.resolve_var_path(&self.path)
+                .map(|path| ignored.push(path))
+        });
+
+        ignored
+    }
 }
 
 pub enum MetadataType {
@@ -361,6 +384,7 @@ pub enum MetadataType {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::dots::{DotOverride, DotVar};
     use crate::Mode::NoGpg;
     use std::collections::HashMap;
     use std::fs;
@@ -394,7 +418,7 @@ mod tests {
                 source: PathBuf::from("template"),
                 target: target.clone(),
                 ignore: vec![],
-                vars: None,
+                vars: Dot::default_vars(),
             },
         );
 
@@ -436,7 +460,7 @@ mod tests {
                 source: PathBuf::from("template"),
                 target: target.clone(),
                 ignore: vec![],
-                vars: None,
+                vars: Dot::default_vars(),
             },
         );
         dots.insert(
@@ -445,7 +469,7 @@ mod tests {
                 source: PathBuf::from("invalid_path"),
                 target: PathBuf::from("somewhere"),
                 ignore: vec![],
-                vars: None,
+                vars: Dot::default_vars(),
             },
         );
 
@@ -487,7 +511,7 @@ mod tests {
                 source: PathBuf::from("sub_dir"),
                 target: target.clone(),
                 ignore: vec![],
-                vars: None,
+                vars: Dot::default_vars(),
             },
         );
 
@@ -533,7 +557,7 @@ mod tests {
                 source: PathBuf::from("sub_dir_1"),
                 target: target.clone(),
                 ignore: vec![],
-                vars: None,
+                vars: Dot::default_vars(),
             },
         );
         let config = Bombadil {
@@ -574,7 +598,7 @@ mod tests {
                 source: PathBuf::from("dot_1"),
                 target: target.clone(),
                 ignore: vec![],
-                vars: None,
+                vars: Dot::default_vars(),
             },
         );
 
@@ -682,5 +706,90 @@ mod tests {
         // STDOUT should be asserted once those test facilities are in place.
 
         let _ = fs::remove_dir_all(tmp);
+    }
+
+    #[test]
+    fn should_get_auto_ignored_files() -> Result<()> {
+        let temp = TempDir::default();
+        let temp = temp.to_path_buf();
+        let source = temp.join("source");
+        fs::create_dir(&source)?;
+
+        let var_one = &source.join("vars_default.toml");
+        let var_two = &source.join("vars_p1.toml");
+        let var_three = &source.join("vars_p2.toml");
+
+        fs::write(var_one, "1")?;
+        fs::write(var_two, "1")?;
+        fs::write(var_three, "1")?;
+
+        let mut dots = HashMap::new();
+        dots.insert(
+            "dot".to_string(),
+            Dot {
+                source: source.clone(),
+                target: Default::default(),
+                ignore: vec![],
+                vars: PathBuf::from("vars_default.toml"),
+            },
+        );
+
+        let mut dots_profile_one = HashMap::new();
+        dots_profile_one.insert(
+            "dot".to_string(),
+            DotOverride {
+                source: Some(source.clone()),
+                target: Default::default(),
+                ignore: vec![],
+                vars: Some(PathBuf::from("vars_p1.toml")),
+            },
+        );
+
+        let mut dots_profile_two = HashMap::new();
+        dots_profile_two.insert(
+            "dot".to_string(),
+            DotOverride {
+                source: Some(source.clone()),
+                target: Default::default(),
+                ignore: vec![],
+                vars: Some(PathBuf::from("vars_p2.toml")),
+            },
+        );
+
+        let mut profiles = HashMap::new();
+        profiles.insert(
+            "profile_one".to_string(),
+            Profile {
+                dots: dots_profile_one,
+                hooks: vec![],
+                vars: vec![],
+            },
+        );
+
+        profiles.insert(
+            "profile_two".to_string(),
+            Profile {
+                dots: dots_profile_two,
+                hooks: vec![],
+                vars: vec![],
+            },
+        );
+
+        let bombadil = Bombadil {
+            path: temp,
+            dots,
+            vars: Default::default(),
+            hooks: vec![],
+            profiles,
+            gpg: None,
+        };
+
+        let ignored = bombadil.get_auto_ignored_files("dot");
+
+        println!("{:?}", ignored);
+        assert!(ignored.contains(var_one));
+        assert!(ignored.contains(var_two));
+        assert!(ignored.contains(var_three));
+        Ok(())
     }
 }
