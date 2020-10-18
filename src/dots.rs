@@ -1,3 +1,4 @@
+use crate::gpg::Gpg;
 use crate::templating::Variables;
 use anyhow::Result;
 use colored::*;
@@ -19,6 +20,8 @@ pub struct Dot {
     /// Glob pattern of files to ignore when creating symlinks
     #[serde(default)]
     pub ignore: Vec<String>,
+    // A single var file attached to the dot
+    pub vars: Option<PathBuf>,
 }
 
 /// Same as dot but source and target are optionals
@@ -31,27 +34,55 @@ pub struct DotOverride {
     /// Glob pattern of files to ignore when creating symlinks
     #[serde(default)]
     pub ignore: Vec<String>,
+    // A single var file attached to the dot
+    pub vars: Option<PathBuf>,
 }
 
 impl Dot {
-    pub(crate) fn install(&self, dotfile_dir: &PathBuf, vars: &Variables) -> Result<()> {
+    pub(crate) fn install(
+        &self,
+        dotfile_dir: &PathBuf,
+        vars: &Variables,
+        gpg: Option<&Gpg>,
+    ) -> Result<()> {
         let source = &self.source_path(dotfile_dir)?;
         let target = &self.copy_path(dotfile_dir);
         let source_str = source.to_str().unwrap_or_default();
-        let ignored_paths = self.get_ignored_paths(&source_str)?;
+        let mut ignored_paths = self.get_ignored_paths(&source_str)?;
 
-        self.traverse_and_copy(source, target, ignored_paths.as_slice(), vars)
-    }
+        // Add local vars to the global ones
+        let mut vars = vars.clone();
+        let default_local_var_path = source.join("vars.toml");
 
-    fn get_ignored_paths(&self, source_str: &str) -> Result<Vec<PathBuf>> {
-        Ok(
-            globwalk::GlobWalkerBuilder::from_patterns(source_str, self.ignore.as_slice())
-                .build()?
-                .into_iter()
-                .filter_map(Result::ok)
-                .map(|entry| entry.path().to_path_buf())
-                .collect(),
-        )
+        if let Some(local_vars_path) = &self.vars {
+            let local_vars_relative_to_source = source.join(local_vars_path);
+            let local_vars_relative_to_dotfiles = dotfile_dir.join(local_vars_path);
+            if local_vars_relative_to_source.exists() {
+                let local_vars = Dot::get_local_vars(&local_vars_relative_to_source, gpg);
+                ignored_paths.push(local_vars_relative_to_source);
+                vars.extend(local_vars);
+            } else if local_vars_relative_to_dotfiles.exists() {
+                let local_vars = Dot::get_local_vars(&local_vars_relative_to_dotfiles, gpg);
+                vars.extend(local_vars);
+            } else {
+                eprintln!(
+                    "{} {:?} {} {:?} {} {:?}",
+                    "WARNING: Variable path".yellow(),
+                    local_vars_path,
+                    "was neither found in".yellow(),
+                    source,
+                    "nor in".yellow(),
+                    dotfile_dir
+                );
+            }
+        } else if default_local_var_path.exists() {
+            let local_vars = Dot::get_local_vars(&default_local_var_path, gpg);
+            ignored_paths.push(default_local_var_path);
+            vars.extend(local_vars);
+        };
+
+        // Recursively copy dotfile to .dots directory
+        self.traverse_and_copy(source, target, ignored_paths.as_slice(), &vars)
     }
 
     pub(crate) fn symlink(&self, dotfile_dir: &PathBuf) -> Result<()> {
@@ -102,6 +133,24 @@ impl Dot {
                     anyhow!(err)
                 })
         }
+    }
+
+    fn get_local_vars(source: &PathBuf, gpg: Option<&Gpg>) -> Variables {
+        Variables::from_toml(source, gpg).unwrap_or_else(|err| {
+            eprintln!("{}", err.to_string().yellow());
+            Variables::default()
+        })
+    }
+
+    fn get_ignored_paths(&self, source_str: &str) -> Result<Vec<PathBuf>> {
+        Ok(
+            globwalk::GlobWalkerBuilder::from_patterns(source_str, self.ignore.as_slice())
+                .build()?
+                .into_iter()
+                .filter_map(Result::ok)
+                .map(|entry| entry.path().to_path_buf())
+                .collect(),
+        )
     }
 
     fn traverse_and_copy(
@@ -184,6 +233,7 @@ mod tests {
             source: Default::default(),
             target: PathBuf::from(".config/sway"),
             ignore: vec![],
+            vars: None,
         };
 
         // Act
@@ -203,6 +253,7 @@ mod tests {
             source: Default::default(),
             target: PathBuf::from("/etc/profile"),
             ignore: vec![],
+            vars: None,
         };
 
         // Act
@@ -231,6 +282,7 @@ mod tests {
             source,
             target,
             ignore: vec![],
+            vars: None,
         };
 
         // Act
@@ -273,6 +325,7 @@ mod tests {
             source: source.clone(),
             target: target.clone(),
             ignore: vec![],
+            vars: None,
         };
 
         let absolute_source_path = dot.source_path(temp)?;
@@ -315,6 +368,7 @@ mod tests {
             source: source.clone(),
             target: target.clone(),
             ignore: vec![],
+            vars: None,
         };
 
         dot.traverse_and_copy(
@@ -365,6 +419,7 @@ mod tests {
             source: source.clone(),
             target: target.clone(),
             ignore: vec!["*.md".to_string()],
+            vars: None,
         };
 
         let absolute_source_path = dot.source_path(temp)?;
@@ -416,6 +471,7 @@ mod tests {
             source,
             target,
             ignore: vec![],
+            vars: None,
         };
 
         dot.symlink(temp)?;
@@ -433,6 +489,7 @@ mod tests {
 
     #[test]
     fn install() -> Result<()> {
+        // Arrange
         let temp = TempDir::default();
         let temp = &temp.to_path_buf();
 
@@ -448,10 +505,13 @@ mod tests {
             source: source.clone(),
             target: target.clone(),
             ignore: vec![],
+            vars: None,
         };
 
-        dot.install(temp, &Variables::default())?;
+        // Act
+        dot.install(temp, &Variables::default(), None)?;
 
+        // Assert
         assert!(temp.join(".dots").exists());
         assert!(temp.join(".dots/source_dot").exists());
         assert!(temp.join(".dots/source_dot/file").exists());
@@ -460,6 +520,7 @@ mod tests {
 
     #[test]
     fn install_with_vars() -> Result<()> {
+        // Arrange
         let temp = TempDir::default();
         let temp = &temp.to_path_buf();
 
@@ -475,16 +536,143 @@ mod tests {
             source: source.clone(),
             target: target.clone(),
             ignore: vec![],
+            vars: None,
         };
 
         let mut vars = Variables::default();
         vars.insert("name", "Tom Bombadil");
 
-        dot.install(temp, &Variables::default())?;
+        // Act
+        dot.install(temp, &Variables::default(), None)?;
 
+        // Assert
         assert!(temp.join(".dots").exists());
         assert!(temp.join(".dots/source_dot").exists());
         assert!(temp.join(".dots/source_dot/file").exists());
+        Ok(())
+    }
+
+    #[test]
+    fn install_with_local_vars() -> Result<()> {
+        // Arrange
+        let temp = TempDir::default();
+        let temp = &temp.to_path_buf();
+
+        let source = &PathBuf::from("source_dot");
+        let target = PathBuf::from("target_dot");
+
+        let absolute_source_path = &temp.join(&source);
+
+        fs::create_dir(absolute_source_path)?;
+        let local_vars_path = PathBuf::from("my_vars.toml");
+        fs::copy(
+            "tests/local_dot_vars/vars.toml",
+            absolute_source_path.join(&local_vars_path),
+        )?;
+        fs::write(
+            absolute_source_path.join("file"),
+            "__[name]__ is __[verb]__",
+        )?;
+
+        let dot = Dot {
+            source: source.clone(),
+            target: target.clone(),
+            ignore: vec![],
+            vars: Some(local_vars_path),
+        };
+
+        let mut vars = Variables::default();
+        vars.insert("name", "Tom Bombadil");
+
+        // Arrange
+        dot.install(temp, &Variables::default(), None)?;
+
+        // Assert
+        let content = fs::read_to_string(&temp.join(".dots/source_dot/file"))?;
+        assert_eq!(content, "Golberry is singing");
+        assert!(!temp.join(".dots/source_dot/my_vars.toml").exists());
+        Ok(())
+    }
+
+    #[test]
+    fn install_with_local_vars_dot_relative() -> Result<()> {
+        // Arrange
+        let temp = TempDir::default();
+        let temp = &temp.to_path_buf();
+
+        let source = &PathBuf::from("source_dot");
+        let target = PathBuf::from("target_dot");
+
+        let absolute_source_path = &temp.join(&source);
+
+        fs::create_dir(absolute_source_path)?;
+        let local_vars_path = PathBuf::from("my_vars.toml");
+        fs::copy(
+            "tests/local_dot_vars/vars.toml",
+            temp.join(&local_vars_path),
+        )?;
+        fs::write(
+            absolute_source_path.join("file"),
+            "__[name]__ is __[verb]__",
+        )?;
+
+        let dot = Dot {
+            source: source.clone(),
+            target: target.clone(),
+            ignore: vec![],
+            vars: Some(local_vars_path),
+        };
+
+        let mut vars = Variables::default();
+        vars.insert("name", "Tom Bombadil");
+
+        // Arrange
+        dot.install(temp, &Variables::default(), None)?;
+
+        // Assert
+        let content = fs::read_to_string(&temp.join(".dots/source_dot/file"))?;
+        assert_eq!(content, "Golberry is singing");
+        Ok(())
+    }
+
+    #[test]
+    fn install_with_local_vars_default_path() -> Result<()> {
+        // Arrange
+        let temp = TempDir::default();
+        let temp = &temp.to_path_buf();
+
+        let source = &PathBuf::from("source_dot");
+        let target = PathBuf::from("target_dot");
+
+        let absolute_source_path = &temp.join(&source);
+
+        fs::create_dir(absolute_source_path)?;
+        let local_vars_path = PathBuf::from("vars.toml");
+        fs::copy(
+            "tests/local_dot_vars/vars.toml",
+            absolute_source_path.join(&local_vars_path),
+        )?;
+        fs::write(
+            absolute_source_path.join("file"),
+            "__[name]__ is __[verb]__",
+        )?;
+
+        let dot = Dot {
+            source: source.clone(),
+            target: target.clone(),
+            ignore: vec![],
+            vars: Some(local_vars_path),
+        };
+
+        let mut vars = Variables::default();
+        vars.insert("name", "Tom Bombadil");
+
+        // Arrange
+        dot.install(temp, &Variables::default(), None)?;
+
+        // Assert
+        let content = fs::read_to_string(&temp.join(".dots/source_dot/file"))?;
+        assert_eq!(content, "Golberry is singing");
         Ok(())
     }
 }
