@@ -87,7 +87,11 @@ impl Bombadil {
         fs::create_dir(dot_copy_dir)?;
 
         for (_name, dot) in self.dots.iter() {
-            if let Err(err) = dot.install(&self.dotfiles_absolute_path()?, &self.vars) {
+            if let Err(err) = dot.install(
+                &self.dotfiles_absolute_path()?,
+                &self.vars,
+                self.gpg.as_ref(),
+            ) {
                 eprintln!("{}", err);
                 continue;
             }
@@ -179,9 +183,17 @@ impl Bombadil {
                         dot.target = target.clone()
                     }
 
-                    if let (None, None) = (&dot_override.source, &dot_override.target) {
+                    if let Some(vars) = &dot_override.vars {
+                        dot.vars = Some(vars.clone());
+                    }
+
+                    if let (None, None, None) = (
+                        &dot_override.source,
+                        &dot_override.target,
+                        &dot_override.vars,
+                    ) {
                         let warning = format!(
-                            "Skipping {}, no `source` or `target` value to override",
+                            "Skipping {}, no `source`, `target` or `vars` to override",
                             key
                         )
                         .yellow();
@@ -200,6 +212,7 @@ impl Bombadil {
                             source,
                             target,
                             ignore,
+                            vars: None,
                         },
                     );
                 } else {
@@ -398,6 +411,7 @@ mod tests {
                 source: PathBuf::from("template"),
                 target: target.clone(),
                 ignore: vec![],
+                vars: None,
             },
         );
 
@@ -439,6 +453,7 @@ mod tests {
                 source: PathBuf::from("template"),
                 target: target.clone(),
                 ignore: vec![],
+                vars: None,
             },
         );
         dots.insert(
@@ -447,6 +462,7 @@ mod tests {
                 source: PathBuf::from("invalid_path"),
                 target: PathBuf::from("somewhere"),
                 ignore: vec![],
+                vars: None,
             },
         );
 
@@ -488,6 +504,7 @@ mod tests {
                 source: PathBuf::from("sub_dir"),
                 target: target.clone(),
                 ignore: vec![],
+                vars: None,
             },
         );
 
@@ -533,6 +550,7 @@ mod tests {
                 source: PathBuf::from("sub_dir_1"),
                 target: target.clone(),
                 ignore: vec![],
+                vars: None,
             },
         );
         let config = Bombadil {
@@ -573,6 +591,7 @@ mod tests {
                 source: PathBuf::from("dot_1"),
                 target: target.clone(),
                 ignore: vec![],
+                vars: None,
             },
         );
 
