@@ -595,6 +595,7 @@ If you use Bombadil please submit an issue, or a PR to update this section, we w
  
 - [https://github.com/oknozor/dotfiles](https://github.com/oknozor/dotfiles)
 - [https://github.com/DSpeckhals/dotfiles](https://github.com/DSpeckhals/dotfiles)
+- [https://github.com/mrkajetanp/dotfiles](https://github.com/mrkajetanp/dotfiles)
   
 ## Contributing
 
