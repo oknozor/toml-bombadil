@@ -246,20 +246,25 @@ pub(crate) trait DotVar {
         if relative_to_dot.exists() {
             Some(relative_to_dot)
         } else if let Some(parent) = source.parent() {
-          if parent.join(path).exists() {
-              Some(parent.join(path))
-          } else if relative_to_dotfile_dir.exists() && !self.is_default_var_path() {
-              Some(relative_to_dotfile_dir)
-          } else {
-              self.vars_path_not_found(dotfile_dir, source, path)
-          }
-        }  else {
+            if parent.join(path).exists() {
+                Some(parent.join(path))
+            } else if relative_to_dotfile_dir.exists() && !self.is_default_var_path() {
+                Some(relative_to_dotfile_dir)
+            } else {
+                self.vars_path_not_found(dotfile_dir, source, path)
+            }
+        } else {
             // Warning is emitted only if the path is not "vars.toml"
             self.vars_path_not_found(dotfile_dir, source, path)
         }
     }
 
-    fn vars_path_not_found(&self, dotfile_dir: &PathBuf, source: &PathBuf, path: &PathBuf) -> Option<PathBuf> {
+    fn vars_path_not_found(
+        &self,
+        dotfile_dir: &PathBuf,
+        source: &PathBuf,
+        path: &PathBuf,
+    ) -> Option<PathBuf> {
         if !self.is_default_var_path() {
             eprintln!(
                 "{} {:?} {} {:?} {} {:?}",
