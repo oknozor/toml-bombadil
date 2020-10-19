@@ -225,7 +225,7 @@ pub(crate) trait DotVar {
     fn vars(&self) -> Option<PathBuf>;
     fn source(&self) -> Option<&PathBuf>;
     fn default_vars() -> PathBuf {
-        PathBuf::from("var.toml")
+        PathBuf::from("vars.toml")
     }
 
     fn is_default_var_path(&self) -> bool {
@@ -241,25 +241,37 @@ pub(crate) trait DotVar {
         let relative_to_dot = dotfile_dir.join(source).join(path);
         let relative_to_dotfile_dir = dotfile_dir.join(path);
 
+        // FIXME : we should not try to look for path like this
+        // Instead "../vars.toml" should be used
         if relative_to_dot.exists() {
             Some(relative_to_dot)
-        } else if relative_to_dotfile_dir.exists() && !self.is_default_var_path() {
-            Some(relative_to_dotfile_dir)
-        } else {
+        } else if let Some(parent) = source.parent() {
+          if parent.join(path).exists() {
+              Some(parent.join(path))
+          } else if relative_to_dotfile_dir.exists() && !self.is_default_var_path() {
+              Some(relative_to_dotfile_dir)
+          } else {
+              self.vars_path_not_found(dotfile_dir, source, path)
+          }
+        }  else {
             // Warning is emitted only if the path is not "vars.toml"
-            if !self.is_default_var_path() {
-                eprintln!(
-                    "{} {:?} {} {:?} {} {:?}",
-                    "WARNING: Variable path".yellow(),
-                    path,
-                    "was neither found in".yellow(),
-                    source,
-                    "nor in".yellow(),
-                    dotfile_dir
-                );
-            }
-            None
+            self.vars_path_not_found(dotfile_dir, source, path)
         }
+    }
+
+    fn vars_path_not_found(&self, dotfile_dir: &PathBuf, source: &PathBuf, path: &PathBuf) -> Option<PathBuf> {
+        if !self.is_default_var_path() {
+            eprintln!(
+                "{} {:?} {} {:?} {} {:?}",
+                "WARNING: Variable path".yellow(),
+                path,
+                "was neither found in".yellow(),
+                source,
+                "nor in".yellow(),
+                dotfile_dir
+            );
+        }
+        None
     }
 }
 
