@@ -9,18 +9,20 @@ use crate::dots::Dot;
 use crate::gpg::Gpg;
 use crate::hook::Hook;
 use crate::settings::{Profile, Settings};
+use crate::state::BombadilState;
 use crate::templating::Variables;
 use anyhow::Result;
 use colored::*;
 use std::collections::HashMap;
 use std::fs;
-use std::os::unix::fs as unixfs;
+use std::os::unix;
 use std::path::{Path, PathBuf};
 
 mod dots;
 mod gpg;
 mod hook;
 pub mod settings;
+mod state;
 mod templating;
 
 pub struct Bombadil {
@@ -60,7 +62,7 @@ impl Bombadil {
             config_path.to_owned()
         };
 
-        unixfs::symlink(&config_path, &xdg_config)
+        unix::fs::symlink(&config_path, &xdg_config)
             .map_err(|err| {
                 anyhow!(
                     "Unable to symlink {:?} to {:?} : {}",
@@ -80,15 +82,32 @@ impl Bombadil {
         self.check_dotfile_dir()?;
         let dot_copy_dir = &self.path.join(".dots");
 
+        let absolute_path_to_dot = &self.dotfiles_absolute_path()?;
+
+        // Get previous state if any and remove symlinks
+        let previous_state = BombadilState::read(absolute_path_to_dot.to_owned());
+
+        match previous_state {
+            Ok(state) => {
+                state.remove_targets();
+                println!("{}", "Previous configuration cleaned up".green())
+            }
+            Err(err) => println!(
+                "{} : {}",
+                "No previous configuration found, skipping clean up".yellow(),
+                err
+            ),
+        }
+
         if dot_copy_dir.exists() {
             fs::remove_dir_all(&dot_copy_dir)?;
         }
 
+        // Render current config and create symlinks
         fs::create_dir(dot_copy_dir)?;
-
         for (key, dot) in self.dots.iter() {
             if let Err(err) = dot.install(
-                &self.dotfiles_absolute_path()?,
+                absolute_path_to_dot,
                 &self.vars,
                 self.get_auto_ignored_files(key),
                 self.gpg.as_ref(),
@@ -98,14 +117,18 @@ impl Bombadil {
             }
 
             dot.unlink()?;
-            dot.symlink(&self.dotfiles_absolute_path()?)?;
+            dot.symlink(absolute_path_to_dot)?;
         }
 
+        // Run post install hooks
         self.hooks.iter().map(Hook::run).for_each(|result| {
             if let Err(err) = result {
                 eprintln!("{}", err);
             }
         });
+
+        // Dump current config
+        BombadilState::from(self).write()?;
 
         Ok(())
     }
@@ -301,12 +324,6 @@ impl Bombadil {
         })
     }
 
-    fn dotfiles_absolute_path(&self) -> Result<PathBuf> {
-        dirs::home_dir()
-            .ok_or_else(|| anyhow!("$HOME dir not found"))
-            .map(|path| path.join(&self.path))
-    }
-
     pub fn print_metadata(&self, metadata_type: MetadataType) {
         let rows = match metadata_type {
             MetadataType::Dots => self
@@ -349,6 +366,12 @@ impl Bombadil {
         }
     }
 
+    fn dotfiles_absolute_path(&self) -> Result<PathBuf> {
+        dirs::home_dir()
+            .ok_or_else(|| anyhow!("$HOME dir not found"))
+            .map(|path| path.join(&self.path))
+    }
+
     fn get_auto_ignored_files(&self, dot_key: &str) -> Vec<PathBuf> {
         let dot_origin = self.dots.get(dot_key);
         let origin_source = dot_origin.map(|dot| &dot.source);
@@ -372,6 +395,18 @@ impl Bombadil {
     }
 }
 
+pub(crate) fn unlink(path: &PathBuf) -> Result<()> {
+    if fs::symlink_metadata(path).is_ok() {
+        if path.is_dir() {
+            fs::remove_dir_all(path)?;
+        } else {
+            fs::remove_file(path)?;
+        }
+    }
+
+    Ok(())
+}
+
 pub enum MetadataType {
     Dots,
     Hooks,
@@ -388,6 +423,8 @@ mod tests {
     use crate::Mode::NoGpg;
     use std::collections::HashMap;
     use std::fs;
+    use std::fs::read_link;
+    use std::os::unix;
     use temp_testdir::TempDir;
 
     #[test]
@@ -448,7 +485,7 @@ mod tests {
     }
 
     #[test]
-    fn install_should_failsafely_and_continue() {
+    fn install_should_fail_and_continue() {
         // Arrange
         let target = TempDir::new("/tmp/dot_target", false).to_path_buf();
 
@@ -790,6 +827,46 @@ mod tests {
         assert!(ignored.contains(var_one));
         assert!(ignored.contains(var_two));
         assert!(ignored.contains(var_three));
+        Ok(())
+    }
+
+    #[test]
+    fn should_unlink_dir() -> Result<()> {
+        let tmp = TempDir::default();
+        let source = tmp.join("dir");
+        let link = tmp.join("link");
+        fs::create_dir(&source)?;
+
+        unix::fs::symlink(&source, &link)?;
+        assert_eq!(
+            &read_link(&link)?.to_str().unwrap(),
+            &source.to_str().unwrap()
+        );
+
+        unlink(&link)?;
+        assert!(source.exists());
+        assert!(!link.exists());
+
+        Ok(())
+    }
+
+    #[test]
+    fn should_unlink_file() -> Result<()> {
+        let tmp = TempDir::default();
+        let source = tmp.join("dir");
+        let link = tmp.join("link");
+        fs::write(&source, "Hello Tom")?;
+
+        unix::fs::symlink(&source, &link)?;
+        assert_eq!(
+            &read_link(&link)?.to_str().unwrap(),
+            &source.to_str().unwrap()
+        );
+
+        unlink(&link)?;
+        assert!(source.exists());
+        assert!(!link.exists());
+
         Ok(())
     }
 }
