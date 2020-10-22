@@ -96,6 +96,7 @@ impl Settings {
                 if path.exists() {
                     let mut s = Config::new();
                     s.merge(File::from(path))?;
+
                     let mut settings: Result<Settings> = s
                         .try_into()
                         .map_err(|err| anyhow!("{} : {}", "Config format error".red(), err));
