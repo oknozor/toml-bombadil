@@ -1,12 +1,13 @@
 use crate::gpg::Gpg;
 use crate::templating::Variables;
+use crate::unlink;
 use anyhow::Result;
 use colored::*;
 use dirs::home_dir;
 use std::fs;
 use std::fs::File;
 use std::io::Write;
-use std::os::unix::fs as unixfs;
+use std::os::unix;
 use std::path::PathBuf;
 
 /// Represent a link between a `source` dotfile in the user defined dotfiles directory
@@ -19,9 +20,11 @@ pub struct Dot {
     pub target: PathBuf,
     /// Glob pattern of files to ignore when creating symlinks
     #[serde(default)]
+    #[serde(skip_serializing)]
     pub ignore: Vec<String>,
     // A single var file attached to the dot
     #[serde(default = "Dot::default_vars")]
+    #[serde(skip_serializing)]
     pub vars: PathBuf,
 }
 
@@ -48,7 +51,7 @@ impl Dot {
         gpg: Option<&Gpg>,
     ) -> Result<()> {
         let source = &self.source_path(dotfile_dir)?;
-        let target = &self.copy_path(dotfile_dir);
+        let copy_path = &self.copy_path(dotfile_dir);
         let source_str = source.to_str().unwrap_or_default();
         let mut ignored_paths = self.get_ignored_paths(&source_str)?;
         ignored_paths.extend_from_slice(&auto_ignored);
@@ -65,7 +68,7 @@ impl Dot {
         vars.resolve_ref();
 
         // Recursively copy dotfile to .dots directory
-        self.traverse_and_copy(source, target, ignored_paths.as_slice(), &vars)
+        self.traverse_and_copy(source, copy_path, ignored_paths.as_slice(), &vars)
     }
 
     pub(crate) fn symlink(&self, dotfile_dir: &PathBuf) -> Result<()> {
@@ -73,7 +76,7 @@ impl Dot {
         let target = &self.target_path()?;
 
         // Link
-        unixfs::symlink(copy_path, target)
+        unix::fs::symlink(copy_path, target)
             .map(|_result| {
                 let source = format!("{:?}", copy_path).blue();
                 let dest = format!("{:?}", target).green();
@@ -92,16 +95,7 @@ impl Dot {
 
     pub(crate) fn unlink(&self) -> Result<()> {
         let target = &self.target_path()?;
-        if fs::symlink_metadata(target).is_ok() {
-            // TODO REMOVE SYMLINK TOO
-            if target.is_dir() {
-                fs::remove_dir_all(target)?;
-            } else {
-                fs::remove_file(target)?;
-            }
-        }
-
-        Ok(())
+        unlink(target)
     }
 
     /// Return the target path of a dot entry either absolute or relative to $HOME
@@ -193,7 +187,7 @@ impl Dot {
         }
     }
 
-    fn copy_path(&self, dotfile_dir: &PathBuf) -> PathBuf {
+    pub(crate) fn copy_path(&self, dotfile_dir: &PathBuf) -> PathBuf {
         dotfile_dir.join(".dots").join(&self.source)
     }
 }
