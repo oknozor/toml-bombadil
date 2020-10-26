@@ -18,6 +18,7 @@ use std::fs;
 use std::os::unix;
 use std::path::{Path, PathBuf};
 
+pub mod cli;
 mod dots;
 mod gpg;
 mod hook;

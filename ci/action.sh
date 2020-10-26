@@ -10,6 +10,7 @@ echoerr() {
 release() {
 
    TAR_DIR="${BOMBADIL_HOME}/target/tar"
+   COMPLETIONS_DIR = "${TAR_DIR}/completions"
 
    target="${1:-}"
    if [[ $target == *"osx"* ]]; then
@@ -32,9 +33,15 @@ release() {
 
    bin_path="${BOMBADIL_HOME}/target/${bin_folder}/bombadil"
    chmod +x "$bin_path"
-   mkdir -p "$TAR_DIR" 2> /dev/null || true
+   mkdir -p "$COMPLETIONS_DIR" 2> /dev/null || true
 
    cp "$bin_path" "$TAR_DIR"
+
+   # Copy completion files
+   cp "${BOMBADIL_HOME}/target/${bin_folder}/build/toml-bombadil/"-*/out/_bombadil "$COMPLETIONS_DIR"
+   cp "${BOMBADIL_HOME}/target/${bin_folder}/build/toml-bombadil/"-*/out/bombadil.bash "$COMPLETIONS_DIR"
+   cp "${BOMBADIL_HOME}/target/${bin_folder}/build/toml-bombadil/"-*/out/bombadil.elv "$COMPLETIONS_DIR"
+   cp "${BOMBADIL_HOME}/target/${bin_folder}/build/toml-bombadil/"-*/out/bombadil.fish "$COMPLETIONS_DIR"
 
    cd "$TAR_DIR"
    tar -czf bombadil.tar.gz *
