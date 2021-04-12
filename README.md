@@ -484,6 +484,7 @@ starship = { source = "zsh/starship.toml", target = ".config/starhip.toml" }
 If you use Bombadil please submit an issue or a PR to update this section, we will be happy to reference your dotfiles here !
  
 - [https://github.com/oknozor/dotfiles](https://github.com/oknozor/dotfiles)
+- [https://github.com/HaoZeke/Dotfiles](https://github.com/HaoZeke/Dotfiles/tree/bombadil)
   
 ## Contributing
 
