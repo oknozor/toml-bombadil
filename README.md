@@ -605,7 +605,8 @@ If you use Bombadil please submit an issue, or a PR to update this section, we w
 - [https://github.com/oknozor/dotfiles](https://github.com/oknozor/dotfiles)
 - [https://github.com/DSpeckhals/dotfiles](https://github.com/DSpeckhals/dotfiles)
 - [https://github.com/mrkajetanp/dotfiles](https://github.com/mrkajetanp/dotfiles)
-
+- [https://github.com/HaoZeke/Dotfiles](https://github.com/HaoZeke/Dotfiles/tree/bombadil)
+  
 ## Contributing
 
 Found a bug, have a suggestion for a new feature ?
