@@ -1,7 +1,7 @@
 # Bats test
 
 [Bats](https://github.com/bats-core/bats-core) is a bash testing framework. Toml bombadil use it in docker to write 
-realistic test case without breaking your workstation dot file.
+realistic test cases without breaking your workstation dotfiles.
 
 1. Write a new bat test in [tests.bat](tests.bat) for example : 
     ```sh
@@ -24,3 +24,5 @@ realistic test case without breaking your workstation dot file.
 
 4 tests, 0 failures
 ```
+
+4. Submit a PR to the current release candidate branch.

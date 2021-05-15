@@ -7,8 +7,8 @@ use std::ops::Not;
 use std::path::PathBuf;
 
 /// The Global bombadil configuration
-#[serde(deny_unknown_fields)]
 #[derive(Debug, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
 pub struct Settings {
     /// User define dotfiles directory, usually your versioned dotfiles
     pub(crate) dotfiles_dir: PathBuf,
@@ -143,7 +143,7 @@ impl Settings {
                 match sub_setting {
                     Ok(sub_settings) => self.merge(sub_settings),
                     Err(err) => {
-                        eprintln!("{} {:?} {}", "Error loading settings from : ", path, err)
+                        eprintln!("Error loading settings from : {:?} {}", path, err)
                     }
                 }
             } else {

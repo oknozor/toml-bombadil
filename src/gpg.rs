@@ -66,11 +66,9 @@ impl Gpg {
         match output {
             Ok(output) => {
                 if output.status.success() {
-                    Ok(String::from_utf8(output.stdout).expect("Error getting encrypted value"))
+                    Ok(String::from_utf8(output.stdout)?)
                 } else {
-                    Err(anyhow!(
-                        String::from_utf8(output.stdout).expect("Error getting encrypted value")
-                    ))
+                    Err(anyhow!(String::from_utf8(output.stdout)?))
                 }
             }
             Err(err) => Err(anyhow!("Error encrypting content : {}", err)),
@@ -137,7 +135,7 @@ mod test {
 
     #[test]
     fn should_not_encrypt_unkown_gpg_user() {
-        let gpg = Gpg::new("unknown.user ");
+        let gpg = Gpg::new("unknown.user");
 
         let result = gpg.encrypt("test");
 
