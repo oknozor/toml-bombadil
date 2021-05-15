@@ -22,6 +22,10 @@ several ways you can help us :
     We will be happy to provide guidance and respond to your questions.
     You might want to pick a tagged [good first issue](https://github.com/oknozor/toml-bombadil/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22)
 
+- **Write bats tests** : 
+  If you have spotted a bug, a great way to help us improve toml bombadil is to write a
+  [bats](https://bats-core.readthedocs.io/en/latest/) test to reproduce it, see [HOWTO](bats-test/HOWTO.md) for more info. 
+  
 - **Suggesting new features** : 
 
     You have an idea for a new feature ? You are welcome to open a [feature request](https://github.com/oknozor/toml-bombadil/issues/new?assignees=oknozor&labels=enhancement&template=feature_request.md&title=%5BFEATURE%5D)

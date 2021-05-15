@@ -1,0 +1,10 @@
+# Path to your dotfiles relative to your $HOME directory
+dotfiles_dir = "dotfiles"
+
+[settings]
+hooks = [ "echo Hello from bombadil" ]
+
+# A dot entry representing a symlink, `source` is relative to `dotfiles_dir`
+# and target shall be relative to $HOME directory or absolute.
+[settings.dots]
+alacritty = { source = "dummy.dot", target = ".config/dummy.dot" }
