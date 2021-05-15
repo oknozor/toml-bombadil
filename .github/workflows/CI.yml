@@ -72,3 +72,16 @@ jobs:
         with:
           command: clippy
           args: -- -D warnings
+  e2e:
+    name: End to end tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v2
+        with:
+          submodules: recursive
+
+      - name: Run bats test harnesss
+        run: |
+          docker build -t bombadil-tests ./
+          docker run bombadil-tests
