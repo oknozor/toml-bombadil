@@ -3,7 +3,7 @@
 [Bats](https://github.com/bats-core/bats-core) is a bash testing framework. Toml bombadil use it in docker to write 
 realistic test cases without breaking your workstation dotfiles.
 
-1. Write a new bat test in [tests.bat](tests.bat) for example : 
+1. Write a new bat test in [tests.bat](tests.sh) for example : 
     ```sh
     @test "Print version" {
       run bombadil --version

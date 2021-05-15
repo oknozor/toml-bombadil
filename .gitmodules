@@ -6,4 +6,4 @@
 	url = https://github.com/bats-core/bats-assert
 [submodule "bats-tests/bats-file"]
 	path = bats-tests/bats-file
-	url = git@github.com:ztombol/bats-file.git
+	url = git@github.com:bats-core/bats-file.git
