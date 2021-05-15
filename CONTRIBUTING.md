@@ -24,7 +24,7 @@ several ways you can help us :
 
 - **Write bats tests** : 
   If you have spotted a bug, a great way to help us improve toml bombadil is to write a
-  [bats](https://bats-core.readthedocs.io/en/latest/) test to reproduce it, see [HOWTO](bats-test/HOWTO.md) for more info. 
+  [bats](https://bats-core.readthedocs.io/en/latest/) test to reproduce it, see [HOWTO](bats-tests/HOWTO.md) for more info. 
   
 - **Suggesting new features** : 
 

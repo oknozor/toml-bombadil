@@ -1,3 +1,6 @@
+// Fixme : This should not be needed when updating pest to the up coming release
+#![allow(clippy::upper_case_acronyms)]
+
 #[macro_use]
 extern crate serde_derive;
 #[macro_use]
@@ -395,7 +398,7 @@ impl Bombadil {
     }
 }
 
-pub(crate) fn unlink(path: &PathBuf) -> Result<()> {
+pub(crate) fn unlink(path: &Path) -> Result<()> {
     if fs::symlink_metadata(path).is_ok() {
         if path.is_dir() {
             fs::remove_dir_all(path)?;
@@ -741,7 +744,6 @@ mod tests {
 
         // Assert
         // STDOUT should be asserted once those test facilities are in place.
-
         let _ = fs::remove_dir_all(tmp);
     }
 

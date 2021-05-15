@@ -8,7 +8,7 @@ use std::fs;
 use std::fs::File;
 use std::io::Write;
 use std::os::unix;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 /// Represent a link between a `source` dotfile in the user defined dotfiles directory
 /// and the XDG `target` path where it should be linked
@@ -45,7 +45,7 @@ pub struct DotOverride {
 impl Dot {
     pub(crate) fn install(
         &self,
-        dotfile_dir: &PathBuf,
+        dotfile_dir: &Path,
         vars: &Variables,
         auto_ignored: Vec<PathBuf>,
         gpg: Option<&Gpg>,
@@ -71,7 +71,7 @@ impl Dot {
         self.traverse_and_copy(source, copy_path, ignored_paths.as_slice(), &vars)
     }
 
-    pub(crate) fn symlink(&self, dotfile_dir: &PathBuf) -> Result<()> {
+    pub(crate) fn symlink(&self, dotfile_dir: &Path) -> Result<()> {
         let copy_path = &self.copy_path(dotfile_dir);
         let target = &self.target_path()?;
 
@@ -112,7 +112,7 @@ impl Dot {
         }
     }
 
-    fn get_local_vars(source: &PathBuf, gpg: Option<&Gpg>) -> Variables {
+    fn get_local_vars(source: &Path, gpg: Option<&Gpg>) -> Variables {
         Variables::from_toml(source, gpg).unwrap_or_else(|err| {
             eprintln!("{}", err.to_string().yellow());
             Variables::default()
@@ -132,12 +132,12 @@ impl Dot {
 
     fn traverse_and_copy(
         &self,
-        source: &PathBuf,
-        target: &PathBuf,
+        source: &Path,
+        target: &Path,
         ignored: &[PathBuf],
         vars: &Variables,
     ) -> Result<()> {
-        if ignored.contains(source) {
+        if ignored.contains(&PathBuf::from(source)) {
             return Ok(());
         }
 
@@ -173,7 +173,7 @@ impl Dot {
 
     /// Resolve dot source copy path ({dotfiles/dotsource) against user defined dotfile directory
     /// Check if file exists
-    fn source_path(&self, dotfile_dir: &PathBuf) -> Result<PathBuf> {
+    fn source_path(&self, dotfile_dir: &Path) -> Result<PathBuf> {
         let path = dotfile_dir.join(&self.source);
 
         if path.exists() {
@@ -187,7 +187,7 @@ impl Dot {
         }
     }
 
-    pub(crate) fn copy_path(&self, dotfile_dir: &PathBuf) -> PathBuf {
+    pub(crate) fn copy_path(&self, dotfile_dir: &Path) -> PathBuf {
         dotfile_dir.join(".dots").join(&self.source)
     }
 }
@@ -195,7 +195,7 @@ impl Dot {
 impl DotOverride {
     pub(crate) fn resolve_var_path(
         &self,
-        dotfile_dir: &PathBuf,
+        dotfile_dir: &Path,
         origin: Option<&PathBuf>,
     ) -> Option<PathBuf> {
         let source = match (self.source(), origin) {
@@ -210,7 +210,7 @@ impl DotOverride {
 }
 
 impl Dot {
-    pub(crate) fn resolve_var_path(&self, dotfile_dir: &PathBuf) -> Option<PathBuf> {
+    pub(crate) fn resolve_var_path(&self, dotfile_dir: &Path) -> Option<PathBuf> {
         self.resolve_from_source(dotfile_dir, &self.source, &self.vars)
     }
 }
@@ -228,9 +228,9 @@ pub(crate) trait DotVar {
 
     fn resolve_from_source(
         &self,
-        dotfile_dir: &PathBuf,
-        source: &PathBuf,
-        path: &PathBuf,
+        dotfile_dir: &Path,
+        source: &Path,
+        path: &Path,
     ) -> Option<PathBuf> {
         let relative_to_dot = dotfile_dir.join(source).join(path);
         let relative_to_dotfile_dir = dotfile_dir.join(path);
@@ -255,9 +255,9 @@ pub(crate) trait DotVar {
 
     fn vars_path_not_found(
         &self,
-        dotfile_dir: &PathBuf,
-        source: &PathBuf,
-        path: &PathBuf,
+        dotfile_dir: &Path,
+        source: &Path,
+        path: &Path,
     ) -> Option<PathBuf> {
         if !self.is_default_var_path() {
             eprintln!(
