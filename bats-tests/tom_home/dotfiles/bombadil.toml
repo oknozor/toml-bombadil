@@ -3,7 +3,7 @@ dotfiles_dir = "dotfiles"
 
 [settings]
 hooks = [ "echo Hello from bombadil" ]
-
+vars = [ "vars.toml"]
 # A dot entry representing a symlink, `source` is relative to `dotfiles_dir`
 # and target shall be relative to $HOME directory or absolute.
 [settings.dots]
