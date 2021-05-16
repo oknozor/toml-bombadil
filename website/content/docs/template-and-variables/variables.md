@@ -9,20 +9,35 @@ sort_by = "weight"
 template = "docs/page.html"
 
 [extra]
-lead = "Install and configure Toml Bombadil"
+lead = """
+Toml Bombadil has a tiny template engine. Turning dotfiles into templates is meant to make theme editing, environment managment
+and ricing smoother. 
+"""
 toc = true
 top = false
 +++
 
-## Variables
+### Source variables
 
+To use variables in bombadil you need to source your variable files in bombadil's config :
 
-### Variables
+```toml
+[settings]
+vars = [ "vars.toml" ]
+```
 
-Now that your dot files are symlinked with Bombadil you can define some variables.
-A Bombadil var files is a valid toml file containing only key with string values :
+You can split variables into multiple files : 
 
-For example you have the following file in `{dotfiles_dir}/vars.toml`.
+```toml
+[settings]
+vars = [ "colors.toml", "env_vars.toml" ]
+```
+
+### Declare variables
+
+A Bombadil var files is a toml file containing key with string values only.
+
+For example, you have the following file in `{dotfiles_dir}/vars.toml`.
 
 ```toml
 terminal = "alacritty"
@@ -37,21 +52,16 @@ yellow = "#FFC620"
 blue = "#1BA6FA"
 ```
 
-You can use the var file by adding the following to your Bombadil config :
-```toml
-[settings]
-vars = [ "vars.toml" ]
-```
-
-Let's say you have the following dot entry :
+Given the following dot entry : 
 ```toml
 [settings.dots]
-alacritty = { source = "alacritty", target = ".config/alacritty/alacritty.yml" }
+alacritty = { source = "alacritty.yml", target = ".config/alacritty/alacritty.yml" }
 ```
 
-`alacritty.yaml` color scheme could look like this :
+The `source` attributes point to a template dotfile named `alacritty.yaml`. We can use the previously defined variables
+using the `__[variable_name]__` syntax :
+
 ```yaml
-...
 # {dotfiles}/alacritty.yml
 colors:
    primary:
@@ -60,10 +70,15 @@ colors:
    cursor:
        text: "__[text]__"
        cursor: "__[cursor]__"
-...
 ```
 
-The output file actually linked to alacritty config would be this :
+### Rendering
+
+To inject your variables, simply run `bombadil link`. Templates will be rendered to the `.dots` directory, then symlinked
+according to your dots config.
+
+
+In this example the output file actually linked to alacritty's config would look like this :
 
 ```yaml
 ...
@@ -75,8 +90,7 @@ colors:
   cursor:
     text: "#FF261E"
     cursor: "#FF261E"
-...
+# ...
 ```
 
-To update variables, and the current config simply run `bombadil link`.
-
+In the next section we will see how to organize our variables to make reusable structured themes using variable references. 
