@@ -7,3 +7,6 @@
 [submodule "bats-tests/bats-file"]
 	path = bats-tests/bats-file
 	url = git@github.com:bats-core/bats-file.git
+[submodule "website/themes/adidoks"]
+	path = website/themes/adidoks
+	url = git@github.com:aaranxu/adidoks.git
