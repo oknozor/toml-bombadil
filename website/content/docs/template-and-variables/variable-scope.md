@@ -9,54 +9,72 @@ sort_by = "weight"
 template = "docs/page.html"
 
 [extra]
-lead = "Manage variable scope"
+lead = """
+It is perfectly fine to use only var files using [settings.vars] to manage themes and profile. But, as your dotfiles 
+repository grow, this can quickly become a tedious process. To provide isolation between dotfiles vars, you can use the 
+dot `var` attribute. 
+"""
 toc = true
 top = false
 +++
 
 ### Variable scopes
 
-Although it is perfectly fine to use only var files using `settings.vars`, managing themes and profile can be a tedious
-process. To provide isolation between dotfiles vars, you can use the dot `var` attribute :
+By default, bombadil will look for a file named `vars.toml` in every dotfile entry source directory : 
 
-By default, bombadil will look for a file named `vars.toml` in every dot entry dir.
-For this example the var file is explicitly named`wofi_vars.toml` but `my_dot_dir/vars.toml` would be automatically picked.
-
+Let us assume the following dotfiles directory : 
 
 ```
-dotfiles/wofi
-├── config
-├── solarized.toml
-├── style.css
-└── wofi_vars.toml
+dotfiles
+└── bombadil.toml
+└── theme.toml
+└── wofi
+    ├── config
+    ├── style.css
+    └── vars.toml
+
 ```
 
-Here we define variables that will only be resolved when rendering `wofi` template dots.
-- Global vars defined under `settings.vars` will still be accessible in wofi dotfiles.
-- Global vars defined under `settings.vars` will be overridden by colliding local variables.
+With `bombadil.toml` containing the above dotfile entry : 
 
 ```toml
-[settings.dots]
-wofi = { source = "wofi", target = ".config/wofi", vars = "wofi_vars.toml" }
-``` 
+wofi = { source = "wofi", target = ".config/wofi" }
+```
 
-A common pattern to organize your themes and profiles would be to maintain a global variable file for each variant,
-and a corresponding local variable file for each dot entry :
+And some variables defined in `wofi/vars.toml` :
 
 ```toml
-dotfiles_dir = "my_dotfiles"
-
-[settings]
-vars = [ "themes/default.toml" ]
-
-[settings.dots]
-wofi = { source = "wofi", target = ".config/wofi", vars = "wofi_vars.toml" }
-
-[profiles.solarized]
-# Our solarized theme overrides the default vars
-vars = [ "themes/solarized.toml" ]
-
-[[dots]]
-# Override the local var path with solarized theme
-wofi = { vars = "solarized.toml" }
+# Here we use variable reference from `theme.toml`
+bg = "%blue"
+input_bg = "%white"
+input_color = "%light_blue"
+input_focused_bg = "%blue"
 ```
+
+Running `bombadil link` will render variables defined in `wofi/vars.toml` only for templates that resides in `wofi/`.
+
+### Explicitly declare scoped variables
+
+The previous example works fine as long as our dotfile source is a directory.
+Indeed, Bombadil will look for a variable file named `vars.toml` in the source directory and everything will be rendered
+accordingly when running `bombadil link`.  
+
+What if we are linking a file directly ? 
+
+```toml
+gtk3 = { source = "gtk/gtk-3.0", target = ".config/gtk-3.0" }
+```
+
+Here we are directly rendering a file instead of a directory, looking for a variable file here would be confusing and
+might collide with other dotfile  entries residing in the `gtk/` source directory. 
+
+To solve this we can explicitly declare a variable file for our dot entry : 
+
+```toml
+gtk3 = { source = "gtk/gtk-3.0", target = ".config/gtk-3.0", vars = "gtk/gtk-arc.toml" }
+```
+
+Note that if you prefer having every variable files named, this also works for dotfile directory. 
+
+In the next section we will see how to use GPG encryption to securely manage secret values in Bombadil variables. 
+
