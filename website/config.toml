@@ -1,0 +1,15 @@
+# The URL the site will be built for
+base_url = "https://example.com"
+theme = "adidoks"
+title = "Toml Bombadil"
+
+compile_sass = true
+highlight_code = true
+build_search_index = true
+
+[extra]
+theme_color = "#000"
+author = "Paul Delafosse"
+github = "https://github.com/oknozor/toml-bombadil"
+twitter = "https://twitter.com/AfkTartine"
+email = "paul.delafosse@protonmail.com"
