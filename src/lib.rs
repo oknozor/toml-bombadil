@@ -8,7 +8,7 @@ extern crate anyhow;
 #[macro_use]
 extern crate pest_derive;
 
-use crate::dots::Dot;
+use crate::dots::{Dot, DotVar};
 use crate::gpg::Gpg;
 use crate::hook::Hook;
 use crate::settings::{Profile, Settings};
@@ -233,13 +233,14 @@ impl Bombadil {
                     let source = source.clone();
                     let target = target.clone();
                     let ignore = dot_override.ignore.clone();
+
                     self.dots.insert(
                         key.to_string(),
                         Dot {
                             source,
                             target,
                             ignore,
-                            vars: Default::default(),
+                            vars: Dot::default_vars(),
                         },
                     );
                 } else {
