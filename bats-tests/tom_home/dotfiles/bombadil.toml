@@ -8,3 +8,6 @@ vars = [ "vars.toml"]
 # and target shall be relative to $HOME directory or absolute.
 [settings.dots]
 alacritty = { source = "dummy.dot", target = ".config/dummy.dot" }
+
+[profiles.i3.dots]
+i3 =  { source = "i3", target = ".config/i3" }

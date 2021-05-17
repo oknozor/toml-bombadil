@@ -234,7 +234,6 @@ pub(crate) trait DotVar {
     ) -> Option<PathBuf> {
         let relative_to_dot = dotfile_dir.join(source).join(path);
         let relative_to_dotfile_dir = dotfile_dir.join(path);
-
         // FIXME : we should not try to look for path like this
         // Instead "../vars.toml" should be used
         if relative_to_dot.exists() {

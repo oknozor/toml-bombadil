@@ -35,3 +35,10 @@ load 'bats-file/load'
   assert_file_contains "$HOME/.config/dummy.dot" "green is #41de1f"
 }
 
+@test "Link profile" {
+  run bombadil link -p i3
+  assert_success
+  assert_file_exist "$HOME/.config/i3/config"
+  assert_symlink_to "$HOME/dotfiles/.dots/i3" "$HOME/.config/i3"
+}
+
