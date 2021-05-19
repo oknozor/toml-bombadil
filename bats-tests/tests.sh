@@ -24,7 +24,9 @@ load 'bats-file/load'
   run bombadil link
   assert_success
   assert_file_exist "$HOME/dotfiles/.dots/dummy.dot"
+  assert_file_exist "$HOME/dotfiles/.dots/maven/settings.xml"
   assert_symlink_to "$HOME/dotfiles/.dots/dummy.dot" "$HOME/.config/dummy.dot"
+  assert_symlink_to "$HOME/dotfiles/.dots/maven/settings.xml" "$HOME/.m2/settings.xml"
 }
 
 @test "Vars injected" {
@@ -40,5 +42,20 @@ load 'bats-file/load'
   assert_success
   assert_file_exist "$HOME/.config/i3/config"
   assert_symlink_to "$HOME/dotfiles/.dots/i3" "$HOME/.config/i3"
+}
+
+@test "Unlink works" {
+  run bombadil unlink
+  assert_success
+  assert_not_symlink_to "$HOME/dotfiles/.dots/i3" "$HOME/.config/i3"
+  assert_not_symlink_to "$HOME/dotfiles/.dots/dummy.dot" "$HOME/.config/dummy.dot"
+}
+
+@test "Link multiple profile" {
+  run bombadil link -p i3 corporate
+  assert_success
+  assert_file_exist "$HOME/.config/i3/config"
+  assert_symlink_to "$HOME/dotfiles/.dots/i3" "$HOME/.config/i3"
+  assert_symlink_to "$HOME/dotfiles/.dots/maven/corporate.settings.xml" "$HOME/.m2/settings.xml"
 }
 

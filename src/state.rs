@@ -39,10 +39,18 @@ impl BombadilState {
         Ok(())
     }
 
-    pub fn remove_targets(&self) {
+    pub fn remove_targets(&self) -> Vec<Result<PathBuf>> {
+        let mut unlink_results = vec![];
+
         self.symlinks.iter().for_each(|path| {
-            let _ = unlink(path);
+            unlink_results.push(
+                unlink(path)
+                    .map(|_| path.to_owned())
+                    .map_err(|err| anyhow!("Failed to unlink dot entry {:?} : {}", path, err)),
+            );
         });
+
+        unlink_results
     }
 }
 

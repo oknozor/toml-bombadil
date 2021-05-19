@@ -137,8 +137,8 @@ fn main() {
     if let Some(subcommand) = matches.subcommand_name() {
         match subcommand {
             INSTALL => {
-                let install_commmand = matches.subcommand_matches(INSTALL).unwrap();
-                let config_path = install_commmand.value_of("CONFIG").map(PathBuf::from);
+                let install_command = matches.subcommand_matches(INSTALL).unwrap();
+                let config_path = install_command.value_of("CONFIG").map(PathBuf::from);
 
                 Bombadil::link_self_config(config_path).unwrap_or_else(|err| fatal!("{}", err));
             }

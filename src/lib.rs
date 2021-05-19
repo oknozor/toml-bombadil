@@ -137,18 +137,20 @@ impl Bombadil {
     }
 
     pub fn uninstall(&self) -> Result<()> {
-        let mut success_paths: Vec<PathBuf> = Vec::new();
-        let mut error_paths: Vec<PathBuf> = Vec::new();
+        let mut success_paths: Vec<&PathBuf> = Vec::new();
+        let mut error_paths: Vec<&anyhow::Error> = Vec::new();
 
-        for (_, dot) in self.dots.iter() {
-            let target = &dot.target_path()?;
+        // Remove symlink from previous state
+        let path = self.dotfiles_absolute_path()?;
+        let previous_state = BombadilState::read(path)?;
+        let remove_result = previous_state.remove_targets();
 
-            if let Ok(()) = dot.unlink() {
-                success_paths.push(target.clone());
-            } else {
-                error_paths.push(target.clone());
-            }
-        }
+        remove_result
+            .iter()
+            .for_each(|remove_result| match remove_result {
+                Ok(path) => success_paths.push(path),
+                Err(e) => error_paths.push(e),
+            });
 
         if !success_paths.is_empty() {
             println!("{}", "Removed symlinks:".green());
