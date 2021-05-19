@@ -19,7 +19,7 @@ top = false
 
 ### Declare variable references
 
-A variable reference is just like any other, except the value should be a variable name prefixed with `%`.
+A variable reference is declared like any other variable, except the value should be a variable name prefixed with `%`.
 
 ```toml
 a_variable = "42"

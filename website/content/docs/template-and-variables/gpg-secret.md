@@ -81,4 +81,4 @@ Make sure the secret has been written and encrypted :
    bombadil link
    ```
 
-That's it ! In the next chapter we will take at Bombadil profiles and themes.
+That's it ! In the next chapter we will take a look at Bombadil profiles and themes.
