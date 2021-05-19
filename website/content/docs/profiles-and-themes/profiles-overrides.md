@@ -9,18 +9,22 @@ sort_by = "weight"
 template = "docs/page.html"
 
 [extra]
-lead = "Manage profiles dot entries"
+lead = """
+As we saw on the previous chapter Bombadil's profile can be used to link new dot files, in this chapter we will
+see how to alter existing dotfile entries.
+"""
 toc = true
 top = false
 +++
 
-### Overriding dot entries
+## Dot entry override
 
 Let's say you are using [maven](https://maven.apache.org/) for several java projects, some of them are open source,
-and some of them uses a corporate repository :
+and some of them uses a corporate repository. Maven config typically resides in `$HOME/.m2/settings.xml`. The problem here
+is that we want to use a different config depending on the project we are working on. 
 
 
-let's assume your dotfiles have the following structure :
+To solve this we will define the following dotfiles :
 
 ```shell script
 ~/bombadil-example
@@ -30,11 +34,14 @@ let's assume your dotfiles have the following structure :
     └── settings.xml
 ```
 
-Your bombadil config contains a single dot entry with an alternate profile :
+## Configuration
+
+Bombadil's config contains a single dot entry with the alternate profile `corporate` :
 
 ```toml
 # bombadil.toml
 dotfile_dir = "bombadil-example"
+
 [settings.dots]
 maven = { source = "maven/settings.xml", target = ".m2/settings.xml"}
 
@@ -42,29 +49,29 @@ maven = { source = "maven/settings.xml", target = ".m2/settings.xml"}
 maven = { source = "maven/settings.corporate.xml" }
 ```
 
-When overriding a default dot entry under a new profile `source` and `target` property are optional,
-the default profile value will be used if not specified. You can also define a new dot entry in which case `source`
-and `target` are required.
+Notice on the `corporate` profile we are redefining the `maven` dot entry and only specifying the `source` attribute.
 
-If you now run `bombadil link --help` you should notice a new profile value is available :
+## Linking 
 
-```
-USAGE:
-    bombadil link
-
-OPTIONS:
-    -p, --profiles <PROFILES>...    A list of comma separated profiles to activate [possible values: corporate]
-    -h, --help                      Prints help information
-```
-
-`bombadil link` would produce the following link :
+Linking the default profile with `bombadil link`, will produce the following link :
 ```shell script
-❯ bombadil link
+bombadil link
 "/home/okno/dotfiles/.dots/maven/settings.xml" => "/home/okno/.m2/settings.xml"
 ```
 
-Linking with the `corporate` profile would use the alternate source for `.m2/settings.xml` :
+Linking with the `corporate` profile will use the alternate source for `.m2/settings.xml` :
+
 ```shell script
-❯ bombadil link -p corporate
+bombadil link -p corporate
 "/home/okno/dotfiles/.dots/maven/settings.corporate.xml" => "/home/okno/.m2/settings.xml"
 ```
+
+When overriding a default dot entry under a new profile, `source` and `target` property are optional.
+The default profile value will be used if not specified. 
+
+As we saw in the previous chapter, you can also define a new
+dot entry in which case `source` and `target` are required.
+
+In the next chapter we will see how to override variables with profiles.
+
+
