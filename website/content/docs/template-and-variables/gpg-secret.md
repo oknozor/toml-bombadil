@@ -4,7 +4,7 @@ description = "Manage GPG secret"
 date = 2021-05-16
 updated = 2021-05-16
 draft = false
-weight = 20
+weight = 4
 sort_by = "weight"
 template = "docs/page.html"
 
