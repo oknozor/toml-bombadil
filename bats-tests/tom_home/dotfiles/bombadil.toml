@@ -4,10 +4,13 @@ dotfiles_dir = "dotfiles"
 [settings]
 hooks = [ "echo Hello from bombadil" ]
 vars = [ "vars.toml"]
-# A dot entry representing a symlink, `source` is relative to `dotfiles_dir`
-# and target shall be relative to $HOME directory or absolute.
+
 [settings.dots]
 alacritty = { source = "dummy.dot", target = ".config/dummy.dot" }
+maven = { source = "maven/settings.xml", target = ".m2/settings.xml" }
+
+[profiles.corporate.dots]
+maven = { source = "maven/corporate.settings.xml", target = ".m2/settings.xml" }
 
 [profiles.i3.dots]
 i3 =  { source = "i3", target = ".config/i3" }
