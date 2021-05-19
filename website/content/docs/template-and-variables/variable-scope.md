@@ -44,7 +44,7 @@ wofi = { source = "wofi", target = ".config/wofi" }
 And some variables defined in `wofi/vars.toml` :
 
 ```toml
-# Here we use variable reference from `theme.toml`
+# Here we use variable references from `theme.toml`
 bg = "%blue"
 input_bg = "%white"
 input_color = "%light_blue"
@@ -62,19 +62,19 @@ accordingly when running `bombadil link`.
 What if we are linking a file directly ? 
 
 ```toml
-gtk3 = { source = "gtk/gtk-3.0", target = ".config/gtk-3.0" }
+zsh = { source = "zsh/zshrc", target = ".zshrc" }
 ```
 
-Here we are directly rendering a file instead of a directory, looking for a variable file here would be confusing and
-might collide with other dotfile  entries residing in the `gtk/` source directory. 
+Here we are directly rendering a file instead of a directory, looking for a default variable file here would be confusing and
+might collide with other dotfile  entries residing in the `zsh/` source directory. 
 
 To solve this we can explicitly declare a variable file for our dot entry : 
 
 ```toml
-gtk3 = { source = "gtk/gtk-3.0", target = ".config/gtk-3.0", vars = "gtk/gtk-arc.toml" }
+zsh = { source = "zsh/zshrc", target = ".zshrc", vars = "zsh/shell_vars.toml" }
 ```
 
-Note that if you prefer having every variable files named, this also works for dotfile directory. 
+Note that if you prefer having every single variable files named, this also works for dotfile directory. 
 
 In the next section we will see how to use GPG encryption to securely manage secret values in Bombadil variables. 
 

@@ -78,7 +78,7 @@ To inject your variables, simply run `bombadil link`. Templates will be rendered
 according to your dots config.
 
 
-In this example the output file actually linked to alacritty's config would look like this :
+In the previous example the output file actually linked to alacritty's config would look like this :
 
 ```yaml
 ...
