@@ -4,7 +4,7 @@ description = "Toml Bombadil is a dotfile manager with templating written in Rus
 date = 2021-05-16
 updated = 2021-05-16
 draft = false
-weight = 10
+weight = 1
 sort_by = "weight"
 template = "docs/page.html"
 
