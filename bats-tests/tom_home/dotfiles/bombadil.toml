@@ -8,9 +8,18 @@ vars = [ "vars.toml"]
 [settings.dots]
 alacritty = { source = "dummy.dot", target = ".config/dummy.dot" }
 maven = { source = "maven/settings.xml", target = ".m2/settings.xml" }
+bash = { source = "bashrc", target = ".bashrc" }
 
 [profiles.corporate.dots]
 maven = { source = "maven/corporate.settings.xml", target = ".m2/settings.xml" }
 
 [profiles.i3.dots]
 i3 =  { source = "i3", target = ".config/i3" }
+
+[profiles.java-16]
+vars = [ "profiles/java16.toml"]
+
+[profiles.java-17.dots]
+bash = { vars = "profiles/java17.toml" }
+
+
