@@ -9,28 +9,50 @@ sort_by = "weight"
 template = "docs/page.html"
 
 [extra]
-lead = "Manage Bombadil Profile variables"
+lead = "In addition to dotfiles overriding, Bombadil profiles supports variable overrides."
 toc = true
 top = false
 +++
 
-### Adding variables
+### Create a dotfile template
 
-Here is an example bombadil config :
+Let's assume you have the following in your `.bashrc` dotfile :
 
-```shell script
-~/bombadil-example
-├── bashrc
-├── bombadil.toml
-├── java10-vars.toml
-└── vars.toml
+```bash
+# ~/bombadil-example/bashrc
+export JAVA_HOME=__[java_home]__
+# ...
 ```
 
-Adding or overriding variables can be done this way :
+And your default profiles variable look like this : 
 
 ```toml
-# bombadil.toml
+# ~/bombadil-example/vars.toml
+java_home = "/etc/java-openjdk"
+# ...
+```
+
+Here is our bombadil config : 
+```toml
 dotfile_dir = "bombadil-example"
+
+[settings]
+vars = [ "vars.toml" ]
+
+[settings.dots]
+bashrc = { source = "bashrc", target = ".bashrc"}
+```
+
+So far we have defined a variable for `$JAVA_HOME` and we are using it once. 
+Not very useful. 
+
+### Override default variable
+
+Now that we have declared some variables in the default profile, we can override it using a new profile : 
+
+```toml
+dotfile_dir = "bombadil-example"
+
 [settings]
 vars = [ "vars.toml" ]
 
@@ -39,27 +61,16 @@ bashrc = { source = "bashrc", target = ".bashrc"}
 
 [profiles.corporate]
 vars = [ "java10-vars.toml" ]
-``` 
-
-```shell script
-# ~/bombadil-example/bashrc
-export JAVA_HOME=__[java_home]__
-# ...
 ```
 
-```shell script
-# ~/bombadil-example/vars.toml
-java_home = "/etc/java-openjdk"
-# ...
-```
+The profile variable file will be loaded after the default one and any matching variable name will override the default :   
 
-```shell script
-# ~/bombadil-example/java10-vars.toml
+```toml
 java_home = "/etc/java10-openjdk"
 # ...
 ```
 
-Running `bombadil link -p corporate` would produce the following `.bashrc` :
+Running `bombadil link -p corporate` would now produce the following `.bashrc` :
 ```shell script
 export JAVA_HOME=/etc/java10-openjdk
 ```
