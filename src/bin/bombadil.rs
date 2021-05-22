@@ -1,6 +1,6 @@
 use clap::{App, AppSettings, Arg, Shell, SubCommand};
 use std::io::BufRead;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use toml_bombadil::settings::Settings;
 use toml_bombadil::{Bombadil, MetadataType, Mode};
 
@@ -146,6 +146,7 @@ fn main() {
             LINK => {
                 let mut bombadil =
                     Bombadil::from_settings(Mode::Gpg).unwrap_or_else(|err| fatal!("{}", err));
+
                 let link_command = matches.subcommand_matches(LINK).unwrap();
 
                 if link_command.is_present("profiles") {
@@ -174,6 +175,21 @@ fn main() {
                 };
 
                 let var_file = add_secret_subcommand.value_of("file").unwrap();
+                let path = Path::new(var_file);
+
+                if !path.exists() {
+                    fatal!(
+                        "Error trying to write secret to {} : No such file",
+                        var_file
+                    )
+                };
+
+                if path.is_dir() {
+                    fatal!(
+                        "Error trying to write secret to {} : is a directory",
+                        var_file
+                    )
+                }
 
                 let bombadil =
                     Bombadil::from_settings(Mode::Gpg).unwrap_or_else(|err| fatal!("{}", err));
