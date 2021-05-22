@@ -1,5 +1,6 @@
 # Path to your dotfiles relative to your $HOME directory
 dotfiles_dir = "dotfiles"
+gpg_user_id = "test@toml.bombadil.org"
 
 [settings]
 hooks = [ "echo Hello from bombadil" ]

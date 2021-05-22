@@ -77,6 +77,14 @@ impl Variables {
         let mut contents = String::new();
         buf_reader.read_to_string(&mut contents)?;
 
+        // Merge variable and secret
+        let mut variables = self.variables.clone();
+
+        // FIXME : avoid cloning here
+        self.secrets.iter().for_each(|(k, v)| {
+            variables.insert(k.to_owned(), v.to_owned());
+        });
+
         let pairs = BombadilParser::parse(Rule::file, &contents)
             .expect("Unable to parse template file")
             .next()
@@ -89,7 +97,7 @@ impl Variables {
                 Rule::variable => {
                     let var_name = pair.into_inner().next().unwrap().as_str().trim();
 
-                    let value = self.variables.get(var_name).cloned().unwrap_or_else(|| {
+                    let value = variables.get(var_name).cloned().unwrap_or_else(|| {
                         let err = format!("Undefined variable : {} in {:?}", var_name, path);
                         eprintln!("{}", err.yellow());
                         "undefined variable".to_string()
@@ -173,17 +181,35 @@ mod test {
 
     #[test]
     fn should_inject_variables() {
-        let mut map = HashMap::new();
-        map.insert("red".to_string(), "red_value".to_string());
+        let mut variables = HashMap::new();
+        variables.insert("red".to_string(), "red_value".to_string());
 
         let string = Variables {
-            variables: map,
+            variables,
             secrets: Default::default(),
         }
         .to_dot(Path::new("tests/dotfiles_simple/template"))
         .unwrap();
 
         assert_eq!(string, "color: red_value");
+    }
+
+    #[test]
+    fn should_inject_secret_variables() {
+        let mut variables = HashMap::new();
+        variables.insert("red".to_string(), "red_value".to_string());
+        variables.insert("pass".to_string(), "encrypted with gpg".to_string());
+
+        let mut secrets = HashMap::new();
+        secrets.insert("pass".to_string(), "hunter2".to_string());
+
+        let dot_content = Variables { variables, secrets }
+            .to_dot(Path::new("tests/dotfiles_with_secret/template"))
+            .unwrap();
+
+        println!("{}", dot_content);
+        assert!(dot_content.contains("color: red_value"));
+        assert!(dot_content.contains("secret: hunter2"));
     }
 
     #[test]
