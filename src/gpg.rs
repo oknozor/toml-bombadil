@@ -26,7 +26,6 @@ impl Gpg {
         var_file: &S,
     ) -> Result<()> {
         let mut vars = Variables::from_toml(var_file.as_ref(), Some(&self))?;
-        println!("Added {} : {}", key, value);
         let encrypted = self.encrypt(value)?;
         let encrypted = encrypted.replace(PGP_HEADER, "");
         let encrypted = encrypted.replace(PGP_FOOTER, "");
@@ -36,6 +35,7 @@ impl Gpg {
 
         let toml = toml::to_string(&vars.variables)?;
         std::fs::write(&var_file, toml)?;
+        println!("Added {} : {}", key, value);
 
         Ok(())
     }

@@ -4,6 +4,14 @@ load 'bats-support/load'
 load 'bats-assert/load'
 load 'bats-file/load'
 
+# FIXME : should use setup_file() here
+setup() {
+    GPG_KEY=$HOME/gpg_keys
+    gpg --import "$GPG_KEY"/private.gpg
+    gpg --import "$GPG_KEY"/public.gpg
+    echo -e "5\ny\n" | gpg --no-tty --command-fd 0 --expert --edit-key test@toml.bombadil.org trust
+}
+
 @test "Print version" {
   run bombadil --version
   assert_success
@@ -18,6 +26,19 @@ load 'bats-file/load'
   run bombadil install -c "$HOME/dotfiles/bombadil.toml"
   assert_success
   assert_symlink_to "$HOME/dotfiles/bombadil.toml" "$HOME/.config/bombadil.toml"
+}
+
+@test "Should add secret" {
+  run bombadil add-secret -k "server_password" -v "hunter2" -f "$HOME/dotfiles/vars.toml"
+  assert_output --partial 'Added server_password : hunter2'
+
+  run bombadil get secrets
+  assert_output --partial 'server_password: hunter2'
+
+  run bombadil link
+  assert_success
+
+  assert_file_contains "$HOME/.config/dummy.dot" "secret is hunter2"
 }
 
 @test "Links dots" {
@@ -42,6 +63,11 @@ load 'bats-file/load'
   assert_success
   assert_file_exist "$HOME/.config/i3/config"
   assert_symlink_to "$HOME/dotfiles/.dots/i3" "$HOME/.config/i3"
+}
+
+@test "Hooks works" {
+  run bombadil link
+  assert_output --partial "Hello from bombadil"
 }
 
 @test "Unlink works" {
