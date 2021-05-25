@@ -10,6 +10,3 @@
 [submodule "bats-tests/bats"]
 	path = bats-tests/bats
 	url = https://github.com/bats-core/bats-core.git
-[submodule "packages/aur"]
-	path = packages/aur
-	url = ssh://aur@aur.archlinux.org/bombadil-bin.git
