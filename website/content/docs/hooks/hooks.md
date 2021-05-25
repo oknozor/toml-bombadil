@@ -9,38 +9,44 @@ sort_by = "weight"
 template = "docs/page.html"
 
 [extra]
-lead = "Setup Bombadil post install hooks"
+lead = """
+Bombadil's hooks are shell commands invoked after your dotfiles have been symlinked. They are useful if you need
+to reload some component manually after updating your dotfiles. 
+"""
 toc = true
 top = false
 +++
 
 
 
-## Hooks
+## Default profile hook
 
-So far we have not talked about hooks, as we saw they can be declared as an entry in the config :
+Hooks are defined under the default profile section in Bombadil's configuration. In the example above, 
+`sway reload` will run when running `bombadil link` to update any changes made to sway UI.
 
 ```toml
 dotfiles_dir = "bombadil-example.toml"
+
 [settings]
 hooks = [ "sway reload" ]
 ```
 
-This will invoke the `sway reload` command after `bombadil link` has updated your dotfiles.
-
 The default hooks will always run regardless of the activated profiles.
-You can also add hooks for a specific profile.
+
+## Profile hooks
+
+If you maintain a profile per window manager you might want to leave the default profile hooks empty and manage 
+per profile hooks : 
 
 ```toml
-dotfiles_dir = "bombadil-example.toml"
-
 [settings]
-# This resides in the default profile an will always be executed after bombadil link
-hooks = [ "sway reload", "echo 42" ]
+hooks = [ "echo \"Default profile\"" ]
 
-[profiles.corporate]
-# This will only be executed when activating the `corporate` 
-hooks = [ "echo \"Welcome to evil corp\"" ]
+[profiles.sway]
+hooks = [ "sway reload", "echo \"Sway profile\"" ]
+
+[profiles.i3]
+hooks = [ "i3-msg reload", "echo \"i3 profile\"" ]
 ```
 
 ### Limitations
@@ -60,3 +66,5 @@ hooks = [ "echo $HOME" ] # This will print "$HOME"
 ```toml
 hooks = [ "zsh -c \"echo $HOME\"" ] # This works
 ```
+
+That's it for hooks, in the next chapter we will see how to split your Bombadil config into multiple files. 
