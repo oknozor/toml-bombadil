@@ -74,3 +74,5 @@ Running `bombadil link -p corporate` would now produce the following `.bashrc` :
 ```shell script
 export JAVA_HOME=/etc/java10-openjdk
 ```
+
+This concludes the chapter on profiles and themes, in the next chapter we will talk about hooks. 
