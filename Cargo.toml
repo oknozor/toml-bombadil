@@ -6,6 +6,7 @@ edition = "2018"
 license = "MIT"
 readme = "README.md"
 repository = "https://github.com/oknozor/toml-bombadil/"
+homepage = "https://oknozor.github.io/toml-bombadil/"
 description = """
 A dotfile manager.
 """
