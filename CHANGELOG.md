@@ -2,6 +2,122 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## 2.0.0 - 2021-05-25
+
+
+### Documentation
+
+[0f6b10](https://github.com/oknozor/toml-bombadil/commit/0f6b104d0f55bec7a3ad46e41e9e8bb314085f74) - update intro and add a changelog blogpost on v2 - [oknozor](https://github.com/oknozor)
+
+[becad6](https://github.com/oknozor/toml-bombadil/commit/becad6db4fd698665cb5797206758c467ed23e82) - update profiles and themes sections - [oknozor](https://github.com/oknozor)
+
+[edbe4b](https://github.com/oknozor/toml-bombadil/commit/edbe4bff76e0e7dd9502a8df8ec6229858470f07) - update tests and docummentation on profile and vars - [oknozor](https://github.com/oknozor)
+
+[b65d15](https://github.com/oknozor/toml-bombadil/commit/b65d150a1ab158be101f8cd8ec52754c92968a69) - update page on profiles and variables - [oknozor](https://github.com/oknozor)
+
+[995ff2](https://github.com/oknozor/toml-bombadil/commit/995ff2d3e96d77d0ad8ac13c0ac0d9ab6ee92645) - add docs to the website, variable quick start etc - [oknozor](https://github.com/oknozor)
+
+[48b74b](https://github.com/oknozor/toml-bombadil/commit/48b74b7cbeba11fe024c6e4a97a1601cc1996bb0) - add a toml bombadil website - [oknozor](https://github.com/oknozor)
+
+[cf243e](https://github.com/oknozor/toml-bombadil/commit/cf243e94197e59e49b4ede630be8efba2f641ab5) - add minor corrections to contributing guidelines - [oknozor](https://github.com/oknozor)
+
+[872e7f](https://github.com/oknozor/toml-bombadil/commit/872e7f3487f93bc0edf3f83cdaea7973add0e11f) - add small corrections to the readme - [oknozor](https://github.com/oknozor)
+
+[aff785](https://github.com/oknozor/toml-bombadil/commit/aff785ca0faa75a117e9bc65d82cc68df66f653d) - update readme - [oknozor](https://github.com/oknozor)
+
+[4f392a](https://github.com/oknozor/toml-bombadil/commit/4f392af305f98d7d0fee0077e7c7a92bb6d9d7d7) - add readme instruction for secret vars - [oknozor](https://github.com/oknozor)
+
+
+### Continuous Integration
+
+[e1b25d](https://github.com/oknozor/toml-bombadil/commit/e1b25d15df7628a21325d59c331304a24b2f53fa) - add a checkbranch script for cog bump - [oknozor](https://github.com/oknozor)
+
+[f479e1](https://github.com/oknozor/toml-bombadil/commit/f479e1337bcfb452033e13427a536f7e79b100c0) - prepare website deployment from main branch - [oknozor](https://github.com/oknozor)
+
+[7ef913](https://github.com/oknozor/toml-bombadil/commit/7ef913eb7f1d496409421291cb8f01c187b95aa9) - add github action step for e2e bats tests - [oknozor](https://github.com/oknozor)
+
+
+### Miscellaneous Chores
+
+[2717e8](https://github.com/oknozor/toml-bombadil/commit/2717e86f1e21dbcd5e7c595fa53f56b57cb80295) - fix action CD script - [oknozor](https://github.com/oknozor)
+
+[ea6eac](https://github.com/oknozor/toml-bombadil/commit/ea6eac452bb5d78959e8a4fc485be197827a4578) - ignore aur package - [oknozor](https://github.com/oknozor)
+
+[846550](https://github.com/oknozor/toml-bombadil/commit/8465509c62b82d507800cb5e93fe6798fdc9025f) - remove aur submodule, it can't be checked out in github CI - [oknozor](https://github.com/oknozor)
+
+[8c1cf8](https://github.com/oknozor/toml-bombadil/commit/8c1cf88b4fce2556f09899a1596e3eeb82e8bb04) - add cargo home page and cog bump config - [oknozor](https://github.com/oknozor)
+
+[1034c3](https://github.com/oknozor/toml-bombadil/commit/1034c36e11ca0dcc78d5b2d3d87eb433ff877bcb) - add aur package as a submodule - [oknozor](https://github.com/oknozor)
+
+[37344d](https://github.com/oknozor/toml-bombadil/commit/37344d1c163d35bfecf66124e78a0602b7d1b91d) - deploy GH page with github actions - [oknozor](https://github.com/oknozor)
+
+[8035c6](https://github.com/oknozor/toml-bombadil/commit/8035c61ef5e2dfeab77995325fae3f55478cf0d5) - fix bats-file submodule remote - [oknozor](https://github.com/oknozor)
+
+[f5a326](https://github.com/oknozor/toml-bombadil/commit/f5a326a5d79e0a19a1344c58d3436f04720a5167) - fix clippy lints - [oknozor](https://github.com/oknozor)
+
+[a69ab2](https://github.com/oknozor/toml-bombadil/commit/a69ab255c8a287a4f7e6aadb3fefdf0893d4fee1) - fmt all - [oknozor](https://github.com/oknozor)
+
+[443e2e](https://github.com/oknozor/toml-bombadil/commit/443e2e6b3ab4e5fd4bcb9a19e971b94be0a6a036) - add contributors and bump hook to cog config - [oknozor](https://github.com/oknozor)
+
+[99176d](https://github.com/oknozor/toml-bombadil/commit/99176dd79b19cefd80e973213f424def7c3dd994) - fix clippy lints - [oknozor](https://github.com/oknozor)
+
+[6608b9](https://github.com/oknozor/toml-bombadil/commit/6608b9c4924ac351d91efb63435311d826565cf5) - fmt all - [oknozor](https://github.com/oknozor)
+
+[4d7fc7](https://github.com/oknozor/toml-bombadil/commit/4d7fc733f0cc1074ab8c0a4465249a5366cbb7be) - Address review comments - [DSpeckhals](https://github.com/DSpeckhals)
+
+[cd748d](https://github.com/oknozor/toml-bombadil/commit/cd748d21a294bb598f857b022455963aeb91a6fe) - bump crates.io version - [oknozor](https://github.com/oknozor)
+
+[107ac9](https://github.com/oknozor/toml-bombadil/commit/107ac944ec4252a2c161876304860ef2920b79f0) - 1.11.2 - [oknozor](https://github.com/oknozor)
+
+[abb91c](https://github.com/oknozor/toml-bombadil/commit/abb91c214da714bfe40a1f380f2e103f6ea06690) - add cocogitto config - [oknozor](https://github.com/oknozor)
+
+
+### Tests
+
+[29be69](https://github.com/oknozor/toml-bombadil/commit/29be6918539c17936944e8fcdf1699b113b50e92) - add dockerized bats test suite - [oknozor](https://github.com/oknozor)
+
+
+### Features
+
+[babc78](https://github.com/oknozor/toml-bombadil/commit/babc78b4e9102b4ca63e831958e141506d6aa3fc) - add preinstall configuration clean up - [oknozor](https://github.com/oknozor)
+
+[b49bdb](https://github.com/oknozor/toml-bombadil/commit/b49bdb85c808709f0184122380998c25e1d7cda3) - add scoped variables - [oknozor](https://github.com/oknozor)
+
+[03a725](https://github.com/oknozor/toml-bombadil/commit/03a7250aa0d4553d61ab150457eb272fc6bb2870) - implement ignore glob pattern - [oknozor](https://github.com/oknozor)
+
+[9a89a9](https://github.com/oknozor/toml-bombadil/commit/9a89a92dabb799362d5a3da7d9c2786174200f9e) - Add command for shell completions generation - [DSpeckhals](https://github.com/DSpeckhals)
+
+[fa56af](https://github.com/oknozor/toml-bombadil/commit/fa56afa9af88081e1bf0261c7a110213900aaf14) - add profile flag for get command - [oknozor](https://github.com/oknozor)
+
+[d51567](https://github.com/oknozor/toml-bombadil/commit/d515673b43a6df68d8a051ffcf681271f422515e) - add armored gpg values - [oknozor](https://github.com/oknozor)
+
+[0de10b](https://github.com/oknozor/toml-bombadil/commit/0de10b113e667fd07d95c996af7ac41364f85121) - add get command for metadata - [DSpeckhals](https://github.com/DSpeckhals)
+
+[9abac9](https://github.com/oknozor/toml-bombadil/commit/9abac997769aa993df163a25ec4db6bb905ecc6f) - add unlink command - [DSpeckhals](https://github.com/DSpeckhals)
+
+[4d3510](https://github.com/oknozor/toml-bombadil/commit/4d35106bd57d118f6eba171d75d0761d53075459) - gpg dummy implementation - [oknozor](https://github.com/oknozor)
+
+
+### Bug Fixes
+
+[2e5753](https://github.com/oknozor/toml-bombadil/commit/2e57530307896b03106d1ebd6545a7399f23c01a) - Secrets are now correctly decryted and injected on install - [oknozor](https://github.com/oknozor)
+
+[aa64d5](https://github.com/oknozor/toml-bombadil/commit/aa64d572edc079bb1fca3f4ab9c0dcf5e59039c6) - fix toc ordering - [oknozor](https://github.com/oknozor)
+
+[3c16c8](https://github.com/oknozor/toml-bombadil/commit/3c16c82f5790d259b538c2ee34a8fb4747aa333d) - unlink command now correctly remove dots based on previous config - [oknozor](https://github.com/oknozor)
+
+[b7cdd3](https://github.com/oknozor/toml-bombadil/commit/b7cdd356a1989e6cd2d54d8e280b099487d98255) - fix empty var files in dot overrides - [oknozor](https://github.com/oknozor)
+
+[6f5d9b](https://github.com/oknozor/toml-bombadil/commit/6f5d9ba404ff0d6ed5bd43980cfa14c514d6c223) - fix default var path typo - [oknozor](https://github.com/oknozor)
+
+[532ae9](https://github.com/oknozor/toml-bombadil/commit/532ae93d62b55c662e428e7de202449d5c88d0f8) - ignore all varfile for a dot across profile - [oknozor](https://github.com/oknozor)
+
+[2c7dcc](https://github.com/oknozor/toml-bombadil/commit/2c7dcce0dfda0eed0e76feaa3e40100a148d0e38) - resolve % refence in dot entries - [oknozor](https://github.com/oknozor)
+
+[8fe546](https://github.com/oknozor/toml-bombadil/commit/8fe546282d22e18b6b6738adfbb2bf2322fad416) - add gpg keypair to CI - [oknozor](https://github.com/oknozor)
+
+
+- - -
 ## 1.11.2 - 2020-10-04
 
 
