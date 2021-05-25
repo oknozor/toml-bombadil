@@ -4,3 +4,4 @@ Cargo.lock
 *.bk
 test_tmp*
 .dots/
+packages/
