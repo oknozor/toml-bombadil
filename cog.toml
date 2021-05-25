@@ -6,6 +6,25 @@ hooks = [
     "cargo publish"
 ]
 
+pre_bump_hooks = [
+    "sh -c \"./ci/check_branch.sh\"",
+    "cargo test -- --test-threads 1",
+    "cargo clippy",
+    "cargo build --release",
+    "cargo fmt --all",
+    "docker build -t bombadil-tests ./",
+    "docker run -t bombadil-tests ",
+    "cargo bump {{version}}",
+]
+
+
+post_bump_hooks = [
+    "git push",
+    "git push origin {{version}}",
+    "cargo package",
+    "cargo publish"
+]
+
 authors = [
     { signature = "Paul Delafosse", username = "oknozor" },
     { signature = "Dustin Speckhals", username = "DSpeckhals" },
