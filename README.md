@@ -8,6 +8,9 @@
 
 ![logo](asset/logo.png) Toml Bombadil is a dotfile manager written in rust. 
 
+You may be looking for
+- [Toml Bombadil website](https://oknozor.github.io/toml-bombadil/)
+
 ##  Why another dotfile manager ? 
 
 I wrote Toml Bombadil because I kept changing my desktop environment : 
