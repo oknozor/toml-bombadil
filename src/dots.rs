@@ -181,7 +181,7 @@ impl Dot {
         } else {
             Err(anyhow!(format!(
                 "{} {:?}",
-                "Path does not exists :".red(),
+                "Path does not exist :".red(),
                 path
             )))
         }
@@ -201,7 +201,7 @@ impl DotOverride {
         let source = match (self.source(), origin) {
             (Some(source), _) => source,
             (None, Some(origin)) => origin,
-            _ => panic!("Dot as no source path"),
+            _ => panic!("Dot has no source path"),
         };
 
         let vars = self.vars().unwrap_or_else(Dot::default_vars);

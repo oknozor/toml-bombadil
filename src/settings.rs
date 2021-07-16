@@ -192,7 +192,7 @@ impl Settings {
         };
 
         if path.exists().not() {
-            return Err(anyhow!("Dotfiles directory {:?} does not exists", &path));
+            return Err(anyhow!("Dotfiles directory {:?} does not exist", &path));
         }
 
         Ok(path)

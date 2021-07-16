@@ -46,7 +46,7 @@ impl Bombadil {
     pub fn link_self_config(config_path: Option<PathBuf>) -> Result<()> {
         let xdg_config_dir = dirs::config_dir();
         if xdg_config_dir.is_none() {
-            return Err(anyhow!("$XDG_CONFIG does not exists"));
+            return Err(anyhow!("$XDG_CONFIG does not exist"));
         }
 
         let xdg_config = Settings::bombadil_config_xdg_path()?;
