@@ -32,7 +32,8 @@ pub struct Bombadil {
     path: PathBuf,
     dots: HashMap<String, Dot>,
     vars: Variables,
-    hooks: Vec<Hook>,
+    prehooks: Vec<Hook>,
+    posthooks: Vec<Hook>,
     profiles: HashMap<String, Profile>,
     gpg: Option<Gpg>,
 }
@@ -83,6 +84,11 @@ impl Bombadil {
 
     pub fn install(&self) -> Result<()> {
         self.check_dotfile_dir()?;
+        self.prehooks.iter().map(Hook::run).for_each(|result| {
+            if let Err(err) = result {
+                eprintln!("{}", err);
+            }
+        });
         let dot_copy_dir = &self.path.join(".dots");
 
         let absolute_path_to_dot = &self.dotfiles_absolute_path()?;
@@ -124,7 +130,7 @@ impl Bombadil {
         }
 
         // Run post install hooks
-        self.hooks.iter().map(Hook::run).for_each(|result| {
+        self.posthooks.iter().map(Hook::run).for_each(|result| {
             if let Err(err) = result {
                 eprintln!("{}", err);
             }
@@ -261,16 +267,23 @@ impl Bombadil {
             // Add profile vars
             let variables = Variables::from_paths(&self.path, &profile.vars, self.gpg.as_ref())?;
             self.vars.extend(variables);
-
-            // Add profile hooks
-            let hooks = profile
-                .hooks
+            // Add Profile pre hooks
+            let prehooks = profile
+                .prehooks
                 .iter()
                 .map(|command| command.as_ref())
                 .map(Hook::new)
                 .collect::<Vec<Hook>>();
+            self.prehooks.extend(prehooks);
 
-            self.hooks.extend(hooks);
+            // Add profile post hooks
+            let posthooks = profile
+                .posthooks
+                .iter()
+                .map(|command| command.as_ref())
+                .map(Hook::new)
+                .collect::<Vec<Hook>>();
+            self.posthooks.extend(posthooks);
         }
 
         Ok(())
@@ -310,13 +323,19 @@ impl Bombadil {
         vars.resolve_ref();
 
         // Resolve hooks from config
-        let hooks = config
+        let posthooks = config
             .settings
-            .hooks
+            .posthooks
             .iter()
             .map(|cmd| Hook::new(cmd))
             .collect();
 
+        let prehooks = config
+            .settings
+            .prehooks
+            .iter()
+            .map(|cmd| Hook::new(cmd))
+            .collect();
         let dots = config.settings.dots;
         let profiles = config.profiles;
 
@@ -324,7 +343,8 @@ impl Bombadil {
             path,
             dots,
             vars,
-            hooks,
+            prehooks,
+            posthooks,
             profiles,
             gpg,
         })
@@ -346,7 +366,7 @@ impl Bombadil {
                     )
                 })
                 .collect(),
-            MetadataType::Hooks => self.hooks.iter().map(|h| h.command.clone()).collect(),
+            MetadataType::Hooks => self.posthooks.iter().map(|h| h.command.clone()).collect(),
             MetadataType::Path => vec![self.path.display().to_string()],
             MetadataType::Profiles => {
                 let mut profiles = vec!["default".to_string()];
@@ -474,7 +494,8 @@ mod tests {
                 variables: map,
                 secrets: Default::default(),
             },
-            hooks: vec![],
+            prehooks: vec![],
+            posthooks: vec![],
             profiles: Default::default(),
             gpg: None,
         };
@@ -525,7 +546,8 @@ mod tests {
                 variables: HashMap::new(),
                 secrets: Default::default(),
             },
-            hooks: vec![],
+            prehooks: vec![],
+            posthooks: vec![],
             profiles: Default::default(),
             gpg: None,
         };
@@ -567,7 +589,8 @@ mod tests {
                 variables: map,
                 secrets: Default::default(),
             },
-            hooks: vec![],
+            prehooks: vec![],
+            posthooks: vec![],
             profiles: Default::default(),
             gpg: None,
         };
@@ -612,7 +635,8 @@ mod tests {
                 variables: map,
                 secrets: Default::default(),
             },
-            hooks: vec![],
+            prehooks: vec![],
+            posthooks: vec![],
             profiles: Default::default(),
             gpg: None,
         };
@@ -654,7 +678,8 @@ mod tests {
                 variables: HashMap::new(),
                 secrets: Default::default(),
             },
-            hooks: vec![],
+            prehooks: vec![],
+            posthooks: vec![],
             profiles: Default::default(),
             gpg: None,
         };
@@ -669,7 +694,7 @@ mod tests {
     }
 
     #[test]
-    fn hook_ok() {
+    fn posthook_ok() {
         // Arrange
         let target = TempDir::new("/tmp/hook", false).to_path_buf();
         let target_str_path = &target.to_str().unwrap();
@@ -677,7 +702,8 @@ mod tests {
             path: PathBuf::from("tests/hook").canonicalize().unwrap(),
             dots: HashMap::new(),
             vars: Variables::default(),
-            hooks: vec![Hook {
+            prehooks: vec![],
+            posthooks: vec![Hook {
                 command: format!("touch {}/dummy", target_str_path),
             }],
             profiles: Default::default(),
@@ -689,6 +715,30 @@ mod tests {
 
         // Assert
         assert!(target.join("dummy").exists());
+    }
+    #[test]
+    fn prehook_ok() {
+        // Arrange
+        let target = TempDir::new("/tmp/hook", false).to_path_buf();
+        let target_str_path = &target.to_str().unwrap();
+        let config = Bombadil {
+            path: PathBuf::from("tests/hook").canonicalize().unwrap(),
+            dots: HashMap::new(),
+            vars: Variables::default(),
+            prehooks: vec![Hook {
+                command: format!("touch {}/dummy", target_str_path),
+            }],
+            posthooks: vec![],
+            profiles: Default::default(),
+            gpg: None,
+        };
+
+        // Act
+        config.install().unwrap();
+
+        // Assert
+        assert!(target.join("dummy").exists());
+        let target = TempDir::new("/tmp/hook", false).to_path_buf();
     }
 
     #[test]
@@ -821,7 +871,8 @@ mod tests {
             path: temp,
             dots,
             vars: Default::default(),
-            hooks: vec![],
+            prehooks: vec![],
+            posthooks: vec![],
             profiles,
             gpg: None,
         };
