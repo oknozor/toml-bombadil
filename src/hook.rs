@@ -11,7 +11,7 @@ pub struct Hook {
 impl Hook {
     pub(crate) fn run(&self) -> Result<()> {
         let command_display = format!("`{}`", &self.command.green());
-        println!("Running post install hook : {}", command_display);
+        println!("Running install hook : {}", command_display);
 
         let args = self.split_args()?;
         let mut command = Hook::build_command(args);

@@ -49,7 +49,11 @@ pub struct ActiveProfile {
 
     /// Post install hook commands
     #[serde(default)]
-    pub hooks: Vec<String>,
+    pub prehooks: Vec<String>,
+
+    /// Post install hook commands
+    #[serde(default)]
+    pub posthooks: Vec<String>,
 
     /// Variables to use in templates
     #[serde(default)]
@@ -63,9 +67,13 @@ pub struct Profile {
     #[serde(default)]
     pub dots: HashMap<String, DotOverride>,
 
+    /// Pre install hook commands
+    #[serde(default)]
+    pub prehooks: Vec<String>,
+
     /// Post install hook commands
     #[serde(default)]
-    pub hooks: Vec<String>,
+    pub posthooks: Vec<String>,
 
     /// Variables to use in templates
     #[serde(default)]
@@ -81,7 +89,8 @@ impl Default for ActiveProfile {
     fn default() -> Self {
         Self {
             dots: Default::default(),
-            hooks: vec![],
+            prehooks: vec![],
+            posthooks: vec![],
             vars: vec![],
         }
     }
@@ -160,8 +169,11 @@ impl Settings {
 
     fn merge(&mut self, sub_settings: ImportedSettings) {
         self.settings
-            .hooks
-            .extend_from_slice(&sub_settings.settings.hooks);
+            .prehooks
+            .extend_from_slice(&sub_settings.settings.prehooks);
+        self.settings
+            .posthooks
+            .extend_from_slice(&sub_settings.settings.posthooks);
         self.settings
             .vars
             .extend_from_slice(&sub_settings.settings.vars);
