@@ -1,6 +1,6 @@
 [settings]
 vars = ["vars.toml"]
-hooks = ["echo hello"]
+prehooks = ["echo hello"]
 
 [settings.dots]
 maven = { source = "settings.xml", target = ".m2/setting.xml" }
