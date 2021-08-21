@@ -37,7 +37,7 @@ link = "https://googlechrome.github.io/lighthouse/viewer/?gist=7731347bb8ce999ef
 
 [[extra.home.list]]
 title = "Installation hooks"
-content = "Live reload your window manager components with post installation hooks"
+content = "Live reload your window manager components with pre and post installation hooks"
 
 [[extra.home.list]]
 title = "Themes and profiles"
