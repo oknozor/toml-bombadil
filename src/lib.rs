@@ -366,7 +366,8 @@ impl Bombadil {
                     )
                 })
                 .collect(),
-            MetadataType::Hooks => self.posthooks.iter().map(|h| h.command.clone()).collect(),
+            MetadataType::Prehooks => self.prehooks.iter().map(|h| h.command.clone()).collect(),
+            MetadataType::Posthooks => self.posthooks.iter().map(|h| h.command.clone()).collect(),
             MetadataType::Path => vec![self.path.display().to_string()],
             MetadataType::Profiles => {
                 let mut profiles = vec!["default".to_string()];
@@ -435,7 +436,8 @@ pub(crate) fn unlink(path: &Path) -> Result<()> {
 
 pub enum MetadataType {
     Dots,
-    Hooks,
+    Prehooks,
+    Posthooks,
     Path,
     Profiles,
     Vars,
@@ -790,7 +792,8 @@ mod tests {
 
         // Act
         bombadil.print_metadata(MetadataType::Dots);
-        bombadil.print_metadata(MetadataType::Hooks);
+        bombadil.print_metadata(MetadataType::Prehooks);
+        bombadil.print_metadata(MetadataType::Posthooks);
         bombadil.print_metadata(MetadataType::Path);
         bombadil.print_metadata(MetadataType::Profiles);
         bombadil.print_metadata(MetadataType::Vars);
@@ -853,7 +856,8 @@ mod tests {
             "profile_one".to_string(),
             Profile {
                 dots: dots_profile_one,
-                hooks: vec![],
+                prehooks: vec![],
+                posthooks: vec![],
                 vars: vec![],
             },
         );
@@ -862,7 +866,8 @@ mod tests {
             "profile_two".to_string(),
             Profile {
                 dots: dots_profile_two,
-                hooks: vec![],
+                prehooks: vec![],
+                posthooks: vec![],
                 vars: vec![],
             },
         );
