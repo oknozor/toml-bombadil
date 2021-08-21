@@ -3,7 +3,7 @@ dotfiles_dir = "dotfiles"
 gpg_user_id = "test@toml.bombadil.org"
 
 [settings]
-hooks = [ "echo Hello from bombadil" ]
+prehooks = [ "echo Hello from bombadil" ]
 vars = [ "vars.toml"]
 
 [settings.dots]

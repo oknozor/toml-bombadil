@@ -3,7 +3,7 @@ dotfiles_dir = "my_dotfiles"
 
 [settings]
 # Post install commands
-hooks = [ "sway reload" ]
+posthooks = [ "sway reload" ]
 
 # Vars hold  an array of paths to a toml file containing the variables to inject in your templatize dotfiles.
 vars = [
