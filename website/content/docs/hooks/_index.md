@@ -1,6 +1,6 @@
 +++
 title = "Hooks"
-description = "Manage post install hook"
+description = "Manage pre & post install hook"
 date = 2021-05-16
 updated = 2021-05-16
 template = "docs/section.html"

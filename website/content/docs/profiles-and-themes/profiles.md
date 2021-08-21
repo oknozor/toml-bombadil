@@ -26,7 +26,7 @@ Bombadil allow you two do this in several ways :
 - add hooks to the profile.
 
 
-Before going further, let's take a look at a real life example. In the following config, we have defined some 
+Before going further, let's take a look at a real life example. In the following config, we have defined some
 post-install hooks and dot entries for two profiles : `sway` and `i3`.
 
 ```toml
@@ -38,7 +38,7 @@ alacritty = { source = "alacritty", target = ".config/alacritty" }
 
 [profiles.sway]
 # Sway profile hook : running `bombadil link -p sway` will exectute `sway reload`
-hooks = ["sway reload"]
+posthooks = ["sway reload"]
 
 # Sway profile dot entries
 [profiles.sway.dots]
@@ -48,7 +48,7 @@ wofi = { source = "sway/wofi", target = ".config/wofi" }
 
 # i3 profile hook : running `bombadil link -p i3` will exectute `i3-msg reload`
 [profiles.i3]
-hooks = ["i3-msg reload"]
+posthooks = ["i3-msg reload"]
 
 # i3 profile dot entries
 [profiles.i3.dots]
@@ -73,7 +73,7 @@ OPTIONS:
     -p, --profiles <profiles>...    A list of comma separated profiles to activate [possible values: sway, i3]
 ```
 
-Alternatively the `bombadil get profiles` produce a one profiles per line output, suited for shell scripting : 
+Alternatively the `bombadil get profiles` produce a one profiles per line output, suited for shell scripting :
 ```
 ❯ bombadil get profiles
 sway

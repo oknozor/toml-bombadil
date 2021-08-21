@@ -20,7 +20,7 @@ top = false
 
 ## Config imports
 
-Instead of having all your configs defined in a single toml file, you can split it into multiple file : 
+Instead of having all your configs defined in a single toml file, you can split it into multiple file :
 
 ```toml
 
@@ -35,12 +35,12 @@ path = "sway/sway.toml"
 path = "i3/i3.toml"
 ```
 
-In this example we have defined our `i3` and `sway` profile in separate files : 
+In this example we have defined our `i3` and `sway` profile in separate files :
 
 ```toml
 # {dotfile_dir}/i3/i3.toml
 [profiles.i3]
-hooks = ["i3-msg reload"]
+posthooks = ["i3-msg reload"]
 
 [profiles.i3.dots]
 i3 =  { source = "i3/wm", target = ".config/i3" }
