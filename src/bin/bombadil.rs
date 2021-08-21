@@ -97,7 +97,7 @@ where
             .settings(subcommand_settings)
             .about("Get metadata about dots, hooks, path, profiles, or vars")
             .arg(Arg::with_name("value")
-                .possible_values(&["dots", "hooks", "path", "profiles", "vars", "secrets"])
+                .possible_values(&["dots", "prehooks", "posthooks", "path", "profiles", "vars", "secrets"])
                 .default_value("dots")
                 .takes_value(true)
                 .help("Metadata to get"))
@@ -202,7 +202,8 @@ fn main() {
                 let get_subcommand = matches.subcommand_matches(GET).unwrap();
                 let metadata_type = match get_subcommand.value_of("value").unwrap() {
                     "dots" => MetadataType::Dots,
-                    "hooks" => MetadataType::Hooks,
+                    "prehooks" => MetadataType::Prehooks,
+                    "posthooks" => MetadataType::Posthooks,
                     "path" => MetadataType::Path,
                     "profiles" => MetadataType::Profiles,
                     "vars" => MetadataType::Vars,
