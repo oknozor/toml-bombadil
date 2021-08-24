@@ -1,12 +1,14 @@
 use clap::{App, AppSettings, Arg, Shell, SubCommand};
 use std::io::BufRead;
 use std::path::{Path, PathBuf};
+use std::str::FromStr;
 use toml_bombadil::settings::Settings;
 use toml_bombadil::{Bombadil, MetadataType, Mode};
 
 const LINK: &str = "link";
 const UNLINK: &str = "unlink";
 const INSTALL: &str = "install";
+const CLONE: &str = "clone";
 const ADD_SECRET: &str = "add-secret";
 const GET: &str = "get";
 const GENERATE_COMPLETIONS: &str = "generate-completions";
@@ -45,13 +47,31 @@ where
         For more info on how to configure it please go to https://github.com/oknozor/toml-bombadil")
         .subcommand(SubCommand::with_name(INSTALL)
             .settings(subcommand_settings)
-            .about("Link a given bombadil config to XDG_CONFIG_DIR/bombadil.toml")
+            .about("Link a given dotfile directory config to XDG_CONFIG_DIR/bombadil.toml")
             .arg(Arg::with_name("CONFIG")
-                .help("path to your bombadil.toml config file inside your dotfiles directory")
-                .short("c")
-                .long("config")
+                .help("Path to your dotfile directory")
                 .takes_value(true)
-                .required(true)))
+                .required(false)))
+        .subcommand(SubCommand::with_name(CLONE)
+            .settings(subcommand_settings)
+            .about("Install dotfiles from a remote git repository to a target folder")
+            .arg(Arg::with_name("remote")
+                .help("Remote repository address, either http or ssh")
+                .takes_value(true)
+                .required(true))
+            .arg(Arg::with_name("path")
+                .help("Target destination, repository name by default")
+                .short("t")
+                .long("target")
+                .takes_value(true)
+                .required(false))
+            .arg(Arg::with_name("profiles")
+                .help("A list of comma separated profiles to activate")
+                .short("p")
+                .long("profiles")
+                .takes_value(true)
+                .multiple(true)
+                .required(false)))
         .subcommand(SubCommand::with_name(LINK)
             .settings(subcommand_settings)
             .about("Symlink a copy of your dotfiles and inject variables according to bombadil.toml config")
@@ -141,6 +161,30 @@ fn main() {
                 let config_path = install_command.value_of("CONFIG").map(PathBuf::from);
 
                 Bombadil::link_self_config(config_path).unwrap_or_else(|err| fatal!("{}", err));
+            }
+
+            CLONE => {
+                let clone_command = matches.subcommand_matches(CLONE).unwrap();
+                let remote = clone_command.value_of("remote").unwrap();
+                let path = match clone_command.value_of("path") {
+                    None => {
+                        let repo_name = remote.split('/').last().unwrap();
+                        let repo_name = repo_name.strip_suffix(".git").unwrap();
+                        repo_name
+                    }
+                    Some(path) => path,
+                };
+
+                let target_pathbuf = PathBuf::from_str(path).unwrap();
+                println!("Cloning {} in {}", remote, path);
+                let profiles: Option<Vec<&str>> = if clone_command.is_present("profiles") {
+                    Some(clone_command.values_of("profiles").unwrap().collect())
+                } else {
+                    None
+                };
+
+                Bombadil::install_from_remote(remote, target_pathbuf, profiles)
+                    .unwrap_or_else(|err| fatal!("{}", err));
             }
 
             LINK => {

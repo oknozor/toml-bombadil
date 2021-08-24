@@ -1,6 +1,3 @@
-// Fixme : This should not be needed when updating pest to the up coming release
-#![allow(clippy::upper_case_acronyms)]
-
 #[macro_use]
 extern crate serde_derive;
 #[macro_use]
@@ -22,11 +19,14 @@ use std::os::unix;
 use std::path::{Path, PathBuf};
 
 mod dots;
+mod git;
 mod gpg;
 mod hook;
 pub mod settings;
 mod state;
 mod templating;
+
+pub const BOMBADIL_CONFIG: &str = "bombadil.toml";
 
 pub struct Bombadil {
     path: PathBuf,
@@ -44,7 +44,26 @@ pub enum Mode {
 }
 
 impl Bombadil {
-    pub fn link_self_config(config_path: Option<PathBuf>) -> Result<()> {
+    pub fn install_from_remote(
+        remote: &str,
+        path: PathBuf,
+        profiles: Option<Vec<&str>>,
+    ) -> Result<()> {
+        git::clone(remote, path.as_path())?;
+        Bombadil::link_self_config(Some(path.join(BOMBADIL_CONFIG)))?;
+
+        let mut bombadil = Bombadil::from_settings(Mode::Gpg)?;
+
+        if let Some(profiles) = profiles {
+            bombadil.enable_profiles(profiles)?;
+        }
+
+        bombadil.install()?;
+
+        Ok(())
+    }
+
+    pub fn link_self_config(dotfiles_path: Option<PathBuf>) -> Result<()> {
         let xdg_config_dir = dirs::config_dir();
         if xdg_config_dir.is_none() {
             return Err(anyhow!("$XDG_CONFIG does not exist"));
@@ -56,27 +75,27 @@ impl Bombadil {
             fs::remove_file(&xdg_config)?;
         }
 
-        let config_path = &config_path
-            .unwrap_or_else(|| PathBuf::from("bombadil.toml"))
+        let dotfiles_path = &dotfiles_path
+            .unwrap_or_else(|| PathBuf::from(BOMBADIL_CONFIG))
             .canonicalize()?;
 
-        let config_path = if config_path.is_dir() {
-            config_path.join("bombadil.toml")
+        let dotfiles_path = if dotfiles_path.is_dir() {
+            dotfiles_path.join(BOMBADIL_CONFIG)
         } else {
-            config_path.to_owned()
+            return Err(anyhow!(""));
         };
 
-        unix::fs::symlink(&config_path, &xdg_config)
+        unix::fs::symlink(&dotfiles_path, &xdg_config)
             .map_err(|err| {
                 anyhow!(
                     "Unable to symlink {:?} to {:?} : {}",
-                    config_path,
+                    dotfiles_path,
                     xdg_config,
                     err
                 )
             })
             .map(|_result| {
-                let source = format!("{:?}", &config_path).blue();
+                let source = format!("{:?}", &dotfiles_path).blue();
                 let dest = format!("{:?}", &xdg_config).green();
                 println!("{} => {}", source, dest)
             })
@@ -463,7 +482,7 @@ mod tests {
         Bombadil::link_self_config(Some(config_path)).unwrap();
 
         // Assert
-        let link = dirs::config_dir().unwrap().join("bombadil.toml");
+        let link = dirs::config_dir().unwrap().join(BOMBADIL_CONFIG);
         assert!(link.exists());
     }
 
@@ -749,9 +768,9 @@ mod tests {
         // We need an absolute path to the test can pass anywhere
         fs::copy("tests/vars/meta_vars.toml", &tmp.join("meta_vars.toml")).unwrap();
         fs::copy("tests/vars/vars.toml", &tmp.join("vars.toml")).unwrap();
-        fs::copy("tests/vars/bombadil.toml", &tmp.join("bombadil.toml")).unwrap();
+        fs::copy("tests/vars/bombadil.toml", &tmp.join(BOMBADIL_CONFIG)).unwrap();
 
-        let config_path = tmp.join("bombadil.toml");
+        let config_path = tmp.join(BOMBADIL_CONFIG);
 
         Bombadil::link_self_config(Some(config_path.clone())).unwrap();
 
@@ -782,9 +801,9 @@ mod tests {
         // We need an absolute path to the test can pass anywhere
         fs::copy("tests/vars/meta_vars.toml", &tmp.join("meta_vars.toml")).unwrap();
         fs::copy("tests/vars/vars.toml", &tmp.join("vars.toml")).unwrap();
-        fs::copy("tests/vars/bombadil.toml", &tmp.join("bombadil.toml")).unwrap();
+        fs::copy("tests/vars/bombadil.toml", &tmp.join(BOMBADIL_CONFIG)).unwrap();
 
-        let config_path = tmp.join("bombadil.toml");
+        let config_path = tmp.join(BOMBADIL_CONFIG);
 
         Bombadil::link_self_config(Some(config_path.clone())).unwrap();
         let bombadil = Bombadil::from_settings(NoGpg).unwrap();
