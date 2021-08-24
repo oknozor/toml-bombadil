@@ -22,8 +22,17 @@ setup() {
   assert_success
 }
 
+## FIXME: This seems to timeout and return status 1, is it bats timing out or something else ?
+# @test "Install from remote" {
+#   run bombadil clone https://github.com/oknozor/dotfiles.git -t oknozor_dotfiles
+#   assert_success
+#   assert_symlink_to "$HOME/oknozor_dotfiles/bombadil.toml" "$HOME/.config/bombadil.toml"
+#   assert_file_exist "$HOME/.config/i3"
+#   assert_symlink_to "$HOME/oknozor_dotfiles/.dots/i3/wm" "$HOME/.config/i3"
+# }
+
 @test "Symlink bombadil config" {
-  run bombadil install -c "$HOME/dotfiles/bombadil.toml"
+  run bombadil install "$HOME/dotfiles"
   assert_success
   assert_symlink_to "$HOME/dotfiles/bombadil.toml" "$HOME/.config/bombadil.toml"
 }
