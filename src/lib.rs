@@ -26,8 +26,10 @@ pub mod settings;
 mod state;
 mod templating;
 
-pub const BOMBADIL_CONFIG: &str = "bombadil.toml";
+pub(crate) const BOMBADIL_CONFIG: &str = "bombadil.toml";
 
+/// The main crate struct, it contains all needed medata about a
+/// dotfile directory and how to install it.
 pub struct Bombadil {
     path: PathBuf,
     dots: HashMap<String, Dot>,
@@ -38,12 +40,16 @@ pub struct Bombadil {
     gpg: Option<Gpg>,
 }
 
+/// Enable or disable GPG encryption when linking dotfiles
 pub enum Mode {
     Gpg,
     NoGpg,
 }
 
 impl Bombadil {
+    /// Given a git remote address, will clone the repository to the target path
+    /// and install the dotfiles according to the "bombadil.toml" configuration inside the
+    /// repo root.
     pub fn install_from_remote(
         remote: &str,
         path: PathBuf,
@@ -63,6 +69,7 @@ impl Bombadil {
         Ok(())
     }
 
+    /// Symlink `bombadil.toml` to `$XDG_CONFIG/bombadil.toml` so we can later read it from there.
     pub fn link_self_config(dotfiles_path: Option<PathBuf>) -> Result<()> {
         let xdg_config_dir = dirs::config_dir();
         if xdg_config_dir.is_none() {
@@ -101,6 +108,13 @@ impl Bombadil {
             })
     }
 
+    /// The installation process is composed of the following steps :
+    /// 1. Run pre install hooks
+    /// 2. If any previous state is found in `.dot/previous_state.toml`, remove the existing symlinks
+    /// 3. Clean existing rendered dotfiles templates in `.dot`
+    /// 4. Copy and symlink dotfiles according to the current `$XDG_CONFIG/bombadil.toml` configuration
+    /// 5. Run post install hooks
+    /// 6. Write current state to `.dot/previous_state.toml`
     pub fn install(&self) -> Result<()> {
         self.check_dotfile_dir()?;
         self.prehooks.iter().map(Hook::run).for_each(|result| {
@@ -161,6 +175,7 @@ impl Bombadil {
         Ok(())
     }
 
+    /// Unlink dotfiles according to previous state
     pub fn uninstall(&self) -> Result<()> {
         let mut success_paths: Vec<&PathBuf> = Vec::new();
         let mut error_paths: Vec<&anyhow::Error> = Vec::new();
@@ -196,6 +211,7 @@ impl Bombadil {
         Ok(())
     }
 
+    /// Add a gpg secret encrypted variable to the target variable file
     pub fn add_secret<S: AsRef<Path> + ?Sized>(
         &self,
         key: &str,
@@ -209,6 +225,7 @@ impl Bombadil {
         }
     }
 
+    /// Pretty print current bombadil variables
     pub fn display_vars(&self) {
         self.vars
             .variables
@@ -216,6 +233,7 @@ impl Bombadil {
             .for_each(|(key, value)| println!("{} = {}", key.red(), value))
     }
 
+    /// Enable a dotfile profile by merging its config with the default profile
     pub fn enable_profiles(&mut self, profile_keys: Vec<&str>) -> Result<()> {
         let profiles: Vec<Profile> = profile_keys
             .iter()
@@ -326,6 +344,7 @@ impl Bombadil {
         Ok(())
     }
 
+    /// Load Bombadil config from a `bombadil.toml`
     pub fn from_settings(mode: Mode) -> Result<Bombadil> {
         let config = Settings::get()?;
         let path = config.get_dotfiles_path()?;
@@ -369,6 +388,7 @@ impl Bombadil {
         })
     }
 
+    /// Pretty print metadata, possible values are Dots, PreHooks, PostHook, Path, Profiles, Vars, Secrets
     pub fn print_metadata(&self, metadata_type: MetadataType) {
         let rows = match metadata_type {
             MetadataType::Dots => self

@@ -13,7 +13,7 @@ pub struct Gpg {
 }
 
 impl Gpg {
-    pub fn new(user_id: &str) -> Self {
+    pub(crate) fn new(user_id: &str) -> Self {
         Gpg {
             user_id: user_id.to_string(),
         }
