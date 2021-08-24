@@ -53,7 +53,7 @@ impl Dot {
         let source = &self.source_path(dotfile_dir)?;
         let copy_path = &self.copy_path(dotfile_dir);
         let source_str = source.to_str().unwrap_or_default();
-        let mut ignored_paths = self.get_ignored_paths(&source_str)?;
+        let mut ignored_paths = self.get_ignored_paths(source_str)?;
         ignored_paths.extend_from_slice(&auto_ignored);
 
         // Add local vars to the global ones
