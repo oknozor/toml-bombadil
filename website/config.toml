@@ -7,6 +7,9 @@ compile_sass = true
 highlight_code = true
 build_search_index = true
 
+[markdown]
+highlight_code = true
+
 [extra]
 theme_color = "#000"
 author = "Paul Delafosse"

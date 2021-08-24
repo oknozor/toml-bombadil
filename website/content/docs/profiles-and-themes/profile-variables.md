@@ -71,7 +71,7 @@ java_home = "/etc/java10-openjdk"
 ```
 
 Running `bombadil link -p corporate` would now produce the following `.bashrc` :
-```shell script
+```bash
 export JAVA_HOME=/etc/java10-openjdk
 ```
 
