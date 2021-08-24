@@ -1,4 +1,5 @@
 use crate::dots::{Dot, DotOverride};
+use crate::BOMBADIL_CONFIG;
 use anyhow::Result;
 use colored::Colorize;
 use config::{Config, ConfigError, File};
@@ -188,7 +189,7 @@ impl Settings {
             .ok_or_else(|| {
                 ConfigError::NotFound("Unable to find `$XDG_CONFIG/bombadil.toml`".into())
             })
-            .map(|path| path.join("bombadil.toml"))
+            .map(|path| path.join(BOMBADIL_CONFIG))
     }
 
     pub(crate) fn get_dotfiles_path(&self) -> Result<PathBuf> {
@@ -214,7 +215,7 @@ impl Settings {
 #[cfg(test)]
 mod tests {
     use crate::settings::Settings;
-    use crate::Bombadil;
+    use crate::{Bombadil, BOMBADIL_CONFIG};
     use std::ops::Not;
     use temp_testdir::TempDir;
 
@@ -223,8 +224,8 @@ mod tests {
         // Arrange
         let tmp = TempDir::new("/tmp/import_test", false).to_path_buf();
         std::fs::copy("tests/imports/import.toml", tmp.join("import.toml")).unwrap();
-        std::fs::copy("tests/imports/bombadil.toml", tmp.join("bombadil.toml")).unwrap();
-        Bombadil::link_self_config(Some(tmp.join("bombadil.toml"))).unwrap();
+        std::fs::copy("tests/imports/bombadil.toml", tmp.join(BOMBADIL_CONFIG)).unwrap();
+        Bombadil::link_self_config(Some(tmp.join(BOMBADIL_CONFIG))).unwrap();
 
         // Act
         let settings = Settings::get().unwrap();

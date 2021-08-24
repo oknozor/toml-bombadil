@@ -13,7 +13,7 @@ LABEL Maintainer="Paul Delafosse <paul.delafosse@protonmail.com>"
 
 RUN apt -y update
 RUN apt -y upgrade
-RUN apt -y install bats gnupg2
+RUN apt -y install bats gnupg2 git
 
 ARG user=tom
 ARG home=/home/$user
