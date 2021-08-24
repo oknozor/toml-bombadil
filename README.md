@@ -59,12 +59,12 @@ your dot file progressively.
 
 ### Using [cargo](https://doc.rust-lang.org/cargo/)
 
-```shell script
+```bash
 cargo install toml-bombadil
 ```
 
 ### Archlinux
-```shell script
+```bash
 yay -S bombadil-bin
 ```
 
@@ -72,7 +72,7 @@ yay -S bombadil-bin
 
 **1. Setup :**
 
-```shell script
+```bash
 git clone https://github.com/my_org/dotfiles
 cd my_dotfiles && touch bombadil.toml
 ```
@@ -109,13 +109,13 @@ alacritty = { source = "alacritty", target = ".config/alacritty/alacritty.yml" }
 For Bombadil to be able to run from any directory and use different config files we need to symlink bombadil config to
 `$XDG_CONFIG_DIR/bombadil.toml` :
 
-```shell script
+```bash
 bombadil install my_dotfiles/
 ```
 
 **4. Install template and symlink :**
 
-```shell script
+```bash
 bombadil link
 ```
 
@@ -370,7 +370,7 @@ and some of them uses a corporate repository :
 
 let's assume your dotfiles have the following structure :
 
-```shell script
+```bash
 ~/bombadil-example
 ├── bombadil.toml
 └── maven
@@ -406,13 +406,13 @@ OPTIONS:
 ```
 
 `bombadil link` would produce the following link :
-```shell script
+```bash
 ❯ bombadil link
 "/home/okno/dotfiles/.dots/maven/settings.xml" => "/home/okno/.m2/settings.xml"
 ```
 
 Linking with the `corporate` profile would use the alternate source for `.m2/settings.xml` :
-```shell script
+```bash
 ❯ bombadil link -p corporate
 "/home/okno/dotfiles/.dots/maven/settings.corporate.xml" => "/home/okno/.m2/settings.xml"
 ```
@@ -421,7 +421,7 @@ Linking with the `corporate` profile would use the alternate source for `.m2/set
 
 Here is an example bombadil config :
 
-```shell script
+```bash
 ~/bombadil-example
 ├── bashrc
 ├── bombadil.toml
@@ -444,26 +444,26 @@ bashrc = { source = "bashrc", target = ".bashrc"}
 vars = [ "java10-vars.toml" ]
 ```
 
-```shell script
+```bash
 # ~/bombadil-example/bashrc
 export JAVA_HOME=__[java_home]__
 # ...
 ```
 
-```shell script
+```bash
 # ~/bombadil-example/vars.toml
 java_home = "/etc/java-openjdk"
 # ...
 ```
 
-```shell script
+```bash
 # ~/bombadil-example/java10-vars.toml
 java_home = "/etc/java10-openjdk"
 # ...
 ```
 
 Running `bombadil link -p corporate` would produce the following `.bashrc` :
-```shell script
+```bash
 export JAVA_HOME=/etc/java10-openjdk
 ```
 
@@ -578,7 +578,7 @@ starship = { source = "zsh/starship.toml", target = ".config/starhip.toml" }
 
 If you'd like to remove all dotfile symlinks defined in your bombadil.toml configuration, simply run:
 
-```shell script
+```bash
 ❯ bombadil unlink
 ```
 

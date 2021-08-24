@@ -26,7 +26,7 @@ is that we want to use a different config depending on the project we are workin
 
 To solve this we will define the following dotfiles :
 
-```shell script
+```bash
 ~/bombadil-example
 ├── bombadil.toml
 └── maven
@@ -54,14 +54,14 @@ Notice on the `corporate` profile we are redefining the `maven` dot entry and on
 ## Linking 
 
 Linking the default profile with `bombadil link`, will produce the following link :
-```shell script
+```bash
 bombadil link
 "/home/okno/dotfiles/.dots/maven/settings.xml" => "/home/okno/.m2/settings.xml"
 ```
 
 Linking with the `corporate` profile will use the alternate source for `.m2/settings.xml` :
 
-```shell script
+```bash
 bombadil link -p corporate
 "/home/okno/dotfiles/.dots/maven/settings.corporate.xml" => "/home/okno/.m2/settings.xml"
 ```
