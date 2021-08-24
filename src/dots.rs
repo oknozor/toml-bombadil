@@ -60,7 +60,7 @@ impl Dot {
         let mut vars = vars.clone();
 
         if let Some(local_vars_path) = self.resolve_var_path(dotfile_dir) {
-            let local_vars = Dot::get_local_vars(&local_vars_path, gpg);
+            let local_vars = Dot::load_local_vars(&local_vars_path, gpg);
             vars.extend(local_vars);
         }
 
@@ -112,7 +112,7 @@ impl Dot {
         }
     }
 
-    fn get_local_vars(source: &Path, gpg: Option<&Gpg>) -> Variables {
+    fn load_local_vars(source: &Path, gpg: Option<&Gpg>) -> Variables {
         Variables::from_toml(source, gpg).unwrap_or_else(|err| {
             eprintln!("{}", err.to_string().yellow());
             Variables::default()
