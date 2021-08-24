@@ -202,8 +202,8 @@ fn main() {
                 let get_subcommand = matches.subcommand_matches(GET).unwrap();
                 let metadata_type = match get_subcommand.value_of("value").unwrap() {
                     "dots" => MetadataType::Dots,
-                    "prehooks" => MetadataType::Prehooks,
-                    "posthooks" => MetadataType::Posthooks,
+                    "prehooks" => MetadataType::PreHooks,
+                    "posthooks" => MetadataType::PostHooks,
                     "path" => MetadataType::Path,
                     "profiles" => MetadataType::Profiles,
                     "vars" => MetadataType::Vars,
