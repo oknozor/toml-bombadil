@@ -81,7 +81,7 @@ If you are using git you might want to add `.dots` to your `.gitignore`.
 
 **2. Configuration :**
 
-Toml bombadil needs a toml config file, along this readme we will call it `bombadil.toml`.
+Toml bombadil will read a config file named `bombadil.toml`.
 
 ```toml
 # {dotfiles}/bombadil.toml
@@ -110,12 +110,7 @@ For Bombadil to be able to run from any directory and use different config files
 `$XDG_CONFIG_DIR/bombadil.toml` :
 
 ```shell script
-bombadil install -c my_dotfiles/bombadil.toml
-```
-
-If you want to switch to another config simply run :
-```shell script
-bombadil install -c my_dotfiles/bombadil-i3.toml
+bombadil install my_dotfiles/
 ```
 
 **4. Install template and symlink :**
