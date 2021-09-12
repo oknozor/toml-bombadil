@@ -52,7 +52,7 @@ For Bombadil to be able to run from any directory and use different config files
 `$XDG_CONFIG_DIR/bombadil.toml` :
 
 ```bash
-bombadil install -c my_dotfiles/bombadil.toml
+bombadil install my_dotfiles/
 ```
 
 ⚠️ : Toml Bombadil will generate a copy of your dotfiles under `.dots`. If you use git to manage your dotfiles,
