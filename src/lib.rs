@@ -89,7 +89,7 @@ impl Bombadil {
         let dotfiles_path = if dotfiles_path.is_dir() {
             dotfiles_path.join(BOMBADIL_CONFIG)
         } else {
-            return Err(anyhow!(""));
+            return Err(anyhow!("Config not found"));
         };
 
         unix::fs::symlink(&dotfiles_path, &xdg_config)
@@ -496,7 +496,7 @@ mod tests {
     #[test]
     fn self_link_works() {
         // Arrange
-        let config_path = PathBuf::from("tests/dotfiles_simple/bombadil.toml");
+        let config_path = PathBuf::from("tests/dotfiles_simple/");
 
         // Act
         Bombadil::link_self_config(Some(config_path)).unwrap();
@@ -778,21 +778,22 @@ mod tests {
 
         // Assert
         assert!(target.join("dummy").exists());
-        let target = TempDir::new("/tmp/hook", false).to_path_buf();
     }
 
     #[test]
     fn meta_var_works() {
         // Arrange
-        let tmp = TempDir::new("/tmp/bombadil_tests", false).to_path_buf();
+        let dotfiles = TempDir::new("/tmp/bombadil_tests", false).to_path_buf();
         // We need an absolute path to the test can pass anywhere
-        fs::copy("tests/vars/meta_vars.toml", &tmp.join("meta_vars.toml")).unwrap();
-        fs::copy("tests/vars/vars.toml", &tmp.join("vars.toml")).unwrap();
-        fs::copy("tests/vars/bombadil.toml", &tmp.join(BOMBADIL_CONFIG)).unwrap();
+        fs::copy(
+            "tests/vars/meta_vars.toml",
+            &dotfiles.join("meta_vars.toml"),
+        )
+        .unwrap();
+        fs::copy("tests/vars/vars.toml", &dotfiles.join("vars.toml")).unwrap();
+        fs::copy("tests/vars/bombadil.toml", &dotfiles.join(BOMBADIL_CONFIG)).unwrap();
 
-        let config_path = tmp.join(BOMBADIL_CONFIG);
-
-        Bombadil::link_self_config(Some(config_path.clone())).unwrap();
+        Bombadil::link_self_config(Some(dotfiles.clone())).unwrap();
 
         // Act
         let bombadil = Bombadil::from_settings(NoGpg).unwrap();
@@ -811,21 +812,23 @@ mod tests {
             Some(&"#008000".to_string())
         );
 
-        let _ = fs::remove_dir_all(tmp);
+        let _ = fs::remove_dir_all(dotfiles);
     }
 
     #[test]
     fn should_print_metadata() {
         // Arrange
-        let tmp = TempDir::new("/tmp/bombadil_tests", false).to_path_buf();
+        let dotfiles = TempDir::new("/tmp/bombadil_tests", false).to_path_buf();
         // We need an absolute path to the test can pass anywhere
-        fs::copy("tests/vars/meta_vars.toml", &tmp.join("meta_vars.toml")).unwrap();
-        fs::copy("tests/vars/vars.toml", &tmp.join("vars.toml")).unwrap();
-        fs::copy("tests/vars/bombadil.toml", &tmp.join(BOMBADIL_CONFIG)).unwrap();
+        fs::copy(
+            "tests/vars/meta_vars.toml",
+            &dotfiles.join("meta_vars.toml"),
+        )
+        .unwrap();
+        fs::copy("tests/vars/vars.toml", &dotfiles.join("vars.toml")).unwrap();
+        fs::copy("tests/vars/bombadil.toml", &dotfiles.join(BOMBADIL_CONFIG)).unwrap();
 
-        let config_path = tmp.join(BOMBADIL_CONFIG);
-
-        Bombadil::link_self_config(Some(config_path.clone())).unwrap();
+        Bombadil::link_self_config(Some(dotfiles.clone())).unwrap();
         let bombadil = Bombadil::from_settings(NoGpg).unwrap();
 
         // Act
@@ -838,7 +841,7 @@ mod tests {
 
         // Assert
         // STDOUT should be asserted once those test facilities are in place.
-        let _ = fs::remove_dir_all(tmp);
+        let _ = fs::remove_dir_all(dotfiles);
     }
 
     #[test]
