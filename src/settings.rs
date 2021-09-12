@@ -222,10 +222,14 @@ mod tests {
     #[test]
     fn should_merge_import() {
         // Arrange
-        let tmp = TempDir::new("/tmp/import_test", false).to_path_buf();
-        std::fs::copy("tests/imports/import.toml", tmp.join("import.toml")).unwrap();
-        std::fs::copy("tests/imports/bombadil.toml", tmp.join(BOMBADIL_CONFIG)).unwrap();
-        Bombadil::link_self_config(Some(tmp.join(BOMBADIL_CONFIG))).unwrap();
+        let dotfiles = TempDir::new("/tmp/import_test", false).to_path_buf();
+        std::fs::copy("tests/imports/import.toml", dotfiles.join("import.toml")).unwrap();
+        std::fs::copy(
+            "tests/imports/bombadil.toml",
+            dotfiles.join(BOMBADIL_CONFIG),
+        )
+        .unwrap();
+        Bombadil::link_self_config(Some(dotfiles.clone())).unwrap();
 
         // Act
         let settings = Settings::get().unwrap();
@@ -234,7 +238,7 @@ mod tests {
         assert_eq!(settings.dotfiles_dir.to_str().unwrap(), "/tmp/import_test");
         assert!(settings.settings.dots.is_empty().not());
 
-        std::fs::remove_dir_all(tmp).unwrap();
+        std::fs::remove_dir_all(dotfiles).unwrap();
     }
 
     #[test]
