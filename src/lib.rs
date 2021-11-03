@@ -328,7 +328,10 @@ impl Bombadil {
 
     fn check_dotfile_dir(&self) -> Result<()> {
         if !self.path.exists() {
-            return Err(anyhow!("Dotfiles base path : {}, not found"));
+            return Err(anyhow!(
+                "Dotfiles base path : {}, not found",
+                self.path.display(),
+            ));
         }
 
         if !self.path.is_dir() {
