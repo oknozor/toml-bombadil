@@ -20,7 +20,7 @@ email = "paul.delafosse@protonmail.com"
 
 [extra.home]
 title = " Toml Bombadil"
-logo = "../static/logo.png"
+logo = "logo.png"
 lead = "<p> A Dotfile manager written in Rust</p>"
 url = "/docs/getting-started/introduction/"
 url_button = "Get started"
