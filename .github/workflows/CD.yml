@@ -28,6 +28,11 @@ jobs:
             target: aarch64-linux-android
 
     steps:
+      - name: install open-ssl
+        if: ${{ runner.os == 'Linux' }}
+        run: |
+          sudo apt-get -y install libssl-dev pkg-config musl-dev musl-tools
+
       - uses: hecrj/setup-rust-action@v1
         with:
           rust-version: stable
