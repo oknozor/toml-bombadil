@@ -2,6 +2,31 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## [2.1.0](https://github.com/oknozor/toml-bombadil/compare/2.0.0..2.1.0) - 2021-11-21
+#### Bug Fixes
+- Fill in missing fmt argument in error message - ([14ed188](https://github.com/oknozor/toml-bombadil/commit/14ed18862e826e46642bdeb725d42a69da01e17a)) - David Tolnay
+#### Documentation
+- **(website)** fix website logo display - ([da2efdf](https://github.com/oknozor/toml-bombadil/commit/da2efdf140dfdd2f285dcbc57403d994a4f2800e)) - [@oknozor](https://github.com/oknozor)
+- fix default language - ([9a43dca](https://github.com/oknozor/toml-bombadil/commit/9a43dca38467e053a6bdf447f3dd709e4d8b4dbe)) - [@oknozor](https://github.com/oknozor)
+- document public functions - ([ede6828](https://github.com/oknozor/toml-bombadil/commit/ede68283e56b84244b46d730d83a948272da755a)) - [@oknozor](https://github.com/oknozor)
+- update link command examples - ([8485455](https://github.com/oknozor/toml-bombadil/commit/8485455052c31534b442e974387ddaf9f731fa2e)) - [@oknozor](https://github.com/oknozor)
+- Add use-case - ([c5e3c81](https://github.com/oknozor/toml-bombadil/commit/c5e3c8106c4e44c84d6209ff5984ddd3b603885f)) - Rohit Goswami
+- Fix minor grammar issue - ([9f56272](https://github.com/oknozor/toml-bombadil/commit/9f562723ca0d1dce247f175756f8a04c5a8f7459)) - Rohit Goswami
+- updated documentation for hooks - ([da56a4d](https://github.com/oknozor/toml-bombadil/commit/da56a4d481d2d78bdaa0fcd5c49239c5073feb37)) - [@travisdavis-ops](https://github.com/travisdavis-ops)
+- add link to bombadil website in the readme - ([37096cd](https://github.com/oknozor/toml-bombadil/commit/37096cd03cd18dbefdff4f2e837a711bbc00b3ca)) - [@oknozor](https://github.com/oknozor)
+#### Features
+- clone dotfiles from remote - ([98afb6c](https://github.com/oknozor/toml-bombadil/commit/98afb6cb18b7c268e5ac64dcb00f567615aaf1f0)) - [@oknozor](https://github.com/oknozor)
+- add pre&post hook to get command - ([2e7b651](https://github.com/oknozor/toml-bombadil/commit/2e7b651a851c6548d686ba393a17f0309827a585)) - [@travisdavis-ops](https://github.com/travisdavis-ops)
+- add post install hooks, rename hooks to posthooks - ([4a21843](https://github.com/oknozor/toml-bombadil/commit/4a21843b4396e368120c90ee031c8e7ba7f3ce6c)) - [@travisdavis-ops](https://github.com/travisdavis-ops)
+#### Miscellaneous Chores
+- update cocogitto bump config - ([078d22b](https://github.com/oknozor/toml-bombadil/commit/078d22b290ba93a681156789107718222b326021)) - [@oknozor](https://github.com/oknozor)
+- add github sponsor - ([20696fc](https://github.com/oknozor/toml-bombadil/commit/20696fc13ba33f0ad74930102081ce9113a32261)) - [@oknozor](https://github.com/oknozor)
+- clippy lints and fmt * - ([36b82b0](https://github.com/oknozor/toml-bombadil/commit/36b82b02fa07bf0f908983906c3d95b2ddf377af)) - [@oknozor](https://github.com/oknozor)
+#### Tests
+- fix config path in tests - ([3032204](https://github.com/oknozor/toml-bombadil/commit/3032204e607c7abee71383f722455b4fca8752c2)) - [@oknozor](https://github.com/oknozor)
+- fixed test code - ([337874e](https://github.com/oknozor/toml-bombadil/commit/337874e12cb386f484f4897e09e6d320b0fbc270)) - [@travisdavis-ops](https://github.com/travisdavis-ops)
+- - -
+
 ## 2.0.0 - 2021-05-25
 
 
