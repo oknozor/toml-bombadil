@@ -462,8 +462,7 @@ impl Bombadil {
         let mut ignored: Vec<PathBuf> = self
             .profiles
             .iter()
-            .map(|(_, profile)| profile.dots.get(dot_key))
-            .flatten()
+            .filter_map(|(_, profile)| profile.dots.get(dot_key))
             .filter(|dot| dot.vars.is_some())
             .filter_map(|dot| dot.resolve_var_path(&self.path, origin_source))
             .collect();

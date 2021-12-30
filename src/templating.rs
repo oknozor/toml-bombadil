@@ -12,7 +12,7 @@ use std::path::{Path, PathBuf};
 #[grammar = "template.pest"]
 struct BombadilParser;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub(crate) struct Variables {
     /// holds the values defined in template.toml
     pub variables: HashMap<String, String>,
@@ -161,15 +161,6 @@ impl Variables {
         }
 
         Ok(secrets)
-    }
-}
-
-impl Default for Variables {
-    fn default() -> Self {
-        Self {
-            variables: Default::default(),
-            secrets: Default::default(),
-        }
     }
 }
 
