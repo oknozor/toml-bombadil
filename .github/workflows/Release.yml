@@ -48,7 +48,7 @@ jobs:
 
       - name: Generate Changelog
         run: |
-          run: echo "::set-output name=${{ steps.release.outputs.version }}"
+          run: echo "::set-output name=version::${{ steps.release.outputs.version }}"
           cog changelog --at ${{ steps.release.outputs.version }} -t full_hash > GITHUB_CHANGELOG.md
 
       - name: Upload github release
