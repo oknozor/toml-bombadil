@@ -2,6 +2,11 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## [2.2.1](https://github.com/oknozor/toml-bombadil/compare/2.2.0..2.2.1) - 2021-12-30
+#### Bug Fixes
+- use a single release github action workflow - ([e104eb0](https://github.com/oknozor/toml-bombadil/commit/e104eb023578bfd2aff7bb20db7b6f1e11d64f2a)) - [@oknozor](https://github.com/oknozor)
+- - -
+
 ## [2.2.0](https://github.com/oknozor/toml-bombadil/compare/2.1.0..2.2.0) - 2021-12-30
 #### Continuous Integration
 - add cargo bump to build deps - ([a321566](https://github.com/oknozor/toml-bombadil/commit/a321566a4608f582fc8dc10c75c199f84a8fe914)) - [@oknozor](https://github.com/oknozor)
