@@ -42,7 +42,7 @@ pub struct ImportedSettings {
 }
 
 /// The default profile, containing dot entries, vars and hooks
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Default)]
 pub struct ActiveProfile {
     /// A list of symlink to edit
     #[serde(default)]
@@ -88,17 +88,6 @@ pub struct Profile {
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct ImportPath {
     path: PathBuf,
-}
-
-impl Default for ActiveProfile {
-    fn default() -> Self {
-        Self {
-            dots: Default::default(),
-            prehooks: vec![],
-            posthooks: vec![],
-            vars: vec![],
-        }
-    }
 }
 
 impl Settings {
