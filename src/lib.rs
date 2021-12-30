@@ -235,12 +235,26 @@ impl Bombadil {
 
     /// Enable a dotfile profile by merging its config with the default profile
     pub fn enable_profiles(&mut self, profile_keys: Vec<&str>) -> Result<()> {
-        let profiles: Vec<Profile> = profile_keys
+        let mut profiles: Vec<Profile> = profile_keys
             .iter()
             // unwrap here is safe cause allowed profile keys are checked by clap
             .map(|profile_key| self.profiles.get(&profile_key.to_string()).unwrap())
             .cloned()
             .collect();
+
+        let sub_profiles: Vec<Profile> = profiles
+            .iter()
+            .flat_map(|profile| {
+                profile
+                    .extra_profiles
+                    .iter()
+                    .flat_map(|sub_profile| self.profiles.get(sub_profile))
+                    .collect::<Vec<&Profile>>()
+            })
+            .cloned()
+            .collect();
+
+        profiles.extend(sub_profiles);
 
         // Merge profile dots
         for profile in profiles.iter() {
@@ -900,6 +914,7 @@ mod tests {
             "profile_one".to_string(),
             Profile {
                 dots: dots_profile_one,
+                extra_profiles: vec![],
                 prehooks: vec![],
                 posthooks: vec![],
                 vars: vec![],
@@ -913,6 +928,7 @@ mod tests {
                 prehooks: vec![],
                 posthooks: vec![],
                 vars: vec![],
+                extra_profiles: vec![],
             },
         );
 
