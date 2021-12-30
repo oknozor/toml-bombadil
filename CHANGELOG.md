@@ -2,6 +2,19 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## [2.2.0](https://github.com/oknozor/toml-bombadil/compare/2.1.0..2.2.0) - 2021-12-30
+#### Continuous Integration
+- add cargo bump to build deps - ([a321566](https://github.com/oknozor/toml-bombadil/commit/a321566a4608f582fc8dc10c75c199f84a8fe914)) - [@oknozor](https://github.com/oknozor)
+- add automated release, dependabot and github codeowners - ([9307457](https://github.com/oknozor/toml-bombadil/commit/93074570c2d70a501ba136cb645b53b13e284c13)) - [@oknozor](https://github.com/oknozor)
+#### Documentation
+- update documentation and shorten README - ([3780d09](https://github.com/oknozor/toml-bombadil/commit/3780d0984eaec42c7c64229e02810d5b94a58080)) - [@oknozor](https://github.com/oknozor)
+#### Features
+- add extra profiles - ([7741f39](https://github.com/oknozor/toml-bombadil/commit/7741f399069da6c48f58a44e102b73270e831170)) - [@oknozor](https://github.com/oknozor)
+#### Miscellaneous Chores
+- **(deps)** update dirs requirement from ^3 to ^4 - ([2ee87e0](https://github.com/oknozor/toml-bombadil/commit/2ee87e0d19d90f1adc17628aaf751056a08b71b5)) - dependabot[bot]
+- fix clippy lints - ([482e9ae](https://github.com/oknozor/toml-bombadil/commit/482e9ae0408b6164a355f5c3f41288e7e43aeff9)) - [@oknozor](https://github.com/oknozor)
+- - -
+
 ## [2.1.0](https://github.com/oknozor/toml-bombadil/compare/2.0.0..2.1.0) - 2021-11-21
 #### Bug Fixes
 - Fill in missing fmt argument in error message - ([14ed188](https://github.com/oknozor/toml-bombadil/commit/14ed18862e826e46642bdeb725d42a69da01e17a)) - David Tolnay
