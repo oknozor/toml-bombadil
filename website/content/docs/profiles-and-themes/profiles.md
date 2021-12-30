@@ -80,6 +80,26 @@ sway
 i3
 ```
 
+## Combine profiles 
+
+If you manage many profiles, linking a specific combination can be tedious. 
+Assuming you have a `i3`, `corporate`, `solarized-theme` profiles you want to link together you would have to type 
+the following command each time you want to link your dotfiles :
+```
+❯ bombadil link -p i3 corporate solarized-theme
+```
+
+To avoid this you can define a combined profile like so : 
+```toml
+[profiles.workstation]
+extra_profiles = ["i3", "corporate", "solarized-theme"]
+```
+
+Then you will just need to run the following : 
+```
+❯ bombadil link -p workstation
+```
+
 ## Switch profile
 
 We can switch profile by running the following :
