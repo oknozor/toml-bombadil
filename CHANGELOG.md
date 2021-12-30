@@ -2,6 +2,11 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## [2.2.3](https://github.com/oknozor/toml-bombadil/compare/2.2.2..2.2.3) - 2021-12-30
+#### Bug Fixes
+- fix release version job output again - ([a9963e7](https://github.com/oknozor/toml-bombadil/commit/a9963e7d6f3bcb5f287e0d60b801d6defedf5732)) - [@oknozor](https://github.com/oknozor)
+- - -
+
 ## [2.2.2](https://github.com/oknozor/toml-bombadil/compare/2.2.1..2.2.2) - 2021-12-30
 #### Bug Fixes
 - fix release version job output - ([0279e96](https://github.com/oknozor/toml-bombadil/commit/0279e96788bffc4e6a669ecc7e7538361db0b108)) - [@oknozor](https://github.com/oknozor)
