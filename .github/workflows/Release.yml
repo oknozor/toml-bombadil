@@ -47,7 +47,9 @@ jobs:
           check-latest-tag-only: true
 
       - name: Generate Changelog
-        run: cog changelog --at ${{ steps.release.outputs.version }} -t full_hash > GITHUB_CHANGELOG.md
+        run: |
+          run: echo "::set-output name=${{ steps.release.outputs.version }}"
+          cog changelog --at ${{ steps.release.outputs.version }} -t full_hash > GITHUB_CHANGELOG.md
 
       - name: Upload github release
         uses: softprops/action-gh-release@v1
@@ -90,14 +92,10 @@ jobs:
       - name: Build
         run: ci/action.sh release ${{ matrix.target }}
 
-      - name: Get the version
-        id: get_version
-        run: echo ::set-output name=VERSION::${needs.release.outputs.version}
-
       - name: Upload binaries to release
         uses: svenstaro/upload-release-action@v1-release
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: target/tar/bombadil.tar.gz
           tag: ${{ github.ref }}
-          asset_name: bombadil-${{ steps.get_version.outputs.VERSION }}-${{ matrix.target }}.tar.gz
+          asset_name: bombadil-${{needs.release.outputs.version}}-${{ matrix.target }}.tar.gz
