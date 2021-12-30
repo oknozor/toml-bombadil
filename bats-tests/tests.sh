@@ -94,6 +94,15 @@ setup() {
   assert_symlink_to "$HOME/dotfiles/.dots/maven/corporate.settings.xml" "$HOME/.m2/settings.xml"
 }
 
+@test "Link meta profile" {
+  run bombadil link -p corporate-sway
+  assert_success
+  assert_symlink_to "$HOME/dotfiles/.dots/sway" "$HOME/.config/sway"
+  assert_file_exist "$HOME/.config/sway/config"
+  assert_symlink_to "$HOME/dotfiles/.dots/maven/corporate.settings.xml" "$HOME/.m2/settings.xml"
+}
+
+
 @test "Profile should override default vars" {
   run bombadil link
   assert_success

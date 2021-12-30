@@ -17,10 +17,16 @@ maven = { source = "maven/corporate.settings.xml", target = ".m2/settings.xml" }
 [profiles.i3.dots]
 i3 =  { source = "i3", target = ".config/i3" }
 
+[profiles.sway.dots]
+sway =  { source = "sway", target = ".config/sway" }
+
 [profiles.java-16]
 vars = [ "profiles/java16.toml"]
 
 [profiles.java-17.dots]
 bash = { vars = "profiles/java17.toml" }
+
+[profiles.corporate-sway]
+extra_profiles = ["corporate", "sway"]
 
 

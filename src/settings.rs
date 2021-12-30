@@ -68,6 +68,10 @@ pub struct Profile {
     #[serde(default)]
     pub dots: HashMap<String, DotOverride>,
 
+    /// A list of additional profiles to enable
+    #[serde(default)]
+    pub extra_profiles: Vec<String>,
+
     /// Pre install hook commands
     #[serde(default)]
     pub prehooks: Vec<String>,
