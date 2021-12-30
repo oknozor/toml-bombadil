@@ -30,6 +30,11 @@ jobs:
           gpg --import tests/gpg/private.gpg
           echo -e "5\ny\n" | gpg --no-tty --command-fd 0 --expert --edit-key test@toml.bombadil.org trust
 
+      - name: Setup cargo
+        run: |
+          cargo install cargo-bump
+          cargo login ${{ secrets.CARGO_TOKEN }}
+
       # version publish steps are managed by cocogitto, see `cog.toml`
       # and https://github.com/oknozor/cocogitto-action for more info
       - name: Semver release
