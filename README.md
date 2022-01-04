@@ -110,7 +110,6 @@ Optionally you can display resources for a profile with the `--profiles` flag.
 If you use Bombadil please submit an issue, or a PR to update this section, we will be happy to reference your dotfiles here !
 
 - [https://github.com/oknozor/dotfiles](https://github.com/oknozor/dotfiles)
-- [https://github.com/DSpeckhals/dotfiles](https://github.com/DSpeckhals/dotfiles)
 - [https://github.com/mrkajetanp/dotfiles](https://github.com/mrkajetanp/dotfiles)
 - [https://github.com/HaoZeke/Dotfiles](https://github.com/HaoZeke/Dotfiles/tree/bombadil)
   
