@@ -62,15 +62,15 @@
 
 ##  Why another dotfile manager ?
 
-I wrote Toml Bombadil because I kept changing my desktop environment :
+I wrote Toml Bombadil because I kept changing my desktop environment:
 switching from i3 to sway, from sway to xfce, from xfce to gnome and back to sway.
-When you keep changing your working environment like this you end up with several problems :
+When you keep changing your working environment like this you end up with several problems:
 - Some symlinks will end up orphans.
 - Not every program you use support Xresources and you will most probably have to manually edit some themes/config.
 - When starting a fresh installation you will very likely need to adapt your existing dotfiles to your new machine.
-- It is a mess
+- It is a mess.
 
-Toml Bombadil try to solve this with a simple addition to the symlink method used by other tools : instead of creating
+Toml Bombadil try to solve this with a simple addition to the symlink method used by other tools: instead of creating
 a symlink from a dotfile to the actual config path of a program, it will create a copy of it and symlink the copy.
 This additional step allow to use your original dotfile as a template and inject variables in the copy.
 You can have multiple value files in the same dotfile repository and change color scheme, or any value on the fly.
@@ -92,7 +92,7 @@ cargo install toml-bombadil
 
 ## Quickstart
 
-See [Docs -> Quickstart](https://oknozor.github.io/toml-bombadil/docs/getting-started/quick-start/)
+See [Docs -> Quickstart](https://oknozor.github.io/toml-bombadil/docs/getting-started/quick-start/).
 
 ## Shell completions
 
@@ -107,15 +107,15 @@ Optionally you can display resources for a profile with the `--profiles` flag.
 
 ## Example repositories
 
-If you use Bombadil please submit an issue, or a PR to update this section, we will be happy to reference your dotfiles here !
+If you use Bombadil please submit an issue, or a PR to update this section, we will be happy to reference your dotfiles here!
 
 - [https://github.com/oknozor/dotfiles](https://github.com/oknozor/dotfiles)
 - [https://github.com/mrkajetanp/dotfiles](https://github.com/mrkajetanp/dotfiles)
 - [https://github.com/HaoZeke/Dotfiles](https://github.com/HaoZeke/Dotfiles/tree/bombadil)
-  
+
 ## Contributing
 
-Found a bug, have a suggestion for a new feature ?
+Found a bug, have a suggestion for a new feature?
 Please read the [contribution guideline](CONTRIBUTING.md) and submit an [issue](https://github.com/oknozor/toml-bombadil/issues).
 
 ## License
