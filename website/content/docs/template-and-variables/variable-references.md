@@ -26,7 +26,7 @@ a_variable = "42"
 variable_ref = "%a_variable"
 ```
 
-Here `%a_variable` points to `"42"`. Any template call to `__[variable_ref]__` will be replace by `42` when running
+Here `%a_variable` points to `"42"`. Any template call to `{{variable_ref}}` will be replace by `42` when running
 `bombadil link`.
 
 ### Layout example
