@@ -1,8 +1,9 @@
 use crate::dots::{Dot, DotOverride};
 use crate::BOMBADIL_CONFIG;
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use colored::Colorize;
 use config::{Config, ConfigError, File};
+use serde_derive::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::ops::Not;
 use std::path::PathBuf;

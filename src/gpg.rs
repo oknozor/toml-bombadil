@@ -1,5 +1,5 @@
 use crate::templating::Variables;
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use std::io::Write;
 use std::path::Path;
 use std::process::{Command, Stdio};
