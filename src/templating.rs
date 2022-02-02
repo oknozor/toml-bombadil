@@ -1,17 +1,11 @@
 use crate::gpg::{Gpg, GPG_PREFIX};
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Context, Result};
 use colored::Colorize;
-use pest::Parser;
-use pest_derive::Parser;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::BufReader;
 use std::path::{Path, PathBuf};
-
-#[derive(Parser)]
-#[grammar = "template.pest"]
-struct BombadilParser;
 
 #[derive(Clone, Debug, Default)]
 pub(crate) struct Variables {
@@ -78,40 +72,18 @@ impl Variables {
         let mut contents = String::new();
         buf_reader.read_to_string(&mut contents)?;
 
-        // Merge variable and secret
-        let mut variables = self.variables.clone();
-
-        // FIXME : avoid cloning here
-        self.secrets.iter().for_each(|(k, v)| {
-            variables.insert(k.to_owned(), v.to_owned());
-        });
-
-        let pairs = BombadilParser::parse(Rule::file, &contents)
-            .expect("Unable to parse template file")
-            .next()
-            .unwrap();
-
-        let mut output = String::new();
-
-        for pair in pairs.into_inner() {
-            match pair.as_rule() {
-                Rule::variable => {
-                    let var_name = pair.into_inner().next().unwrap().as_str().trim();
-
-                    let value = variables.get(var_name).cloned().unwrap_or_else(|| {
-                        let err = format!("Undefined variable : {} in {:?}", var_name, path);
-                        eprintln!("{}", err.yellow());
-                        "undefined variable".to_string()
-                    });
-
-                    output.push_str(&value);
-                }
-                Rule::raw_content => output.push_str(pair.as_str()),
-                _ => (),
-            }
+        // Create the tera context from variables and secrets.
+        let mut context = tera::Context::new();
+        for (name, value) in self.variables.iter() {
+            context.insert(name, value);
         }
 
-        Ok(output)
+        self.secrets.iter().for_each(|(k, v)| {
+            context.insert(k.to_owned(), v);
+        });
+
+        tera::Tera::one_off(&contents, &context, false)
+            .context("Failed to apply templating to file:")
     }
 
     pub(crate) fn resolve_ref(&mut self) {

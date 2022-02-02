@@ -609,7 +609,7 @@ mod tests {
         let absolute_source_path = &temp.join(&source);
 
         fs::create_dir(absolute_source_path)?;
-        fs::write(absolute_source_path.join("file"), "Hello __[name]__")?;
+        fs::write(absolute_source_path.join("file"), "Hello {{name}}")?;
 
         let dot = Dot {
             source: source.clone(),
@@ -648,10 +648,7 @@ mod tests {
             "tests/local_dot_vars/vars.toml",
             absolute_source_path.join(&local_vars_path),
         )?;
-        fs::write(
-            absolute_source_path.join("file"),
-            "__[name]__ is __[verb]__",
-        )?;
+        fs::write(absolute_source_path.join("file"), "{{name}} is {{verb}}")?;
 
         let dot = Dot {
             source: source.clone(),
@@ -695,10 +692,7 @@ mod tests {
             "tests/local_dot_vars/vars.toml",
             temp.join(&local_vars_path),
         )?;
-        fs::write(
-            absolute_source_path.join("file"),
-            "__[name]__ is __[verb]__",
-        )?;
+        fs::write(absolute_source_path.join("file"), "{{name}} is {{verb}}")?;
 
         let dot = Dot {
             source: source.clone(),
@@ -736,10 +730,7 @@ mod tests {
             "tests/local_dot_vars/vars.toml",
             absolute_source_path.join(&local_vars_path),
         )?;
-        fs::write(
-            absolute_source_path.join("file"),
-            "__[name]__ is __[verb]__",
-        )?;
+        fs::write(absolute_source_path.join("file"), "{{name}} is {{verb}}")?;
 
         let dot = Dot {
             source: source.clone(),

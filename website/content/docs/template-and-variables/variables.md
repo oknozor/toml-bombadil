@@ -59,17 +59,17 @@ alacritty = { source = "alacritty.yml", target = ".config/alacritty/alacritty.ym
 ```
 
 The `source` attributes point to a template dotfile named `alacritty.yaml`. We can use the previously defined variables
-using the `__[variable_name]__` syntax :
+using the `{{variable_name}}` syntax :
 
 ```yaml
 # {dotfiles}/alacritty.yml
 colors:
    primary:
-       background: "__[background]__"
-       foreground: "__[foreground]__"
+       background: "{{background}}"
+       foreground: "{{foreground}}"
    cursor:
-       text: "__[text]__"
-       cursor: "__[cursor]__"
+       text: "{{text}}"
+       cursor: "{{cursor}}"
 ```
 
 ### Rendering
