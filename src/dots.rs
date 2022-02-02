@@ -1,9 +1,10 @@
 use crate::gpg::Gpg;
 use crate::templating::Variables;
 use crate::unlink;
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use colored::*;
 use dirs::home_dir;
+use serde_derive::{Deserialize, Serialize};
 use std::fs;
 use std::fs::File;
 use std::io::Write;

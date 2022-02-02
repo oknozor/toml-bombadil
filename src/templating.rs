@@ -1,7 +1,8 @@
 use crate::gpg::{Gpg, GPG_PREFIX};
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use colored::Colorize;
 use pest::Parser;
+use pest_derive::Parser;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::prelude::*;
