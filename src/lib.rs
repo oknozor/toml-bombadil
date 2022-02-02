@@ -1,17 +1,10 @@
-#[macro_use]
-extern crate serde_derive;
-#[macro_use]
-extern crate anyhow;
-#[macro_use]
-extern crate pest_derive;
-
 use crate::dots::{Dot, DotVar};
 use crate::gpg::Gpg;
 use crate::hook::Hook;
 use crate::settings::{Profile, Settings};
 use crate::state::BombadilState;
 use crate::templating::Variables;
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use colored::*;
 use std::collections::HashMap;
 use std::fs;
