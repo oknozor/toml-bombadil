@@ -20,7 +20,7 @@ Let's assume you have the following in your `.bashrc` dotfile :
 
 ```bash
 # ~/bombadil-example/bashrc
-export JAVA_HOME=__[java_home]__
+export JAVA_HOME={{java_home}}
 # ...
 ```
 

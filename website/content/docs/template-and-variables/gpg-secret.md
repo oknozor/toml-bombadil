@@ -57,7 +57,7 @@ Once you secret has been added to a variable file you can use it as a normal var
     <server>
       <id>my.server</id>
       <username>Tom</username>
-      <password>__[server_password]__</password>
+      <password>{{server_password}}</password>
     </server>
 ```
 
