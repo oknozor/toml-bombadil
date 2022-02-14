@@ -1,17 +1,11 @@
-use clap::{App, AppSettings, Arg, Shell, SubCommand};
+use clap::lazy_static::lazy_static;
+use clap::{AppSettings, IntoApp, Parser};
+use clap_complete::Shell;
 use std::io::BufRead;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use toml_bombadil::settings::Settings;
 use toml_bombadil::{Bombadil, MetadataType, Mode};
-
-const LINK: &str = "link";
-const UNLINK: &str = "unlink";
-const INSTALL: &str = "install";
-const CLONE: &str = "clone";
-const ADD_SECRET: &str = "add-secret";
-const GET: &str = "get";
-const GENERATE_COMPLETIONS: &str = "generate-completions";
 
 macro_rules! fatal {
     ($($tt:tt)*) => {{
@@ -21,271 +15,202 @@ macro_rules! fatal {
     }}
 }
 
-fn build_cli<'a, 'b>(profile_names: Vec<&'a str>) -> App<'a, 'b>
-where
-    'a: 'b,
-{
-    let app_settings = &[
-        AppSettings::SubcommandRequiredElseHelp,
-        AppSettings::UnifiedHelpMessage,
-        AppSettings::ColoredHelp,
-        AppSettings::VersionlessSubcommands,
-    ];
+lazy_static! {
+    static ref SETTINGS: Settings = Settings::get().unwrap_or_default();
+}
 
-    let subcommand_settings = &[
-        AppSettings::UnifiedHelpMessage,
-        AppSettings::ColoredHelp,
-        AppSettings::VersionlessSubcommands,
-    ];
+fn profiles() -> Vec<&'static str> {
+    SETTINGS
+        .profiles
+        .keys()
+        .map(|profile| profile.as_ref())
+        .collect()
+}
 
-    App::new("Toml Bombadil")
-        .settings(app_settings)
-        .version(env!("CARGO_PKG_VERSION"))
-        .author("Paul D. <paul.delafosse@protonmail.com>")
-        .about("A dotfile template manager")
-        .long_about("Toml is a dotfile template manager, written in rust. \
-        For more info on how to configure it please go to https://github.com/oknozor/toml-bombadil")
-        .subcommand(SubCommand::with_name(INSTALL)
-            .settings(subcommand_settings)
-            .about("Link a given dotfile directory config to XDG_CONFIG_DIR/bombadil.toml")
-            .arg(Arg::with_name("CONFIG")
-                .help("Path to your dotfile directory")
-                .takes_value(true)
-                .required(false)))
-        .subcommand(SubCommand::with_name(CLONE)
-            .settings(subcommand_settings)
-            .about("Install dotfiles from a remote git repository to a target folder")
-            .arg(Arg::with_name("remote")
-                .help("Remote repository address, either http or ssh")
-                .takes_value(true)
-                .required(true))
-            .arg(Arg::with_name("path")
-                .help("Target destination, repository name by default")
-                .short("t")
-                .long("target")
-                .takes_value(true)
-                .required(false))
-            .arg(Arg::with_name("profiles")
-                .help("A list of comma separated profiles to activate")
-                .short("p")
-                .long("profiles")
-                .takes_value(true)
-                .multiple(true)
-                .required(false)))
-        .subcommand(SubCommand::with_name(LINK)
-            .settings(subcommand_settings)
-            .about("Symlink a copy of your dotfiles and inject variables according to bombadil.toml config")
-            .arg(Arg::with_name("profiles")
-                .help("A list of comma separated profiles to activate")
-                .short("p")
-                .long("profiles")
-                .possible_values(profile_names.as_slice())
-                .takes_value(true)
-                .multiple(true)
-                .required(false)))
-        .subcommand(SubCommand::with_name(UNLINK)
-            .settings(subcommand_settings)
-            .about("Remove all symlinks defined in your bombadil.toml"))
-        .subcommand(SubCommand::with_name(ADD_SECRET)
-            .settings(subcommand_settings)
-            .about("Add a secret var to bombadil environment")
-            .arg(Arg::with_name("key")
-                .help("Key of the secret variable to create")
-                .short("k")
-                .long("key")
-                .takes_value(true)
-                .required(true))
-            .arg(Arg::with_name("value")
-                .help("Value of the secret variable to create")
-                .short("v")
-                .long("value")
-                .takes_value(true)
-                .required_unless("ask"))
-            .arg(Arg::with_name("ask")
-                .help("Get the secret value from stdin")
-                .short("a")
-                .long("ask")
-                .takes_value(false)
-                .required_unless("value"))
-            .arg(Arg::with_name("file")
-                .help("Path of the var file to modify")
-                .short("f")
-                .long("file")
-                .takes_value(true)
-                .required(true)))
-        .subcommand(SubCommand::with_name(GET)
-            .settings(subcommand_settings)
-            .about("Get metadata about dots, hooks, path, profiles, or vars")
-            .arg(Arg::with_name("value")
-                .possible_values(&["dots", "prehooks", "posthooks", "path", "profiles", "vars", "secrets"])
-                .default_value("dots")
-                .takes_value(true)
-                .help("Metadata to get"))
-            .arg(Arg::with_name("profiles")
-                .short("p")
-                .long("profiles")
-                .takes_value(true)
-                .possible_values(profile_names.as_slice())
-                .multiple(true)
-                .help("Get metadata for specific profiles")
-            )
-        )
-        .subcommand(SubCommand::with_name(GENERATE_COMPLETIONS)
-            .settings(subcommand_settings)
-            .about("Generate shell completions")
-            .arg(Arg::with_name("type")
-                .possible_values(&["bash", "elvish", "fish", "zsh"])
-                .required(true)
-                .takes_value(true)
-                .help("Type of completions to generate")
-            )
-        )
+/// Toml is a dotfile template manager, written in rust.
+#[derive(Parser, Debug)]
+#[clap(
+    global_setting = AppSettings::DeriveDisplayOrder,
+    subcommand_required = true,
+    arg_required_else_help = true,
+    version,
+    name = "Toml Bombadil",
+    author = "Paul D. <paul.delafosse@protonmail.com>"
+)]
+enum Cli {
+    /// Link a given dotfile directory config to "XDG_CONFIG_DIR/bombadil.toml"
+    Install {
+        /// Path to your dotfile directory
+        #[clap(value_name = "CONFIG", required = false)]
+        config: Option<PathBuf>,
+    },
+    /// Install dotfiles from a remote git repository to a target folder
+    Clone {
+        /// Remote repository address, either http or ssh
+        #[clap(short, long, required = false)]
+        remote: String,
+        /// Target destination, repository name by default
+        #[clap(short, long, required = false)]
+        target: Option<PathBuf>,
+        /// A list of comma separated profiles to activate
+        #[clap(short, long, required = false, multiple_values = true)]
+        profiles: Vec<String>,
+    },
+    /// Symlink a copy of your dotfiles and inject variables according to bombadil.toml config
+    Link {
+        /// A list of comma separated profiles to activate
+        #[clap(short, long, required = false, multiple_values = true, possible_values = profiles())]
+        profiles: Vec<String>,
+    },
+    /// Remove all symlinks defined in your bombadil.toml
+    Unlink,
+    /// Add a secret var to bombadil environment
+    AddSecret {
+        /// Key of the secret variable to create
+        #[clap(short, long)]
+        key: String,
+        #[clap(short, long, required_unless_present = "ask")]
+        value: String,
+        /// Get the secret value from stdin
+        #[clap(long, short)]
+        ask: bool,
+        /// Path of the var file to modify
+        #[clap(long, short)]
+        file: String,
+    },
+    /// Get metadata about dots, hooks, path, profiles, or vars
+    Get {
+        #[clap(value_name = "VALUE", possible_values = &["dots", "prehooks", "posthooks", "path", "profiles", "vars", "secrets"])]
+        value: String,
+        #[clap(multiple_values = true, possible_values = profiles())]
+        profiles: Vec<String>,
+    },
+    /// Generate shell completions
+    /// Generate shell completions
+    GenerateCompletions {
+        /// Type of completions to generate
+        #[clap(name = "type", arg_enum)]
+        shell: Shell,
+    },
 }
 
 fn main() {
-    let profiles = Settings::get()
-        .map(|settings| settings.profiles)
-        .unwrap_or_default();
+    let cli = Cli::parse();
 
-    let profile_names = profiles
-        .iter()
-        .map(|profile| profile.0.as_str())
-        .collect::<Vec<&str>>();
-
-    let matches = build_cli(profile_names.clone()).get_matches();
-
-    if let Some(subcommand) = matches.subcommand_name() {
-        match subcommand {
-            INSTALL => {
-                let install_command = matches.subcommand_matches(INSTALL).unwrap();
-                let config_path = install_command.value_of("CONFIG").map(PathBuf::from);
-
-                Bombadil::link_self_config(config_path).unwrap_or_else(|err| fatal!("{}", err));
-            }
-
-            CLONE => {
-                let clone_command = matches.subcommand_matches(CLONE).unwrap();
-                let remote = clone_command.value_of("remote").unwrap();
-                let path = match clone_command.value_of("path") {
-                    None => {
-                        let repo_name = remote.split('/').last().unwrap();
-                        let repo_name = repo_name.strip_suffix(".git").unwrap();
-                        repo_name
-                    }
-                    Some(path) => path,
-                };
-
-                let target_pathbuf = PathBuf::from_str(path).unwrap();
-                println!("Cloning {} in {}", remote, path);
-                let profiles: Option<Vec<&str>> = if clone_command.is_present("profiles") {
-                    Some(clone_command.values_of("profiles").unwrap().collect())
-                } else {
-                    None
-                };
-
-                Bombadil::install_from_remote(remote, target_pathbuf, profiles)
-                    .unwrap_or_else(|err| fatal!("{}", err));
-            }
-
-            LINK => {
-                let mut bombadil =
-                    Bombadil::from_settings(Mode::Gpg).unwrap_or_else(|err| fatal!("{}", err));
-
-                let link_command = matches.subcommand_matches(LINK).unwrap();
-
-                if link_command.is_present("profiles") {
-                    let profiles: Vec<_> = link_command.values_of("profiles").unwrap().collect();
-                    let _command_result = bombadil
-                        .enable_profiles(profiles)
-                        .unwrap_or_else(|err| fatal!("{}", err));
-                }
-
-                bombadil.install().unwrap_or_else(|err| fatal!("{}", err));
-            }
-            UNLINK => {
-                let bombadil =
-                    Bombadil::from_settings(Mode::NoGpg).unwrap_or_else(|err| fatal!("{}", err));
-                bombadil.uninstall().unwrap_or_else(|err| fatal!("{}", err));
-            }
-            ADD_SECRET => {
-                let add_secret_subcommand = matches.subcommand_matches(ADD_SECRET).unwrap();
-                let key = add_secret_subcommand.value_of("key").unwrap();
-
-                let value = if add_secret_subcommand.is_present("ask") {
-                    println!("Type the value and press enter to confirm :");
-                    std::io::stdin().lock().lines().next().unwrap().unwrap()
-                } else {
-                    add_secret_subcommand.value_of("value").unwrap().to_string()
-                };
-
-                let var_file = add_secret_subcommand.value_of("file").unwrap();
-                let path = Path::new(var_file);
-
-                if !path.exists() {
-                    fatal!(
-                        "Error trying to write secret to {} : No such file",
-                        var_file
-                    )
-                };
-
-                if path.is_dir() {
-                    fatal!(
-                        "Error trying to write secret to {} : is a directory",
-                        var_file
-                    )
-                }
-
-                let bombadil =
-                    Bombadil::from_settings(Mode::Gpg).unwrap_or_else(|err| fatal!("{}", err));
-
-                bombadil
-                    .add_secret(key, &value, var_file)
-                    .unwrap_or_else(|err| fatal!("{}", err));
-            }
-            GET => {
-                let get_subcommand = matches.subcommand_matches(GET).unwrap();
-                let metadata_type = match get_subcommand.value_of("value").unwrap() {
-                    "dots" => MetadataType::Dots,
-                    "prehooks" => MetadataType::PreHooks,
-                    "posthooks" => MetadataType::PostHooks,
-                    "path" => MetadataType::Path,
-                    "profiles" => MetadataType::Profiles,
-                    "vars" => MetadataType::Vars,
-                    "secrets" => MetadataType::Secrets,
-                    _ => unreachable!(),
-                };
-
-                let mut bombadil = match metadata_type {
-                    MetadataType::Secrets => Bombadil::from_settings(Mode::Gpg),
-                    _ => Bombadil::from_settings(Mode::NoGpg),
-                }
-                .unwrap_or_else(|err| fatal!("{}", err));
-
-                if get_subcommand.is_present("profiles") {
-                    let profiles: Vec<_> = get_subcommand.values_of("profiles").unwrap().collect();
-                    let _command_result = bombadil
-                        .enable_profiles(profiles)
-                        .unwrap_or_else(|err| fatal!("{}", err));
-                }
-
-                bombadil.print_metadata(metadata_type);
-            }
-            GENERATE_COMPLETIONS => {
-                let generate_subcommand = matches.subcommand_matches(GENERATE_COMPLETIONS).unwrap();
-                let for_shell = match generate_subcommand.value_of("type").unwrap() {
-                    "bash" => Shell::Bash,
-                    "elvish" => Shell::Elvish,
-                    "fish" => Shell::Fish,
-                    "zsh" => Shell::Zsh,
-                    _ => unreachable!(),
-                };
-                build_cli(profile_names).gen_completions_to(
-                    "bombadil",
-                    for_shell,
-                    &mut std::io::stdout(),
-                );
-            }
-            _ => unreachable!(),
+    match cli {
+        Cli::Install { config } => {
+            Bombadil::link_self_config(config).unwrap_or_else(|err| fatal!("{}", err));
         }
-    }
+        Cli::Clone {
+            remote,
+            target,
+            profiles,
+        } => {
+            let path = match target {
+                None => {
+                    let repo_name = remote.split('/').last().unwrap();
+                    let repo_name = repo_name.strip_suffix(".git").unwrap();
+                    PathBuf::from_str(repo_name).unwrap()
+                }
+                Some(path) => path,
+            };
+
+            println!("Cloning {remote} in {path:?}");
+            let profiles: Option<Vec<&str>> = if !profiles.is_empty() {
+                // Remove this
+                let vec = profiles.iter().map(String::as_str).collect();
+                Some(vec)
+            } else {
+                None
+            };
+
+            Bombadil::install_from_remote(&remote, path, profiles)
+                .unwrap_or_else(|err| fatal!("{}", err));
+        }
+        Cli::Link { profiles } => {
+            let mut bombadil =
+                Bombadil::from_settings(Mode::Gpg).unwrap_or_else(|err| fatal!("{}", err));
+
+            if !profiles.is_empty() {
+                bombadil
+                    .enable_profiles(profiles.iter().map(String::as_str).collect())
+                    .unwrap_or_else(|err| fatal!("{}", err));
+            }
+
+            bombadil.install().unwrap_or_else(|err| fatal!("{}", err));
+        }
+        Cli::Unlink => {
+            Bombadil::from_settings(Mode::NoGpg)
+                .and_then(|bombadil| bombadil.uninstall())
+                .unwrap_or_else(|err| fatal!("{}", err));
+        }
+        Cli::AddSecret {
+            key,
+            value,
+            ask,
+            file,
+        } => {
+            let value = if ask {
+                println!("Type the value and press enter to confirm :");
+                std::io::stdin().lock().lines().next().unwrap().unwrap()
+            } else {
+                value
+            };
+
+            let var_file = file;
+            let path = Path::new(&var_file);
+
+            if !path.exists() {
+                fatal!(
+                    "Error trying to write secret to {} : No such file",
+                    var_file
+                )
+            };
+
+            if path.is_dir() {
+                fatal!(
+                    "Error trying to write secret to {} : is a directory",
+                    var_file
+                )
+            }
+
+            Bombadil::from_settings(Mode::Gpg)
+                .and_then(|bombadil| bombadil.add_secret(&key, &value, &var_file))
+                .unwrap_or_else(|err| fatal!("{}", err));
+        }
+        Cli::Get { value, profiles } => {
+            let metadata_type = match value.as_str() {
+                "dots" => MetadataType::Dots,
+                "prehooks" => MetadataType::PreHooks,
+                "posthooks" => MetadataType::PostHooks,
+                "path" => MetadataType::Path,
+                "profiles" => MetadataType::Profiles,
+                "vars" => MetadataType::Vars,
+                "secrets" => MetadataType::Secrets,
+                _ => unreachable!(),
+            };
+
+            let mut bombadil = match metadata_type {
+                MetadataType::Secrets => Bombadil::from_settings(Mode::Gpg),
+                _ => Bombadil::from_settings(Mode::NoGpg),
+            }
+            .unwrap_or_else(|err| fatal!("{}", err));
+
+            if !profiles.is_empty() {
+                bombadil
+                    .enable_profiles(profiles.iter().map(String::as_str).collect())
+                    .unwrap_or_else(|err| fatal!("{}", err));
+            }
+
+            bombadil.print_metadata(metadata_type);
+        }
+        Cli::GenerateCompletions { shell } => {
+            clap_complete::generate(
+                shell,
+                &mut Cli::command(),
+                "bombadil",
+                &mut std::io::stdout(),
+            );
+        }
+    };
 }
