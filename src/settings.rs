@@ -9,7 +9,7 @@ use std::ops::Not;
 use std::path::PathBuf;
 
 /// The Global bombadil configuration
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Default)]
 #[serde(deny_unknown_fields)]
 pub struct Settings {
     /// User define dotfiles directory, usually your versioned dotfiles
