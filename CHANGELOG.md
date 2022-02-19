@@ -2,6 +2,22 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## [2.2.4](https://github.com/oknozor/toml-bombadil/compare/2.2.3..2.2.4) - 2022-02-19
+#### Bug Fixes
+- run cargo bump early in cog.toml so Cargo.lock is updated after the release build - ([3880658](https://github.com/oknozor/toml-bombadil/commit/38806587c312d08a5e90269e351264d1312606bb)) - [@oknozor](https://github.com/oknozor)
+- fix release github action workflow - ([eacf932](https://github.com/oknozor/toml-bombadil/commit/eacf932459051eb87b083dc0077d1419ee91cb9e)) - [@oknozor](https://github.com/oknozor)
+#### Continuous Integration
+- update codecov action - ([87eeeb5](https://github.com/oknozor/toml-bombadil/commit/87eeeb521910822f10c5bbee56b11ae7abe69625)) - [@oknozor](https://github.com/oknozor)
+#### Documentation
+- update displayed version to be bombadil version - ([409baf0](https://github.com/oknozor/toml-bombadil/commit/409baf0cdb803dd8305f95a77954534ef5cda88e)) - Thibaud Lepretre
+- typo on punctuations - ([f6dae99](https://github.com/oknozor/toml-bombadil/commit/f6dae99abce5422540b7317dcee882c44bbaaaed)) - Thibaud Lepretre
+- remove DSpeckhals example repositories - ([d516414](https://github.com/oknozor/toml-bombadil/commit/d5164148d6b8c6aace16e1849f494ee73c98eafa)) - Thibaud Lepretre
+- Link bats HOWTO directly to abs github URL - ([d4d87a8](https://github.com/oknozor/toml-bombadil/commit/d4d87a85b591e63489ae5f99810a8fd3ad05015e)) - Thibaud Lepretre
+#### Miscellaneous Chores
+- use 2018 module imports - ([ae610e0](https://github.com/oknozor/toml-bombadil/commit/ae610e01d3c341989c39a0b2a7b50404706d4301)) - Arne Beer
+- Add cargo.lock to project - ([bac3b31](https://github.com/oknozor/toml-bombadil/commit/bac3b316e8ea5a58e6d5d88894d9da1ddd29a7f9)) - Arne Beer
+- - -
+
 ## [2.2.3](https://github.com/oknozor/toml-bombadil/compare/2.2.2..2.2.3) - 2021-12-30
 #### Bug Fixes
 - fix release version job output again - ([a9963e7](https://github.com/oknozor/toml-bombadil/commit/a9963e7d6f3bcb5f287e0d60b801d6defedf5732)) - [@oknozor](https://github.com/oknozor)
