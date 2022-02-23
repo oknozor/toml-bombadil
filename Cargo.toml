@@ -1,6 +1,6 @@
 [package]
 name = "toml-bombadil"
-version = "2.2.4"
+version = "3.0.0"
 authors = ["Paul Delafosse <paul.delafosse@protonmail.com>"]
 edition = "2018"
 license = "MIT"

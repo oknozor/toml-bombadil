@@ -2,6 +2,14 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## [3.0.0](https://github.com/oknozor/toml-bombadil/compare/2.2.4..3.0.0) - 2022-02-23
+#### Features
+- use tera for templating - ([0a528fd](https://github.com/oknozor/toml-bombadil/commit/0a528fdf0cc284726ab0c25afc7702ebe8a2fcc5)) - Arne Beer
+#### Miscellaneous Chores
+- **(deps)** bump anyhow from 1.0.53 to 1.0.55 - ([787b4ba](https://github.com/oknozor/toml-bombadil/commit/787b4ba8e1993a78eddda77fc4b4bde5165047f8)) - dependabot[bot]
+- Add codecov.yml and configure a threshold of 1% - ([c57a5d5](https://github.com/oknozor/toml-bombadil/commit/c57a5d567be68c5ef35d209c1c7a546031f16686)) - Sven-Hendrik Haase
+- - -
+
 ## [2.2.4](https://github.com/oknozor/toml-bombadil/compare/2.2.3..2.2.4) - 2022-02-19
 #### Bug Fixes
 - run cargo bump early in cog.toml so Cargo.lock is updated after the release build - ([3880658](https://github.com/oknozor/toml-bombadil/commit/38806587c312d08a5e90269e351264d1312606bb)) - [@oknozor](https://github.com/oknozor)
