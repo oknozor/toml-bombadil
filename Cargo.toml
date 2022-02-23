@@ -14,7 +14,7 @@ A dotfile manager.
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-config = "0.11.0"
+config = "0.12.0"
 dirs = "^4"
 toml = "^0"
 serde_derive = "^1"
