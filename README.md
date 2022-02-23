@@ -80,9 +80,9 @@ your dot file progressively.
 
 ## Installation
 
-**AUR:**
+**Arch Linux:**
 ```bash
-yay -S bombadil-bin
+pacman -S toml-bombadil
 ```
 
 **Cargo:**
