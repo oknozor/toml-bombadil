@@ -10,8 +10,8 @@ template = "docs/page.html"
 
 [extra]
 lead = """
-Toml Bombadil has a tiny template engine. Turning dotfiles into templates is meant to make theme editing, environment managment
-and ricing smoother. 
+Toml Bombadil uses the <a href="https://tera.netlify.app/">tera templating engine</a>.
+Turning dotfiles into templates is meant to make theme editing, environment managment and ricing smoother. 
 """
 toc = true
 top = false
@@ -50,6 +50,9 @@ red = "#FF301B"
 green = "#A0E521"
 yellow = "#FFC620"
 blue = "#1BA6FA"
+
+# A flag to conditionally include some block of configuration.
+set_cursor_color = "true"
 ```
 
 Given the following dot entry : 
@@ -58,8 +61,8 @@ Given the following dot entry :
 alacritty = { source = "alacritty.yml", target = ".config/alacritty/alacritty.yml" }
 ```
 
-The `source` attributes point to a template dotfile named `alacritty.yaml`. We can use the previously defined variables
-using the `{{variable_name}}` syntax :
+The `source` attributes point to a template dotfile named `alacritty.yaml`.
+We can use the previously defined variables using the `{{variable_name}}` syntax :
 
 ```yaml
 # {dotfiles}/alacritty.yml
@@ -67,18 +70,20 @@ colors:
    primary:
        background: "{{background}}"
        foreground: "{{foreground}}"
+{%- if set_cursor_color == "true" %}
    cursor:
        text: "{{text}}"
        cursor: "{{cursor}}"
+{% endif -%}
 ```
 
 ### Rendering
 
-To inject your variables, simply run `bombadil link`. Templates will be rendered to the `.dots` directory, then symlinked
-according to your dots config.
+To inject your variables, simply run `bombadil link`.
+Templates will be rendered to the `.dots` directory, then symlinked according to your dots config.
 
 
-In the previous example the output file actually linked to alacritty's config would look like this :
+In the previous example the output file actually linked to alacritty's config would look like this:
 
 ```yaml
 ...
