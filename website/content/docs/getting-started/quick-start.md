@@ -27,7 +27,7 @@ cargo install toml-bombadil
 
 ### Archlinux
 ```bash
-yay -S bombadil-bin
+pacman -S toml-bombadil
 ```
 
 ## Getting started
