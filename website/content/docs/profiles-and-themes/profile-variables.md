@@ -16,7 +16,7 @@ top = false
 
 ### Create a dotfile template
 
-Let's assume you have the following in your `.bashrc` dotfile :
+Let's assume you have the following in your `.bashrc` dotfile:
 
 ```bash
 # ~/bombadil-example/bashrc
@@ -24,7 +24,7 @@ export JAVA_HOME={{java_home}}
 # ...
 ```
 
-And your default profiles variable look like this : 
+And your default profiles variable look like this:
 
 ```toml
 # ~/bombadil-example/vars.toml
@@ -32,7 +32,7 @@ java_home = "/etc/java-openjdk"
 # ...
 ```
 
-Here is our bombadil config : 
+Here is our bombadil config:
 ```toml
 dotfile_dir = "bombadil-example"
 
@@ -43,12 +43,12 @@ vars = [ "vars.toml" ]
 bashrc = { source = "bashrc", target = ".bashrc"}
 ```
 
-So far we have defined a variable for `$JAVA_HOME` and we are using it once. 
-Not very useful. 
+So far we have defined a variable for `$JAVA_HOME` and we are using it once.
+Not very useful.
 
 ### Override default variable
 
-Now that we have declared some variables in the default profile, we can override it using a new profile : 
+Now that we have declared some variables in the default profile, we can override it using a new profile:
 
 ```toml
 dotfile_dir = "bombadil-example"
@@ -63,7 +63,7 @@ bashrc = { source = "bashrc", target = ".bashrc"}
 vars = [ "java10-vars.toml" ]
 ```
 
-The profile variable file will be loaded after the default one and any matching variable name will override the default :   
+The profile variable file will be loaded after the default one and any matching variable name will override the default:
 
 ```toml
 java_home = "/etc/java10-openjdk"
@@ -75,4 +75,4 @@ Running `bombadil link -p corporate` would now produce the following `.bashrc` :
 export JAVA_HOME=/etc/java10-openjdk
 ```
 
-This concludes the chapter on profiles and themes, in the next chapter we will talk about hooks. 
+This concludes the chapter on profiles and themes, in the next chapter we will talk about hooks.
