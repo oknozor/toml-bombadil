@@ -2,6 +2,7 @@ use anyhow::Result;
 use clap::lazy_static::lazy_static;
 use clap::{AppSettings, IntoApp, Parser};
 use clap_complete::Shell;
+use std::io;
 use std::io::BufRead;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
@@ -209,7 +210,9 @@ async fn main() -> Result<()> {
                 .enable_profiles(profiles.iter().map(String::as_str).collect())
                 .unwrap_or_else(|err| fatal!("{}", err));
 
-            bombadil.print_metadata(metadata_type);
+            bombadil
+                .print_metadata(metadata_type, &mut io::stdout())
+                .expect("Failed to write metadata to stdout");
         }
         Cli::GenerateCompletions { shell } => {
             clap_complete::generate(

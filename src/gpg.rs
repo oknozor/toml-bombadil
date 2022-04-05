@@ -114,7 +114,10 @@ impl Gpg {
 mod test {
     use crate::gpg::Gpg;
     use anyhow::Result;
-    use temp_testdir::TempDir;
+    use cmd_lib::run_cmd;
+    use sealed_test::prelude::*;
+    use speculoos::prelude::*;
+    use std::env;
     use toml::Value;
 
     // IMPORTANT :
@@ -125,61 +128,69 @@ mod test {
 
     const GPG_ID: &str = "test@toml.bombadil.org";
 
-    #[test]
+    fn gpg_setup() {
+        let crate_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
+
+        run_cmd!(
+            gpg --import $crate_dir/tests/gpg/public.gpg;
+            gpg --import $crate_dir/tests/gpg/private.gpg;
+            echo -e "5\ny\n" | gpg --no-tty --command-fd 0 --expert --edit-key test@cocogitto.org trust;
+        ).unwrap();
+    }
+
+    #[sealed_test(before = gpg_setup())]
     fn should_encrypt() {
         let gpg = Gpg::new(GPG_ID);
 
         let result = gpg.encrypt("test");
 
-        assert!(result.is_ok())
+        assert_that!(result).is_ok();
     }
 
-    #[test]
+    #[sealed_test(before = gpg_setup())]
     fn should_not_encrypt_unkown_gpg_user() {
         let gpg = Gpg::new("unknown.user");
 
         let result = gpg.encrypt("test");
 
-        assert!(result.is_err())
+        assert_that!(result).is_err();
     }
 
-    #[test]
+    #[sealed_test(before = gpg_setup())]
     fn should_decrypt() -> Result<()> {
         let gpg = Gpg::new(GPG_ID);
 
         let encrypted = gpg.encrypt("value")?;
         let decrypted = gpg.decrypt(&encrypted);
 
-        assert!(decrypted.is_ok());
-        assert_eq!(decrypted?, "value");
+        assert_that!(decrypted)
+            .is_ok()
+            .is_equal_to(&"value".to_string());
+
         Ok(())
     }
 
-    #[test]
+    #[sealed_test(before = gpg_setup())]
     fn should_push_to_var() -> Result<()> {
         let gpg = Gpg::new(GPG_ID);
-        let dir = TempDir::default();
-        let path = dir.join("vars.toml");
-        std::fs::write(&path, "")?;
-        gpg.push_secret("key", "value", &path)?;
+        std::fs::write("vars.toml", "")?;
+        gpg.push_secret("key", "value", "vars.toml")?;
 
-        let result = std::fs::read_to_string(&path)?;
+        let result = std::fs::read_to_string("vars.toml")?;
         let toml: Value = toml::from_str(&result)?;
         let value = toml.get("key");
-        assert!(value.is_some());
-        assert!(value.unwrap().as_str().unwrap().starts_with("gpg:"));
+        assert_that!(value).is_some();
+        assert_that!(value.unwrap().as_str().unwrap().starts_with("gpg:"));
         Ok(())
     }
 
-    #[test]
+    #[sealed_test(before = gpg_setup())]
     fn should_decrypt_from_file() -> Result<()> {
         let gpg = Gpg::new(GPG_ID);
-        let dir = TempDir::default();
-        let path = dir.join("vars.toml");
-        std::fs::write(&path, "")?;
-        gpg.push_secret("key", "value", &path)?;
+        std::fs::write("vars.toml", "")?;
+        gpg.push_secret("key", "value", "vars.toml")?;
 
-        let result = std::fs::read_to_string(&path)?;
+        let result = std::fs::read_to_string("vars.toml")?;
         let toml: Value = toml::from_str(&result)?;
         let value = toml.get("key");
         let value = value.unwrap().as_str().unwrap();

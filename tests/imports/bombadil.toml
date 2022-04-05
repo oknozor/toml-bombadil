@@ -1,4 +1,0 @@
-dotfiles_dir = "/tmp/import_test"
-
-[[import]]
-path = "/tmp/import_test/import.toml"

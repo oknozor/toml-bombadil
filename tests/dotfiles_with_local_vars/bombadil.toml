@@ -1,0 +1,4 @@
+dotfiles_dir = "dotfiles_with_local_vars"
+
+[settings.dots]
+sub_dir = { source = "sub_dir", target = ".config/subdir" }
