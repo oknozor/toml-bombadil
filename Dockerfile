@@ -1,4 +1,4 @@
-FROM rust:latest as builder
+FROM rust:1.59 as builder
 LABEL Maintainer="Paul Delafosse <paul.delafosse@protonmail.com>"
 
 WORKDIR /usr/src/bombadil
