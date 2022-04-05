@@ -23,7 +23,7 @@ anyhow = "^1"
 tera = "1"
 colored = "^2"
 globwalk = "0.8.0"
-git2 = { version="0.13.21", features=["vendored-openssl"] }
+git2 = { version="0.14.2", features=["vendored-openssl"] }
 clap = { version="^2", optional=true }
 
 [features]
