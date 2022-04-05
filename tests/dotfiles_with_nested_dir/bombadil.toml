@@ -1,0 +1,4 @@
+dotfiles_dir = "dotfiles_with_nested_dir"
+
+[settings.dots]
+sub_dir = { source = "sub_dir", target = ".config/subdir" }

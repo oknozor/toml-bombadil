@@ -1,9 +1,5 @@
-dotfiles_dir = "" # Replaced in test
+dotfiles_dir = "dotfiles_invalid_dot"
 
-[[dot]]
-source = "template.css"
-target = "template.css"
-
-[[dot]]
-source = "invalid_path"
-target = "somewhere"
+[settings.dots]
+css = { source = "template.css", target = ".config/template.css" }
+invalid = { source = "invalid", target = ".config/invalid" }

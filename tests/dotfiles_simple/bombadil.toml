@@ -1,4 +1,15 @@
-dotfiles_dir = "" # Replaced in test
-[[dot]]
-source = "template.css"
-target = "template.css"
+dotfiles_dir = "dotfiles_simple"
+
+[settings]
+vars = [ "vars.toml" ]
+
+prehooks = [
+    "touch $HOME/.config/prehook_file"
+]
+
+posthooks = [
+    "touch $HOME/.config/posthook_file"
+]
+
+[settings.dots]
+css = { source = "template.css", target = ".config/template.css" }

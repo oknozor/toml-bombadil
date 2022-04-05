@@ -209,35 +209,11 @@ impl Settings {
 #[cfg(test)]
 mod tests {
     use crate::settings::Settings;
-    use crate::{Bombadil, BOMBADIL_CONFIG};
-    use std::ops::Not;
-    use temp_testdir::TempDir;
-
-    #[test]
-    fn should_merge_import() {
-        // Arrange
-        let dotfiles = TempDir::new("/tmp/import_test", false).to_path_buf();
-        std::fs::copy("tests/imports/import.toml", dotfiles.join("import.toml")).unwrap();
-        std::fs::copy(
-            "tests/imports/bombadil.toml",
-            dotfiles.join(BOMBADIL_CONFIG),
-        )
-        .unwrap();
-        Bombadil::link_self_config(Some(dotfiles.clone())).unwrap();
-
-        // Act
-        let settings = Settings::get().unwrap();
-
-        // Assert
-        assert_eq!(settings.dotfiles_dir.to_str().unwrap(), "/tmp/import_test");
-        assert!(settings.settings.dots.is_empty().not());
-
-        std::fs::remove_dir_all(dotfiles).unwrap();
-    }
+    use speculoos::prelude::*;
 
     #[test]
     fn should_get_bombadil_path() {
         let path = Settings::bombadil_config_xdg_path();
-        assert!(path.is_ok());
+        assert_that!(path).is_ok();
     }
 }

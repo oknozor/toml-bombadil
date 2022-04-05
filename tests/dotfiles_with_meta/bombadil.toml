@@ -1,4 +1,4 @@
-dotfiles_dir = "/tmp/bombadil_tests"
+dotfiles_dir = "dotfiles_with_meta"
 
 [settings]
 vars = [
