@@ -65,40 +65,45 @@ impl Bombadil {
     /// Symlink `bombadil.toml` to `$XDG_CONFIG/bombadil.toml` so we can later read it from there.
     pub fn link_self_config(dotfiles_path: Option<PathBuf>) -> Result<()> {
         let xdg_config_dir = dirs::config_dir();
-        if xdg_config_dir.is_none() {
-            return Err(anyhow!("$XDG_CONFIG does not exist"));
+        match xdg_config_dir {
+            None => return Err(anyhow!("$XDG_CONFIG does not exist")),
+            Some(config_dir) => {
+                let bombadil_xdg_config = config_dir.join(BOMBADIL_CONFIG);
+
+                // Attempt to locate a previous '$HOME/.config/bombadil.toml' link and remove it
+                if fs::symlink_metadata(&bombadil_xdg_config).is_ok() {
+                    fs::remove_file(&bombadil_xdg_config)?;
+                }
+
+                // Get the provided path and attempt to resolve 'bombadil.toml' if it's a directory
+                let dotfiles_path = dotfiles_path
+                    .map(|path| {
+                        if path.is_dir() {
+                            path.join(BOMBADIL_CONFIG)
+                        } else {
+                            path
+                        }
+                    })
+                    .unwrap_or_else(|| PathBuf::from(BOMBADIL_CONFIG))
+                    .canonicalize()?;
+
+                // Symlink to '$HOME/.config/bombadil.toml'
+                unix::fs::symlink(&dotfiles_path, &bombadil_xdg_config)
+                    .map_err(|err| {
+                        anyhow!(
+                            "Unable to symlink {:?} to {:?} : {}",
+                            dotfiles_path,
+                            bombadil_xdg_config,
+                            err
+                        )
+                    })
+                    .map(|_result| {
+                        let source = format!("{:?}", &dotfiles_path).blue();
+                        let dest = format!("{:?}", &bombadil_xdg_config).green();
+                        println!("{} => {}", source, dest)
+                    })
+            }
         }
-
-        let xdg_config = Settings::bombadil_config_xdg_path()?;
-
-        if fs::symlink_metadata(&xdg_config).is_ok() {
-            fs::remove_file(&xdg_config)?;
-        }
-
-        let dotfiles_path = &dotfiles_path
-            .unwrap_or_else(|| PathBuf::from(BOMBADIL_CONFIG))
-            .canonicalize()?;
-
-        let dotfiles_path = if dotfiles_path.is_dir() {
-            dotfiles_path.join(BOMBADIL_CONFIG)
-        } else {
-            return Err(anyhow!("Config not found"));
-        };
-
-        unix::fs::symlink(&dotfiles_path, &xdg_config)
-            .map_err(|err| {
-                anyhow!(
-                    "Unable to symlink {:?} to {:?} : {}",
-                    dotfiles_path,
-                    xdg_config,
-                    err
-                )
-            })
-            .map(|_result| {
-                let source = format!("{:?}", &dotfiles_path).blue();
-                let dest = format!("{:?}", &xdg_config).green();
-                println!("{} => {}", source, dest)
-            })
     }
 
     /// The installation process is composed of the following steps :
