@@ -131,11 +131,9 @@ fn main() {
             let mut bombadil =
                 Bombadil::from_settings(Mode::Gpg).unwrap_or_else(|err| fatal!("{}", err));
 
-            if !profiles.is_empty() {
-                bombadil
-                    .enable_profiles(profiles.iter().map(String::as_str).collect())
-                    .unwrap_or_else(|err| fatal!("{}", err));
-            }
+            bombadil
+                .enable_profiles(profiles.iter().map(String::as_str).collect())
+                .unwrap_or_else(|err| fatal!("{}", err));
 
             bombadil.install().unwrap_or_else(|err| fatal!("{}", err));
         }
@@ -196,11 +194,9 @@ fn main() {
             }
             .unwrap_or_else(|err| fatal!("{}", err));
 
-            if !profiles.is_empty() {
-                bombadil
-                    .enable_profiles(profiles.iter().map(String::as_str).collect())
-                    .unwrap_or_else(|err| fatal!("{}", err));
-            }
+            bombadil
+                .enable_profiles(profiles.iter().map(String::as_str).collect())
+                .unwrap_or_else(|err| fatal!("{}", err));
 
             bombadil.print_metadata(metadata_type);
         }

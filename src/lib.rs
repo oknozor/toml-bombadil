@@ -233,6 +233,10 @@ impl Bombadil {
 
     /// Enable a dotfile profile by merging its config with the default profile
     pub fn enable_profiles(&mut self, profile_keys: Vec<&str>) -> Result<()> {
+        if profile_keys.is_empty() {
+            return Ok(());
+        }
+
         let mut profiles: Vec<Profile> = profile_keys
             .iter()
             // unwrap here is safe cause allowed profile keys are checked by clap
