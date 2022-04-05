@@ -7,7 +7,7 @@ use crate::templating::Variables;
 use anyhow::{anyhow, Result};
 use colored::*;
 use std::collections::HashMap;
-use std::fs;
+use std::io::Write;
 use std::os::unix;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -378,7 +378,7 @@ impl Bombadil {
                         .yellow();
                         eprintln!("{}", warning);
                     }
-                    // Nothing to override, let's create a new dot entry
+                // Nothing to override, let's create a new dot entry
                 } else if let (Some(source), Some(target)) =
                     (&dot_override.source, &dot_override.target)
                 {
@@ -499,7 +499,11 @@ impl Bombadil {
     }
 
     /// Pretty print metadata, possible values are Dots, PreHooks, PostHook, Path, Profiles, Vars, Secrets
-    pub fn print_metadata(&self, metadata_type: MetadataType) {
+    pub fn print_metadata(
+        &self,
+        metadata_type: MetadataType,
+        writer: &mut impl Write,
+    ) -> io::Result<()> {
         let rows = match metadata_type {
             MetadataType::Dots => self
                 .dots
@@ -538,8 +542,11 @@ impl Bombadil {
         };
 
         if !rows.is_empty() {
-            println!("{}", rows.join("\n"));
+            writer.write_all(rows.join("\n").as_bytes())?;
+            writer.flush()?;
         }
+
+        Ok(())
     }
 
     fn dotfiles_absolute_path(&self) -> Result<PathBuf> {
@@ -569,9 +576,9 @@ impl Bombadil {
     }
 }
 
-pub(crate) fn unlink(path: &Path) -> Result<()> {
+pub(crate) fn unlink<P: AsRef<Path> + ?Sized>(path: &P) -> Result<()> {
     if fs::symlink_metadata(path).is_ok() {
-        if path.is_dir() {
+        if path.as_ref().is_dir() {
             fs::remove_dir_all(path)?;
         } else {
             fs::remove_file(path)?;
@@ -594,491 +601,206 @@ pub enum MetadataType {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::dots::{DotOverride, DotVar};
     use crate::Mode::NoGpg;
-    use std::collections::HashMap;
-    use std::fs;
-    use std::fs::read_link;
-    use std::os::unix;
-    use temp_testdir::TempDir;
+    use cmd_lib::{init_builtin_logger, run_cmd};
+    use indoc::indoc;
+    use pretty_assertions::assert_eq;
+    use sealed_test::prelude::*;
+    use speculoos::prelude::*;
+    use std::ffi::OsStr;
+    use std::io::BufWriter;
+    use std::{env, fs};
 
-    #[test]
+    fn setup(dotfiles: &str) {
+        env::set_var("HOME", env::current_dir().unwrap());
+        init_builtin_logger();
+        run_cmd!(
+            mkdir .config;
+            tree -a;
+        )
+        .unwrap();
+
+        Bombadil::link_self_config(Some(PathBuf::from(dotfiles))).unwrap();
+    }
+
+    #[sealed_test(files = ["tests/dotfiles_simple"], before = setup("dotfiles_simple"))]
     fn self_link_works() {
-        // Arrange
-        let config_path = PathBuf::from("tests/dotfiles_simple/");
-
-        // Act
-        Bombadil::link_self_config(Some(config_path)).unwrap();
-
-        // Assert
         let link = dirs::config_dir().unwrap().join(BOMBADIL_CONFIG);
-        assert!(link.exists());
+
+        assert_that!(link).exists();
     }
 
-    #[test]
-    fn install_single_file_works() {
-        // Arrange
-        let target = TempDir::new("/tmp/dot_target", false).to_path_buf();
+    #[sealed_test(files = ["tests/dotfiles_simple"], before = setup("dotfiles_simple"))]
+    fn install_single_file_works() -> Result<()> {
+        Bombadil::from_settings(NoGpg)?.install()?;
 
-        let mut map = HashMap::new();
-        map.insert("red".to_string(), "red_value".to_string());
+        let target = fs::read_link(".config/template.css")?;
+        let expected = env::current_dir()?.join("dotfiles_simple/.dots/template.css");
 
-        let mut dots = HashMap::new();
-        dots.insert(
-            "dot".to_string(),
-            Dot {
-                source: PathBuf::from("template"),
-                target: target.clone(),
-                ignore: vec![],
-                vars: Dot::default_vars(),
-            },
-        );
+        assert_that!(target).is_equal_to(expected);
 
-        let config = Bombadil {
-            path: PathBuf::from("tests/dotfiles_simple")
-                .canonicalize()
-                .unwrap(),
-            dots,
-            vars: Variables {
-                variables: map,
-                secrets: Default::default(),
-            },
-            prehooks: vec![],
-            posthooks: vec![],
-            profiles: Default::default(),
-            gpg: None,
-        };
+        let target = std::fs::read_to_string(target)?;
 
-        // Act
-        config.install().unwrap();
-
-        // Assert
-        assert!(target.exists());
         assert_eq!(
-            fs::read_to_string(&target).unwrap(),
-            "color: red_value".to_string()
+            target,
+            indoc! {
+                ".class {
+                    color: #de1f1f
+                }
+                "
+            }
         );
+
+        Ok(())
     }
 
-    #[test]
-    fn install_should_fail_and_continue() {
-        // Arrange
-        let target = TempDir::new("/tmp/dot_target", false).to_path_buf();
-
-        let mut dots = HashMap::new();
-
-        dots.insert(
-            "dot".to_string(),
-            Dot {
-                source: PathBuf::from("template"),
-                target: target.clone(),
-                ignore: vec![],
-                vars: Dot::default_vars(),
-            },
-        );
-        dots.insert(
-            "dot".to_string(),
-            Dot {
-                source: PathBuf::from("invalid_path"),
-                target: PathBuf::from("somewhere"),
-                ignore: vec![],
-                vars: Dot::default_vars(),
-            },
-        );
-
-        let config = Bombadil {
-            path: PathBuf::from("tests/dotfiles_invalid_dot")
-                .canonicalize()
-                .unwrap(),
-            dots,
-            vars: Variables {
-                variables: HashMap::new(),
-                secrets: Default::default(),
-            },
-            prehooks: vec![],
-            posthooks: vec![],
-            profiles: Default::default(),
-            gpg: None,
-        };
-
+    #[sealed_test(files = ["tests/dotfiles_invalid_dot"], before = setup("dotfiles_invalid_dot"))]
+    fn install_should_fail_and_continue() -> Result<()> {
         // Act
-        config.install().unwrap();
+        Bombadil::from_settings(NoGpg)?.install()?;
 
         // Assert
-        assert!(target.exists());
+        assert_that!(PathBuf::from(".config/template.css")).exists();
+        assert_that!(PathBuf::from(".config/invalid")).does_not_exist();
+        Ok(())
     }
 
-    #[test]
-    fn install_with_subdir() {
-        // Arrange
-        let target = TempDir::new("/tmp/sub_dir_target", false).to_path_buf();
+    #[sealed_test(files = ["tests/dotfiles_simple"], before = setup("dotfiles_simple"))]
+    fn uninstall_works() -> Result<()> {
+        Bombadil::link_self_config(Some(PathBuf::from("dotfiles_simple")))?;
+        let bombadil = Bombadil::from_settings(NoGpg)?;
 
-        let mut map = HashMap::new();
-        map.insert("red".to_string(), "red_value".to_string());
-        map.insert("blue".to_string(), "blue_value".to_string());
+        bombadil.install()?;
+        assert_that!(PathBuf::from(".config/template.css")).exists();
 
-        let mut dots = HashMap::new();
+        bombadil.uninstall()?;
+        assert_that!(PathBuf::from(".config/template.css")).does_not_exist();
+        Ok(())
+    }
 
-        dots.insert(
-            "dot".to_string(),
-            Dot {
-                source: PathBuf::from("sub_dir"),
-                target: target.clone(),
-                ignore: vec![],
-                vars: Dot::default_vars(),
-            },
-        );
-
-        let config = Bombadil {
-            path: PathBuf::from("tests/dotfiles_nested")
-                .canonicalize()
-                .unwrap(),
-            dots,
-            vars: Variables {
-                variables: map,
-                secrets: Default::default(),
-            },
-            prehooks: vec![],
-            posthooks: vec![],
-            profiles: Default::default(),
-            gpg: None,
-        };
+    #[sealed_test(files = ["tests/dotfiles_simple"], before = setup("dotfiles_simple"))]
+    fn posthook_ok() -> Result<()> {
+        let bombadil = Bombadil::from_settings(NoGpg)?;
 
         // Act
-        config.install().unwrap();
+        bombadil.install()?;
 
         // Assert
-        assert!(target.exists());
-        let path = &target.read_link().unwrap();
-        let red_dot = fs::read_to_string(path.join("template_1")).unwrap();
-        let blue_dot = fs::read_to_string(path.join("template_2")).unwrap();
-        assert_eq!(red_dot, "color: red_value".to_string());
-        assert_eq!(blue_dot, "color: blue_value".to_string());
+        assert_that!(PathBuf::from(".config/posthook/file").exists());
+
+        Ok(())
     }
 
-    #[test]
-    fn install_with_nested_subdirs() {
-        // Arrange
-        let target = TempDir::new("/tmp/sub_dir_2_target", false).to_path_buf();
-
-        let mut map = HashMap::new();
-        map.insert("red".to_string(), "red_value".to_string());
-        map.insert("blue".to_string(), "blue_value".to_string());
-
-        let mut dots = HashMap::new();
-        dots.insert(
-            "dot".to_string(),
-            Dot {
-                source: PathBuf::from("sub_dir_1"),
-                target: target.clone(),
-                ignore: vec![],
-                vars: Dot::default_vars(),
-            },
-        );
-        let config = Bombadil {
-            path: PathBuf::from("tests/dotfiles_nested_2")
-                .canonicalize()
-                .unwrap(),
-            dots,
-            vars: Variables {
-                variables: map,
-                secrets: Default::default(),
-            },
-            prehooks: vec![],
-            posthooks: vec![],
-            profiles: Default::default(),
-            gpg: None,
-        };
+    #[sealed_test(files = ["tests/dotfiles_simple"], before = setup("dotfiles_simple"))]
+    fn prehook_ok() -> Result<()> {
+        let bombadil = Bombadil::from_settings(NoGpg)?;
 
         // Act
-        config.install().unwrap();
+        bombadil.install()?;
 
         // Assert
-        assert!(target.exists());
-        let path = &target.read_link().unwrap();
-        let red_dot = fs::read_to_string(path.join("template_1")).unwrap();
-        let blue_dot = fs::read_to_string(path.join("subdir_2").join("template_2")).unwrap();
-        assert_eq!(red_dot, "color: red_value".to_string());
-        assert_eq!(blue_dot, "color: blue_value".to_string());
+        assert_that!(PathBuf::from(".config/prehook_file")).exists();
+
+        Ok(())
     }
 
-    #[test]
-    fn uninstall_works() {
-        // Arrange
-        let target = TempDir::new("/tmp/dot_unlink_target", false).to_path_buf();
+    #[sealed_test(files = ["tests/dotfiles_with_meta"], before = setup("dotfiles_with_meta"))]
+    fn meta_var_works() -> Result<()> {
+        // Act
+        let bombadil = Bombadil::from_settings(NoGpg)?;
 
-        let mut dots = HashMap::new();
-        dots.insert(
-            "dot_1".to_string(),
-            Dot {
-                source: PathBuf::from("dot_1"),
-                target: target.clone(),
-                ignore: vec![],
-                vars: Dot::default_vars(),
-            },
-        );
+        // Assert
+        assert_that!(bombadil.vars.variables.get("red"))
+            .is_some()
+            .is_equal_to(&"#FF0000".to_string());
 
-        let config = Bombadil {
-            path: PathBuf::from("tests/dotfiles_unlink")
-                .canonicalize()
-                .unwrap(),
-            dots,
-            vars: Variables {
-                variables: HashMap::new(),
-                secrets: Default::default(),
-            },
-            prehooks: vec![],
-            posthooks: vec![],
-            profiles: Default::default(),
-            gpg: None,
-        };
+        assert_that!(bombadil.vars.variables.get("black"))
+            .is_some()
+            .is_equal_to(&"#000000".to_string());
 
-        config.install().unwrap();
+        assert_that!(bombadil.vars.variables.get("green"))
+            .is_some()
+            .is_equal_to(&"#008000".to_string());
+
+        Ok(())
+    }
+
+    #[sealed_test(files = [ "tests/dotfiles_with_meta" ], before = setup("dotfiles_with_meta"))]
+    fn should_print_metadata() -> Result<()> {
+        let bombadil = Bombadil::from_settings(NoGpg)?;
+
+        let mut content = vec![];
+        let mut writer = BufWriter::new(&mut content);
 
         // Act
-        config.uninstall().unwrap();
+        bombadil.print_metadata(MetadataType::Vars, &mut writer)?;
+        let result = String::from_utf8(writer.get_ref().to_vec())?;
+        let result = result.as_str();
 
         // Assert
-        assert!(!target.exists());
+        assert_that!(result).contains("black: #000000");
+        assert_that!(result).contains("green: #008000");
+        assert_that!(result).contains("red: #FF0000");
+        assert_that!(result).contains("meta_red: #FF0000");
+
+        Ok(())
     }
 
-    #[test]
-    fn posthook_ok() {
-        // Arrange
-        let target = TempDir::new("/tmp/hook", false).to_path_buf();
-        let target_str_path = &target.to_str().unwrap();
-        let config = Bombadil {
-            path: PathBuf::from("tests/hook").canonicalize().unwrap(),
-            dots: HashMap::new(),
-            vars: Variables::default(),
-            prehooks: vec![],
-            posthooks: vec![Hook {
-                command: format!("touch {}/dummy", target_str_path),
-            }],
-            profiles: Default::default(),
-            gpg: None,
-        };
-
-        // Act
-        config.install().unwrap();
-
-        // Assert
-        assert!(target.join("dummy").exists());
-    }
-    #[test]
-    fn prehook_ok() {
-        // Arrange
-        let target = TempDir::new("/tmp/hook", false).to_path_buf();
-        let target_str_path = &target.to_str().unwrap();
-        let config = Bombadil {
-            path: PathBuf::from("tests/hook").canonicalize().unwrap(),
-            dots: HashMap::new(),
-            vars: Variables::default(),
-            prehooks: vec![Hook {
-                command: format!("touch {}/dummy", target_str_path),
-            }],
-            posthooks: vec![],
-            profiles: Default::default(),
-            gpg: None,
-        };
-
-        // Act
-        config.install().unwrap();
-
-        // Assert
-        assert!(target.join("dummy").exists());
-    }
-
-    #[test]
-    fn meta_var_works() {
-        // Arrange
-        let dotfiles = TempDir::new("/tmp/bombadil_tests", false).to_path_buf();
-        // We need an absolute path to the test can pass anywhere
-        fs::copy(
-            "tests/vars/meta_vars.toml",
-            &dotfiles.join("meta_vars.toml"),
-        )
-        .unwrap();
-        fs::copy("tests/vars/vars.toml", &dotfiles.join("vars.toml")).unwrap();
-        fs::copy("tests/vars/bombadil.toml", &dotfiles.join(BOMBADIL_CONFIG)).unwrap();
-
-        Bombadil::link_self_config(Some(dotfiles.clone())).unwrap();
-
-        // Act
-        let bombadil = Bombadil::from_settings(NoGpg).unwrap();
-
-        // Assert
-        assert_eq!(
-            bombadil.vars.variables.get("red"),
-            Some(&"#FF0000".to_string())
-        );
-        assert_eq!(
-            bombadil.vars.variables.get("black"),
-            Some(&"#000000".to_string())
-        );
-        assert_eq!(
-            bombadil.vars.variables.get("green"),
-            Some(&"#008000".to_string())
-        );
-
-        let _ = fs::remove_dir_all(dotfiles);
-    }
-
-    #[test]
-    fn should_print_metadata() {
-        // Arrange
-        let dotfiles = TempDir::new("/tmp/bombadil_tests", false).to_path_buf();
-        // We need an absolute path to the test can pass anywhere
-        fs::copy(
-            "tests/vars/meta_vars.toml",
-            &dotfiles.join("meta_vars.toml"),
-        )
-        .unwrap();
-        fs::copy("tests/vars/vars.toml", &dotfiles.join("vars.toml")).unwrap();
-        fs::copy("tests/vars/bombadil.toml", &dotfiles.join(BOMBADIL_CONFIG)).unwrap();
-
-        Bombadil::link_self_config(Some(dotfiles.clone())).unwrap();
-        let bombadil = Bombadil::from_settings(NoGpg).unwrap();
-
-        // Act
-        bombadil.print_metadata(MetadataType::Dots);
-        bombadil.print_metadata(MetadataType::PreHooks);
-        bombadil.print_metadata(MetadataType::PostHooks);
-        bombadil.print_metadata(MetadataType::Path);
-        bombadil.print_metadata(MetadataType::Profiles);
-        bombadil.print_metadata(MetadataType::Vars);
-
-        // Assert
-        // STDOUT should be asserted once those test facilities are in place.
-        let _ = fs::remove_dir_all(dotfiles);
-    }
-
-    #[test]
+    #[sealed_test(files = [ "tests/dotfiles_with_nested_dir" ], before = setup("dotfiles_with_nested_dir"))]
     fn should_get_auto_ignored_files() -> Result<()> {
-        let temp = TempDir::default();
-        let temp = temp.to_path_buf();
-        let source = temp.join("source");
-        fs::create_dir(&source)?;
+        let bombadil = Bombadil::from_settings(NoGpg)?;
 
-        let var_one = &source.join("vars_default.toml");
-        let var_two = &source.join("vars_p1.toml");
-        let var_three = &source.join("vars_p2.toml");
+        let ignored_files = bombadil.get_auto_ignored_files("sub_dir");
+        let ignored_files: Vec<&str> = ignored_files
+            .iter()
+            .filter_map(|path| path.file_name())
+            .filter_map(OsStr::to_str)
+            .collect();
 
-        fs::write(var_one, "1")?;
-        fs::write(var_two, "1")?;
-        fs::write(var_three, "1")?;
+        assert_that!(ignored_files).contains("vars.toml");
 
-        let mut dots = HashMap::new();
-        dots.insert(
-            "dot".to_string(),
-            Dot {
-                source: source.clone(),
-                target: Default::default(),
-                ignore: vec![],
-                vars: PathBuf::from("vars_default.toml"),
-            },
-        );
-
-        let mut dots_profile_one = HashMap::new();
-        dots_profile_one.insert(
-            "dot".to_string(),
-            DotOverride {
-                source: Some(source.clone()),
-                target: Default::default(),
-                ignore: vec![],
-                vars: Some(PathBuf::from("vars_p1.toml")),
-            },
-        );
-
-        let mut dots_profile_two = HashMap::new();
-        dots_profile_two.insert(
-            "dot".to_string(),
-            DotOverride {
-                source: Some(source.clone()),
-                target: Default::default(),
-                ignore: vec![],
-                vars: Some(PathBuf::from("vars_p2.toml")),
-            },
-        );
-
-        let mut profiles = HashMap::new();
-        profiles.insert(
-            "profile_one".to_string(),
-            Profile {
-                dots: dots_profile_one,
-                extra_profiles: vec![],
-                prehooks: vec![],
-                posthooks: vec![],
-                vars: vec![],
-            },
-        );
-
-        profiles.insert(
-            "profile_two".to_string(),
-            Profile {
-                dots: dots_profile_two,
-                prehooks: vec![],
-                posthooks: vec![],
-                vars: vec![],
-                extra_profiles: vec![],
-            },
-        );
-
-        let bombadil = Bombadil {
-            path: temp,
-            dots,
-            vars: Default::default(),
-            prehooks: vec![],
-            posthooks: vec![],
-            profiles,
-            gpg: None,
-        };
-
-        let ignored = bombadil.get_auto_ignored_files("dot");
-
-        println!("{:?}", ignored);
-        assert!(ignored.contains(var_one));
-        assert!(ignored.contains(var_two));
-        assert!(ignored.contains(var_three));
         Ok(())
     }
 
-    #[test]
+    #[sealed_test]
     fn should_unlink_dir() -> Result<()> {
-        let tmp = TempDir::default();
-        let source = tmp.join("dir");
-        let link = tmp.join("link");
-        fs::create_dir(&source)?;
+        run_cmd!(
+            mkdir "directory";
+            ln -sf "directory" "linked_directory";
+        )?;
 
-        unix::fs::symlink(&source, &link)?;
-        assert_eq!(
-            &read_link(&link)?.to_str().unwrap(),
-            &source.to_str().unwrap()
-        );
+        unlink("linked_directory")?;
 
-        unlink(&link)?;
-        assert!(source.exists());
-        assert!(!link.exists());
+        assert_that!(PathBuf::from("directory")).exists();
+        assert_that!(PathBuf::from("linked_directory")).does_not_exist();
 
         Ok(())
     }
 
-    #[test]
+    #[sealed_test]
     fn should_unlink_file() -> Result<()> {
-        let tmp = TempDir::default();
-        let source = tmp.join("dir");
-        let link = tmp.join("link");
-        fs::write(&source, "Hello Tom")?;
+        run_cmd!(
+            echo "Hello Tom" > "file";
+            ln -sf file link;
+        )?;
 
-        unix::fs::symlink(&source, &link)?;
-        assert_eq!(
-            &read_link(&link)?.to_str().unwrap(),
-            &source.to_str().unwrap()
-        );
+        unlink("link")?;
 
-        unlink(&link)?;
-        assert!(source.exists());
-        assert!(!link.exists());
+        assert_that!(PathBuf::from("file")).exists();
+        assert_that!(PathBuf::from("link")).does_not_exist();
+
+        Ok(())
+    }
+
+    #[sealed_test(files = ["tests/dot_files_with_imports"], before = setup("dot_files_with_imports"))]
+    fn should_merge_import() -> Result<()> {
+        // Arrange
+        let bombadil = Bombadil::from_settings(NoGpg)?;
+
+        assert_that!(bombadil.dots.get("maven")).is_some();
+        assert_that!(bombadil.vars.variables.get("hello"))
+            .is_some()
+            .is_equal_to(&"world".to_string());
 
         Ok(())
     }

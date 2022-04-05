@@ -44,15 +44,15 @@ pub struct DotOverride {
 }
 
 impl Dot {
-    pub(crate) fn install(
+    pub(crate) fn install<P: AsRef<Path>>(
         &self,
-        dotfile_dir: &Path,
+        dotfile_dir: P,
         vars: &Variables,
         auto_ignored: Vec<PathBuf>,
         gpg: Option<&Gpg>,
     ) -> Result<()> {
-        let source = &self.source_path(dotfile_dir)?;
-        let copy_path = &self.copy_path(dotfile_dir);
+        let source = &self.source_path(dotfile_dir.as_ref())?;
+        let copy_path = &self.copy_path(dotfile_dir.as_ref());
         let source_str = source.to_str().unwrap_or_default();
         let mut ignored_paths = self.get_ignored_paths(source_str)?;
         ignored_paths.extend_from_slice(&auto_ignored);
@@ -60,7 +60,7 @@ impl Dot {
         // Add local vars to the global ones
         let mut vars = vars.clone();
 
-        if let Some(local_vars_path) = self.resolve_var_path(dotfile_dir) {
+        if let Some(local_vars_path) = self.resolve_var_path(dotfile_dir.as_ref()) {
             let local_vars = Dot::load_local_vars(&local_vars_path, gpg);
             vars.extend(local_vars);
         }
@@ -72,8 +72,8 @@ impl Dot {
         self.traverse_and_copy(source, copy_path, ignored_paths.as_slice(), &vars)
     }
 
-    pub(crate) fn symlink(&self, dotfile_dir: &Path) -> Result<()> {
-        let copy_path = &self.copy_path(dotfile_dir);
+    pub(crate) fn symlink<P: AsRef<Path>>(&self, dotfile_dir: P) -> Result<()> {
+        let copy_path = &self.copy_path(dotfile_dir.as_ref());
         let target = &self.target_path()?;
 
         // Link
@@ -138,7 +138,7 @@ impl Dot {
         ignored: &[PathBuf],
         vars: &Variables,
     ) -> Result<()> {
-        if ignored.contains(&PathBuf::from(source)) {
+        if ignored.contains(&source.to_path_buf()) {
             return Ok(());
         }
 
@@ -188,8 +188,8 @@ impl Dot {
         }
     }
 
-    pub(crate) fn copy_path(&self, dotfile_dir: &Path) -> PathBuf {
-        dotfile_dir.join(".dots").join(&self.source)
+    pub(crate) fn copy_path<P: AsRef<Path>>(&self, dotfile_dir: P) -> PathBuf {
+        dotfile_dir.as_ref().join(".dots").join(&self.source)
     }
 }
 
@@ -298,12 +298,28 @@ impl DotVar for DotOverride {
 mod tests {
     use crate::dots::{Dot, DotVar};
     use crate::templating::Variables;
+    use crate::Bombadil;
+    use crate::Mode::NoGpg;
     use anyhow::Result;
-    use std::fs;
+    use cmd_lib::{init_builtin_logger, run_cmd};
+    use sealed_test::prelude::*;
+    use speculoos::prelude::*;
     use std::path::PathBuf;
-    use temp_testdir::TempDir;
+    use std::{env, fs};
 
-    #[test]
+    fn setup(dotfiles: &str) {
+        env::set_var("HOME", env::current_dir().unwrap());
+        init_builtin_logger();
+        run_cmd!(
+            mkdir .config;
+            tree -a;
+        )
+        .unwrap();
+
+        Bombadil::link_self_config(Some(PathBuf::from(dotfiles))).unwrap();
+    }
+
+    #[sealed_test]
     fn should_get_target_path() {
         // Arrange
         let home = env!("HOME");
@@ -319,13 +335,12 @@ mod tests {
         let result = dot.target_path();
 
         // Assert
-        assert!(result.is_ok());
-        let expected = PathBuf::from(home).join(".config").join("sway");
-
-        assert_eq!(result.unwrap(), expected);
+        assert_that!(result)
+            .is_ok()
+            .is_equal_to(PathBuf::from(home).join(".config/sway"));
     }
 
-    #[test]
+    #[sealed_test]
     fn should_get_absolute_target_path() {
         // Arrange
         let dot = Dot {
@@ -339,212 +354,158 @@ mod tests {
         let result = dot.target_path();
 
         // Assert
-        assert!(result.is_ok());
-
-        let expected = PathBuf::from("/etc/profile");
-        assert_eq!(result.unwrap(), expected);
+        assert_that!(result)
+            .is_ok()
+            .is_equal_to(PathBuf::from("/etc/profile"));
     }
 
-    #[test]
+    #[sealed_test(env = [("HOME", ".")])]
     fn symlink_ok() -> Result<()> {
         // Arrange
-        let temp = TempDir::default();
-        let temp = &temp.to_path_buf();
-
-        let source = PathBuf::from("source_dot");
-        let target = PathBuf::from("target_dot");
-
-        fs::create_dir(temp.join(".dots"))?;
-        fs::write(&temp.join(".dots").join(&source), "Hello Tom")?;
+        run_cmd!(
+            mkdir .dots;
+            echo "Hello Tom" > .dots/dot;
+        )?;
 
         let dot = Dot {
-            source,
+            source: PathBuf::from("dot"),
+            target: PathBuf::from("dot_target"),
+            ignore: vec![],
+            vars: Dot::default_vars(),
+        };
+
+        // Act
+        dot.symlink(".")?;
+        run_cmd!(tree -a;)?;
+
+        // Assert
+        let symlink = PathBuf::from("dot_target");
+        assert_that!(symlink.is_symlink()).is_true();
+        assert_that!(fs::read_to_string(symlink)?).is_equal_to(&"Hello Tom\n".to_string());
+
+        Ok(())
+    }
+
+    #[sealed_test(env = [("HOME", ".")])]
+    fn copy() -> Result<()> {
+        // Arrange
+        run_cmd!(
+            mkdir -p dir/subdir_one;
+            mkdir -p dir/subdir_two;
+            mkdir .dots;
+            echo "Hello From subdir 1" > dir/subdir_one/subfile;
+            echo "Hello From subdir 2" > dir/subdir_two/subfile;
+        )?;
+
+        let dot = Dot {
+            source: PathBuf::from("dir"),
+            target: PathBuf::from("."),
+            ignore: vec![],
+            vars: Dot::default_vars(),
+        };
+
+        // Act
+        dot.traverse_and_copy(
+            PathBuf::from("dir").canonicalize()?.as_path(),
+            PathBuf::from(".dots/dir").as_path(),
+            &vec![],
+            &Variables::default(),
+        )?;
+
+        // Assert
+        let file_one = PathBuf::from(".dots/dir/subdir_one/subfile");
+        let file_two = PathBuf::from(".dots/dir/subdir_two/subfile");
+        assert_that!(file_one).exists();
+        assert_that!(file_two).exists();
+        assert_that!(fs::read_to_string(file_one)?)
+            .is_equal_to(&"Hello From subdir 1\n".to_string());
+        assert_that!(fs::read_to_string(file_two)?)
+            .is_equal_to(&"Hello From subdir 2\n".to_string());
+        Ok(())
+    }
+
+    #[sealed_test(files = ["tests/dotfiles_non_utf8/ferris.png"],env = [("HOME", ".")])]
+    fn copy_non_utf8() -> Result<()> {
+        run_cmd!(tree -a;)?;
+
+        let source = PathBuf::from("ferris.png");
+        let target = PathBuf::from("ferris.png");
+
+        let dot = Dot {
+            source: source.clone(),
             target,
             ignore: vec![],
             vars: Dot::default_vars(),
         };
 
-        // Act
-        dot.symlink(temp)?;
-
-        // Assert
-        let target = dirs::home_dir().unwrap().join("target_dot");
-
-        assert!(target.exists());
-        assert_eq!(fs::read_to_string(target)?, "Hello Tom");
-
-        Ok(dot.unlink()?)
-    }
-
-    #[test]
-    fn copy() -> Result<()> {
-        // Arrange
-        let temp = TempDir::default();
-        let temp = &temp.to_path_buf();
-
-        let source = &PathBuf::from("source_dot");
-        let target = PathBuf::from("target_dot");
-
-        let absolute_source_path = &temp.join(&source);
-
-        fs::create_dir(absolute_source_path)?;
-        fs::write(absolute_source_path.join("file"), "Hello Tom")?;
-        fs::create_dir_all(absolute_source_path.join("dir1").join("subdir_one"))?;
-        fs::create_dir_all(absolute_source_path.join("dir1").join("subdir_two"))?;
-        fs::write(
-            absolute_source_path
-                .join("dir1")
-                .join("subdir_two")
-                .join("subfile"),
-            "Hello From subdir 2",
-        )?;
-        fs::create_dir(absolute_source_path.join("dir2"))?;
-
-        let dot = Dot {
-            source: source.clone(),
-            target: target.clone(),
-            ignore: vec![],
-            vars: Dot::default_vars(),
-        };
-
-        let absolute_source_path = dot.source_path(temp)?;
-
-        // Act
         dot.traverse_and_copy(
-            &absolute_source_path,
-            &dot.copy_path(temp),
+            &source,
+            PathBuf::from(".dots/ferris.png").as_path(),
             &vec![],
             &Variables::default(),
         )?;
 
-        // Assert
-        let dots_copy_path = temp.join(".dots").join(source);
-        let file_content = fs::read_to_string(dots_copy_path.join("file"))?;
-
-        assert_eq!(file_content, "Hello Tom");
-        assert!(dots_copy_path.join("dir1").exists());
-        assert!(dots_copy_path.join("dir1/subdir_one").exists());
-        assert!(dots_copy_path.join("dir1/subdir_two").exists());
-
-        let file_content = fs::read_to_string(dots_copy_path.join("dir1/subdir_two/subfile"))?;
-        assert_eq!(file_content, "Hello From subdir 2");
-        assert!(dots_copy_path.join("dir2").exists());
+        assert_that!(PathBuf::from(".dots/ferris.png")).exists();
         Ok(())
     }
 
-    #[test]
-    fn copy_non_utf8() -> Result<()> {
-        let temp = TempDir::default();
-        let temp = &temp.to_path_buf();
-
-        let source = &PathBuf::from("ferris.png");
-        let target = PathBuf::from("target_dot");
-
-        let absolute_source_path = &temp.join(&source);
-        fs::copy("tests/dotfiles_non_utf8/ferris.png", absolute_source_path)?;
-
-        let dot = Dot {
-            source: source.clone(),
-            target: target.clone(),
-            ignore: vec![],
-            vars: Dot::default_vars(),
-        };
-
-        dot.traverse_and_copy(
-            &absolute_source_path,
-            &dot.copy_path(temp),
-            &vec![],
-            &Variables::default(),
-        )?;
-
-        let dots_copy_path = temp.join(".dots").join(source);
-        assert!(dots_copy_path.exists());
-        Ok(())
-    }
-
-    #[test]
+    #[sealed_test(env = [("HOME", ".")])]
     fn copy_with_ignore() -> Result<()> {
         // Arrange
-        let temp = TempDir::default();
-        let temp = &temp.to_path_buf();
+        run_cmd!(
+            mkdir -p source_dot/subdir_one;
+            mkdir -p source_dot/subdir_two;
+            mkdir .dots;
 
-        let source = &PathBuf::from("source_dot");
-        let target = PathBuf::from("target_dot");
+            echo "Not Hello Tom" > source_dot/file.md;
+            echo "Hello Tom" > source_dot/file;
 
-        let absolute_source_path = &temp.join(&source);
-
-        fs::create_dir(absolute_source_path)?;
-        fs::write(absolute_source_path.join("file.md"), "Not Hello Tom")?;
-        fs::write(absolute_source_path.join("file"), "Hello Tom")?;
-        fs::create_dir_all(absolute_source_path.join("dir1").join("subdir_one"))?;
-        fs::create_dir_all(absolute_source_path.join("dir1").join("subdir_two"))?;
-        fs::write(
-            absolute_source_path
-                .join("dir1")
-                .join("subdir_two")
-                .join("subfile"),
-            "Hello From subdir 2",
+            echo "Hello From subdir 2" > source_dot/subdir_two/subfile;
+            echo "Ignored" > source_dot/subdir_two/subfile.md;
         )?;
-        fs::write(
-            absolute_source_path
-                .join("dir1")
-                .join("subdir_two")
-                .join("subfile.md"),
-            "Ignored",
-        )?;
-        fs::create_dir(absolute_source_path.join("dir2"))?;
 
         let dot = Dot {
-            source: source.clone(),
-            target: target.clone(),
+            source: PathBuf::from("source_dot"),
+            target: PathBuf::from("source_dot"),
             ignore: vec!["*.md".to_string()],
             vars: Dot::default_vars(),
         };
 
-        let absolute_source_path = dot.source_path(temp)?;
-        let ignored_one = absolute_source_path.join("dir1/subdir_two/subfile.md");
-        let ignored_two = absolute_source_path.join("file.md");
-
         // Act
         dot.traverse_and_copy(
-            &absolute_source_path,
-            &dot.copy_path(temp),
-            &vec![ignored_one, ignored_two],
+            &PathBuf::from("source_dot").canonicalize()?,
+            &PathBuf::from(".dots/source_dot"),
+            &vec![
+                PathBuf::from("source_dot/subdir_two/subfile.md"),
+                PathBuf::from("source_dot/file.md"),
+            ],
             &Variables::default(),
         )?;
 
         // Assert
-        let dots_copy_path = temp.join(".dots").join(source);
 
-        let file_content = fs::read_to_string(dots_copy_path.join("file"))?;
+        let file_content = fs::read_to_string(".dots/source_dot/file")?;
 
-        assert_eq!(file_content, "Hello Tom");
-        assert!(dots_copy_path.join("dir1").exists());
-        assert!(dots_copy_path.join("dir1/subdir_one").exists());
-        assert!(dots_copy_path.join("dir1/subdir_two").exists());
+        assert_that!(file_content).is_equal_to(&"Hello Tom\n".to_string());
+        assert_that!(PathBuf::from(".dots/source_dot/subdir_one")).exists();
+        assert_that!(PathBuf::from(".dots/source_dot/subdir_two")).exists();
 
-        let file_content = fs::read_to_string(dots_copy_path.join("dir1/subdir_two/subfile"))?;
-        assert_eq!(file_content, "Hello From subdir 2");
-        assert!(dots_copy_path.join("dir2").exists());
+        let file_content = fs::read_to_string(".dots/source_dot/subdir_two/subfile")?;
 
-        let ignored_target_one = dots_copy_path.join("file.md");
-        assert!(!ignored_target_one.exists());
-        let ignored_target_two = dots_copy_path.join("dir1/subdir_two/subfile.md");
-        assert!(!ignored_target_two.exists());
+        assert_that!(file_content).is_equal_to(&"Hello From subdir 2\n".to_string());
+        assert_that!(PathBuf::from(".dots/file.md")).does_not_exist();
+        assert_that!(PathBuf::from(".dots/subdir_two/subfile.md")).does_not_exist();
         Ok(())
     }
 
-    #[test]
+    #[sealed_test(env = [("HOME", ".")])]
     fn unlink() -> Result<()> {
         // Arrange
-        let temp = TempDir::default();
-        let temp = &temp.to_path_buf();
-
         let source = PathBuf::from("source_dot");
         let target = PathBuf::from("target_dot");
 
-        fs::create_dir(temp.join(".dots"))?;
-        fs::write(&temp.join(".dots").join(&source), "Hello Tom")?;
+        fs::create_dir(".dots")?;
+        fs::write(".dots/source_dot", "Hello Tom")?;
 
         let dot = Dot {
             source,
@@ -553,7 +514,7 @@ mod tests {
             vars: Dot::default_vars(),
         };
 
-        dot.symlink(temp)?;
+        dot.symlink(".")?;
 
         // Act
         dot.unlink()?;
@@ -561,59 +522,42 @@ mod tests {
         // Assert
         let target = dirs::home_dir().unwrap().join("target_dot");
 
-        assert!(!target.exists());
+        assert_that!(target).does_not_exist();
 
         Ok(())
     }
 
-    #[test]
+    #[sealed_test(env = [("HOME", ".")])]
     fn install() -> Result<()> {
-        // Arrange
-        let temp = TempDir::default();
-        let temp = &temp.to_path_buf();
+        run_cmd!(echo "source" > source_dot;)?;
 
-        let source = &PathBuf::from("source_dot");
+        let source = PathBuf::from("source_dot");
         let target = PathBuf::from("target_dot");
 
-        let absolute_source_path = &temp.join(&source);
-
-        fs::create_dir(absolute_source_path)?;
-        fs::write(absolute_source_path.join("file"), "Hello Tom")?;
-
         let dot = Dot {
-            source: source.clone(),
-            target: target.clone(),
+            source,
+            target,
             ignore: vec![],
             vars: Dot::default_vars(),
         };
 
-        // Act
-        dot.install(temp, &Variables::default(), vec![], None)?;
+        dot.install(env::current_dir()?, &Variables::default(), vec![], None)?;
 
-        // Assert
-        assert!(temp.join(".dots").exists());
-        assert!(temp.join(".dots/source_dot").exists());
-        assert!(temp.join(".dots/source_dot/file").exists());
+        assert_that!(PathBuf::from(".dots")).exists();
+        assert_that!(PathBuf::from(".dots/source_dot")).exists();
         Ok(())
     }
 
-    #[test]
+    #[sealed_test(env = [("HOME", ".")])]
     fn install_with_vars() -> Result<()> {
-        // Arrange
-        let temp = TempDir::default();
-        let temp = &temp.to_path_buf();
-
-        let source = &PathBuf::from("source_dot");
-        let target = PathBuf::from("target_dot");
-
-        let absolute_source_path = &temp.join(&source);
-
-        fs::create_dir(absolute_source_path)?;
-        fs::write(absolute_source_path.join("file"), "Hello {{name}}")?;
+        run_cmd!(
+            mkdir dotfiles;
+            echo "Hello {{name}}" > dotfiles/dot;
+        )?;
 
         let dot = Dot {
-            source: source.clone(),
-            target: target.clone(),
+            source: PathBuf::from("dotfiles/dot"),
+            target: PathBuf::from("dot"),
             ignore: vec![],
             vars: Dot::default_vars(),
         };
@@ -622,132 +566,73 @@ mod tests {
         vars.insert("name", "Tom Bombadil");
 
         // Act
-        dot.install(temp, &Variables::default(), vec![], None)?;
+        dot.install(env::current_dir()?, &vars, vec![], None)?;
+        let dot = PathBuf::from(".dots/dotfiles/dot");
 
         // Assert
-        assert!(temp.join(".dots").exists());
-        assert!(temp.join(".dots/source_dot").exists());
-        assert!(temp.join(".dots/source_dot/file").exists());
+        assert_that!(dot).exists();
+        assert_that!(fs::read_to_string(dot)?).is_equal_to(&"Hello Tom Bombadil\n".to_string());
         Ok(())
     }
 
-    #[test]
+    #[sealed_test(files = ["tests/dotfiles_with_local_vars"], before = setup("dotfiles_with_local_vars"))]
     fn install_with_local_vars() -> Result<()> {
-        // Arrange
-        let temp = TempDir::default();
-        let temp = &temp.to_path_buf();
+        let bombadil = Bombadil::from_settings(NoGpg)?;
+        bombadil.install()?;
 
-        let source = &PathBuf::from("source_dot");
-        let target = PathBuf::from("target_dot");
+        let dotfiles = bombadil.dots.get("sub_dir").unwrap();
+        assert_that!(dotfiles.vars).is_equal_to(PathBuf::from("vars.toml"));
 
-        let absolute_source_path = &temp.join(&source);
-
-        fs::create_dir(absolute_source_path)?;
-        let local_vars_path = PathBuf::from("my_vars.toml");
-        fs::copy(
-            "tests/local_dot_vars/vars.toml",
-            absolute_source_path.join(&local_vars_path),
-        )?;
-        fs::write(absolute_source_path.join("file"), "{{name}} is {{verb}}")?;
-
-        let dot = Dot {
-            source: source.clone(),
-            target: target.clone(),
-            ignore: vec![],
-            vars: local_vars_path,
-        };
-
-        let mut vars = Variables::default();
-        vars.insert("name", "Tom Bombadil");
-
-        // Arrange
-        dot.install(
-            temp,
-            &Variables::default(),
-            vec![temp.join("source_dot/my_vars.toml")],
-            None,
-        )?;
-
-        // Assert
-        let content = fs::read_to_string(&temp.join(".dots/source_dot/file"))?;
-        assert_eq!(content, "Golberry is singing");
-        assert!(!temp.join(".dots/source_dot/my_vars.toml").exists());
+        let content = fs::read_to_string("dotfiles_with_local_vars/.dots/sub_dir/template")?;
+        assert_that!(content).is_equal_to(&"Golberry is singing".to_string());
         Ok(())
     }
 
-    #[test]
+    #[sealed_test(env = [("HOME", ".")])]
     fn install_with_local_vars_dot_relative() -> Result<()> {
-        // Arrange
-        let temp = TempDir::default();
-        let temp = &temp.to_path_buf();
-
-        let source = &PathBuf::from("source_dot");
-        let target = PathBuf::from("target_dot");
-
-        let absolute_source_path = &temp.join(&source);
-
-        fs::create_dir(absolute_source_path)?;
-        let local_vars_path = PathBuf::from("my_vars.toml");
-        fs::copy(
-            "tests/local_dot_vars/vars.toml",
-            temp.join(&local_vars_path),
+        run_cmd!(
+            mkdir dir;
+            echo "Hello {{name}}" > dir/template;
+            echo "name=\"Tom\"" > dir/my_vars.toml;
         )?;
-        fs::write(absolute_source_path.join("file"), "{{name}} is {{verb}}")?;
 
         let dot = Dot {
-            source: source.clone(),
-            target: target.clone(),
+            source: PathBuf::from("dir"),
+            target: PathBuf::from("dir"),
             ignore: vec![],
-            vars: local_vars_path,
+            vars: PathBuf::from("my_vars.toml"),
         };
 
-        let mut vars = Variables::default();
-        vars.insert("name", "Tom Bombadil");
+        dot.install(env::current_dir()?, &Variables::default(), vec![], None)?;
 
-        // Arrange
-        dot.install(temp, &Variables::default(), vec![], None)?;
+        let content = fs::read_to_string(".dots/dir/template")?;
+        assert_that!(content).is_equal_to(&"Hello Tom\n".to_string());
 
-        // Assert
-        let content = fs::read_to_string(&temp.join(".dots/source_dot/file"))?;
-        assert_eq!(content, "Golberry is singing");
         Ok(())
     }
 
-    #[test]
+    #[sealed_test(files = ["tests/dotfiles_with_local_vars"])]
     fn install_with_local_vars_default_path() -> Result<()> {
-        // Arrange
-        let temp = TempDir::default();
-        let temp = &temp.to_path_buf();
-
-        let source = &PathBuf::from("source_dot");
-        let target = PathBuf::from("target_dot");
-
-        let absolute_source_path = &temp.join(&source);
-
-        fs::create_dir(absolute_source_path)?;
-        let local_vars_path = PathBuf::from("vars.toml");
-        fs::copy(
-            "tests/local_dot_vars/vars.toml",
-            absolute_source_path.join(&local_vars_path),
+        run_cmd!(
+            mkdir source_dot;
+            echo "{{name}} is {{verb}}" > source_dot/file;
+            echo "name=\"Tom\"" > source_dot/vars.toml;
+            echo "verb=\"singing\"" >> source_dot/vars.toml;
         )?;
-        fs::write(absolute_source_path.join("file"), "{{name}} is {{verb}}")?;
 
         let dot = Dot {
-            source: source.clone(),
-            target: target.clone(),
+            source: PathBuf::from("source_dot"),
+            target: PathBuf::from("target_dot"),
             ignore: vec![],
-            vars: local_vars_path,
+            vars: PathBuf::from("vars.toml"),
         };
 
-        let mut vars = Variables::default();
-        vars.insert("name", "Tom Bombadil");
-
         // Arrange
-        dot.install(temp, &Variables::default(), vec![], None)?;
+        dot.install(env::current_dir()?, &Variables::default(), vec![], None)?;
 
         // Assert
-        let content = fs::read_to_string(&temp.join(".dots/source_dot/file"))?;
-        assert_eq!(content, "Golberry is singing");
+        let content = fs::read_to_string(PathBuf::from(".dots/source_dot/file"))?;
+        assert_eq!(content, "Tom is singing\n");
         Ok(())
     }
 }

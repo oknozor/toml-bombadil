@@ -140,6 +140,10 @@ impl Variables {
 #[cfg(test)]
 mod test {
     use crate::templating::Variables;
+    use anyhow::Result;
+    use indoc::indoc;
+    use pretty_assertions::assert_eq;
+    use speculoos::prelude::*;
     use std::collections::HashMap;
     use std::path::{Path, PathBuf};
 
@@ -148,14 +152,22 @@ mod test {
         let mut variables = HashMap::new();
         variables.insert("red".to_string(), "red_value".to_string());
 
-        let string = Variables {
+        let dot = Variables {
             variables,
             secrets: Default::default(),
         }
-        .to_dot(Path::new("tests/dotfiles_simple/template"))
+        .to_dot(Path::new("tests/dotfiles_simple/template.css"))
         .unwrap();
 
-        assert_eq!(string, "color: red_value");
+        assert_eq!(
+            dot,
+            indoc! {
+                    ".class {
+                        color: red_value
+                    }
+                    "
+            }
+        );
     }
 
     #[test]
@@ -171,9 +183,8 @@ mod test {
             .to_dot(Path::new("tests/dotfiles_with_secret/template"))
             .unwrap();
 
-        println!("{}", dot_content);
-        assert!(dot_content.contains("color: red_value"));
-        assert!(dot_content.contains("secret: hunter2"));
+        assert_that!(dot_content).contains("color: red_value");
+        assert_that!(dot_content).contains("secret: hunter2");
     }
 
     #[test]
@@ -184,36 +195,32 @@ mod test {
         }
         .to_dot(Path::new("tests/dotfiles_non_utf8/ferris.png"));
 
-        assert!(content.is_err());
+        assert_that!(content).is_err();
     }
 
     #[test]
-    fn should_get_vars_from_toml() {
-        let vars = Variables::from_toml(&Path::new("tests/vars/vars.toml"), None);
-
-        assert!(vars.is_ok());
-        let vars = vars.unwrap();
+    fn should_get_vars_from_toml() -> Result<()> {
+        let vars = Variables::from_toml(&Path::new("tests/dotfiles_with_meta/vars.toml"), None)?;
 
         assert_eq!(vars.variables.get("red"), Some(&"%meta_red".to_string()));
         assert_eq!(vars.variables.get("black"), Some(&"#000000".to_string()));
         assert_eq!(vars.variables.get("green"), Some(&"#008000".to_string()));
+        Ok(())
     }
 
     #[test]
-    fn should_get_vars_multiple_path() {
+    fn should_get_vars_multiple_path() -> Result<()> {
         let vars = Variables::from_paths(
-            &Path::new("tests/vars/"),
+            &Path::new("tests/dotfiles_with_meta/"),
             &[PathBuf::from("vars.toml"), PathBuf::from("meta_vars.toml")],
             None,
-        );
-
-        assert!(vars.is_ok());
-        let vars = vars.unwrap();
+        )?;
 
         assert_eq!(vars.variables.get("red"), Some(&"%meta_red".to_string()));
         assert_eq!(vars.variables.get("black"), Some(&"#000000".to_string()));
         assert_eq!(vars.variables.get("green"), Some(&"#008000".to_string()));
         assert_eq!(vars.variables.get("meta_red"), Some(&"#FF0000".to_string()));
+        Ok(())
     }
 
     #[test]
