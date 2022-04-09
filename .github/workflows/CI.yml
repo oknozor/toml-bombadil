@@ -15,27 +15,19 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v2
 
-      - name: Add gpg test key pair
-        run: |
-          gpg --import tests/gpg/public.gpg
-          gpg --import tests/gpg/private.gpg
-          echo -e "5\ny\n" | gpg --no-tty --command-fd 0 --expert --edit-key test@toml.bombadil.org trust
+      - name: Install Rust
+        run: rustup toolchain install stable --component llvm-tools-preview
 
-      - name: Install stable toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
+      - name: Install cargo-llvm-cov
+        uses: taiki-e/install-action@cargo-llvm-cov
 
-      - name: Test
-        uses: actions-rs/tarpaulin@v0.1
-        with:
-          args: '-- --test-threads 1'
+      - name: Generate code coverage
+        run: cargo llvm-cov --all-features --workspace --lcov --output-path lcov.info
 
-      - name: Upload to codecov.io
-        uses: codecov/codecov-action@v2
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v1
         with:
+          files: lcov.info
           fail_ci_if_error: true
 
   lints:
