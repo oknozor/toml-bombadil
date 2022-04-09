@@ -12,6 +12,7 @@ use std::os::unix;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
+use std::{fs, io};
 
 mod dots;
 mod git;

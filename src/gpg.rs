@@ -120,12 +120,6 @@ mod test {
     use std::env;
     use toml::Value;
 
-    // IMPORTANT :
-    // gpg keys pair needs to be imported to run this locally
-    // `gpg --import tests/gpg/public.gpg`
-    // `gpg --import tests/gpg/private.gpg`
-    // `echo -e "5\ny\n" | gpg --command-fd 0 --expert --edit-key test@toml.bombadil.org trust`
-
     const GPG_ID: &str = "test@toml.bombadil.org";
 
     fn gpg_setup() {
@@ -134,7 +128,7 @@ mod test {
         run_cmd!(
             gpg --import $crate_dir/tests/gpg/public.gpg;
             gpg --import $crate_dir/tests/gpg/private.gpg;
-            echo -e "5\ny\n" | gpg --no-tty --command-fd 0 --expert --edit-key test@cocogitto.org trust;
+            echo -e "5\ny\n" | gpg --no-tty --command-fd 0 --expert --edit-key test@toml.bombadil.org trust;
         ).unwrap();
     }
 
