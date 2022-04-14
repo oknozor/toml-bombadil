@@ -1,3 +1,4 @@
+use anyhow::Result;
 use clap::lazy_static::lazy_static;
 use clap::{AppSettings, IntoApp, Parser};
 use clap_complete::Shell;
@@ -64,6 +65,12 @@ enum Cli {
     },
     /// Remove all symlinks defined in your bombadil.toml
     Unlink,
+    /// Watch dotfiles and automatically run link on changes
+    Watch {
+        /// A list of comma separated profiles to activate
+        #[clap(short, long, required = false, multiple_values = true, possible_values = profiles())]
+        profiles: Vec<String>,
+    },
     /// Add a secret var to bombadil environment
     AddSecret {
         /// Key of the secret variable to create
@@ -94,7 +101,8 @@ enum Cli {
     },
 }
 
-fn main() {
+#[tokio::main]
+async fn main() -> Result<()> {
     let cli = Cli::parse();
 
     match cli {
@@ -136,6 +144,9 @@ fn main() {
                 .unwrap_or_else(|err| fatal!("{}", err));
 
             bombadil.install().unwrap_or_else(|err| fatal!("{}", err));
+        }
+        Cli::Watch { profiles } => {
+            Bombadil::watch(profiles).await?;
         }
         Cli::Unlink => {
             Bombadil::from_settings(Mode::NoGpg)
@@ -209,4 +220,6 @@ fn main() {
             );
         }
     };
+
+    Ok(())
 }

@@ -10,6 +10,8 @@ use std::collections::HashMap;
 use std::fs;
 use std::os::unix;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
+use std::time::Duration;
 
 mod dots;
 mod git;
@@ -23,6 +25,7 @@ pub(crate) const BOMBADIL_CONFIG: &str = "bombadil.toml";
 
 /// The main crate struct, it contains all needed medata about a
 /// dotfile directory and how to install it.
+#[derive(Clone)]
 pub struct Bombadil {
     path: PathBuf,
     dots: HashMap<String, Dot>,
@@ -209,6 +212,94 @@ impl Bombadil {
         Ok(())
     }
 
+    /// Watch dotfiles and automatically run link on changes
+    pub async fn watch(profiles: Vec<String>) -> Result<()> {
+        use watchexec::{
+            action::{Action, Outcome},
+            config::{InitConfig, RuntimeConfig},
+            error::RuntimeError,
+            event::{filekind::FileEventKind, Tag},
+            handler::PrintDebug,
+            ignore,
+            signal::source::MainSignal,
+            Watchexec,
+        };
+
+        let mut bombadil = Bombadil::from_settings(Mode::Gpg)?;
+        bombadil.enable_profiles(profiles.iter().map(String::as_str).collect())?;
+
+        let mut init = InitConfig::default();
+        init.on_error(PrintDebug(std::io::stderr()));
+
+        let dotfiles_path = &bombadil.dotfiles_absolute_path()?;
+
+        let mut runtime = RuntimeConfig::default();
+        runtime.action_throttle(Duration::from_secs(1));
+
+        // Ignore stuff like .git dirs
+        let ignore_files = ignore::from_origin(dotfiles_path);
+        runtime.filterer(Arc::new(
+            ignore::IgnoreFilterer::new(dotfiles_path, &ignore_files.await.0).await?,
+        ));
+
+        runtime.pathset([dotfiles_path]);
+        let dots_path = format!(
+            "{dotfiles_path}/.dots",
+            dotfiles_path = dotfiles_path.to_string_lossy()
+        );
+
+        runtime.on_action(move |action: Action| {
+            let b = bombadil.clone();
+            let dots_path = dots_path.clone();
+            async move {
+                for event in action.events.iter() {
+                    // Skip .dots directory events as those are created by bombadil itself and
+                    // processing them would result in an infinite loop
+                    if event.paths().any(|(p, _)| p.starts_with(dots_path.clone())) {
+                        continue;
+                    }
+
+                    // Select only relevant events (creations, modifications, deletions)
+                    if event.tags.iter().any(|t| {
+                        matches!(t, &Tag::FileEventKind(FileEventKind::Create(_)))
+                            || matches!(t, &Tag::FileEventKind(FileEventKind::Modify(_)))
+                            || matches!(t, &Tag::FileEventKind(FileEventKind::Remove(_)))
+                    }) {
+                        println!("{}", "Detected changes, re-linking dots".green());
+                        // Finally, install the dots like usual
+                        b.install().map_err(|e| RuntimeError::Handler {
+                            ctx: "bombadil install",
+                            err: e.to_string(),
+                        })?;
+                        break;
+                    }
+                }
+
+                let sigs = action
+                    .events
+                    .iter()
+                    .flat_map(|event| event.signals())
+                    .collect::<Vec<_>>();
+
+                // Stop gently on Ctrl-C and kill -15
+                if sigs
+                    .iter()
+                    .any(|sig| sig == &MainSignal::Interrupt || sig == &MainSignal::Terminate)
+                {
+                    action.outcome(Outcome::Exit);
+                } else {
+                    action.outcome(Outcome::if_running(Outcome::DoNothing, Outcome::Start));
+                }
+
+                Ok::<_, RuntimeError>(())
+            }
+        });
+
+        let watchexec = Watchexec::new(init, runtime.clone())?;
+        watchexec.main().await??;
+        Ok(())
+    }
+
     /// Add a gpg secret encrypted variable to the target variable file
     pub fn add_secret<S: AsRef<Path> + ?Sized>(
         &self,
@@ -287,7 +378,7 @@ impl Bombadil {
                         .yellow();
                         eprintln!("{}", warning);
                     }
-                // Nothing to override, let's create a new dot entry
+                    // Nothing to override, let's create a new dot entry
                 } else if let (Some(source), Some(target)) =
                     (&dot_override.source, &dot_override.target)
                 {

@@ -8,6 +8,7 @@ const PGP_HEADER: &str = "-----BEGIN PGP MESSAGE-----\n\n";
 const PGP_FOOTER: &str = "\n-----END PGP MESSAGE-----";
 pub(crate) const GPG_PREFIX: &str = "gpg:";
 
+#[derive(Clone)]
 pub struct Gpg {
     pub user_id: String,
 }
