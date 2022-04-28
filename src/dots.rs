@@ -145,15 +145,19 @@ impl Dot {
         // Single file : inject vars and write to .dots/
         if source.is_file() {
             fs::create_dir_all(&target.parent().unwrap())?;
-            if let Ok(content) = vars.to_dot(source) {
-                let permissions = fs::metadata(source)?.permissions();
-                let mut dot_copy = File::create(&target)?;
-                dot_copy.write_all(content.as_bytes())?;
-                dot_copy.set_permissions(permissions)?;
-            } else {
-                // Something went wrong parsing or reading the source path,
-                // We just copy the file in place
-                fs::copy(source, target)?;
+            match vars.to_dot(source) {
+                Ok(content) => {
+                    let permissions = fs::metadata(source)?.permissions();
+                    let mut dot_copy = File::create(&target)?;
+                    dot_copy.write_all(content.as_bytes())?;
+                    dot_copy.set_permissions(permissions)?;
+                }
+                Err(err) => {
+                    // Something went wrong parsing or reading the source path,
+                    // We just copy the file in place
+                    fs::copy(source, target)?;
+                    eprintln!("{err:?}")
+                }
             }
         } else if source.is_dir() {
             fs::create_dir_all(target)?;

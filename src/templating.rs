@@ -1,11 +1,12 @@
 use crate::gpg::{Gpg, GPG_PREFIX};
-use anyhow::{anyhow, Context, Result};
+use anyhow::{anyhow, Result};
 use colored::Colorize;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::BufReader;
 use std::path::{Path, PathBuf};
+use tera::Tera;
 
 #[derive(Clone, Debug, Default)]
 pub(crate) struct Variables {
@@ -82,8 +83,11 @@ impl Variables {
             context.insert(k.to_owned(), v);
         });
 
-        tera::Tera::one_off(&contents, &context, false)
-            .context("Failed to apply templating to file:")
+        let mut tera = Tera::default();
+        let filename = path.as_os_str().to_str().expect("Non UTF8 filename");
+
+        tera.add_raw_template(filename, &contents)?;
+        tera.render(filename, &context).map_err(Into::into)
     }
 
     pub(crate) fn resolve_ref(&mut self) {
