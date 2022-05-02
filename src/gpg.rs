@@ -26,7 +26,7 @@ impl Gpg {
         value: &str,
         var_file: &S,
     ) -> Result<()> {
-        let mut vars = Variables::from_toml(var_file.as_ref(), Some(self))?;
+        let mut vars = Variables::from_toml(var_file.as_ref())?;
         let encrypted = self.encrypt(value)?;
         let encrypted = encrypted.replace(PGP_HEADER, "");
         let encrypted = encrypted.replace(PGP_FOOTER, "");

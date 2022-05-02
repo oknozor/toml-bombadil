@@ -1,13 +1,11 @@
-mod error;
-
-use crate::paths::error::Error::{
+use crate::error::Error::{
     SourceNotFound, Symlink, TargetNotFound, TemplateNotFound, Unlink,
 };
 use crate::settings::dotfile_dir;
-use crate::Dot;
+use crate::{Dot, DotVar};
 use colored::*;
 use dirs::home_dir;
-use error::*;
+use crate::error::*;
 use std::fs;
 use std::os::unix;
 use std::path::{Path, PathBuf};
@@ -31,6 +29,8 @@ pub trait DotPaths {
 
     /// Symlink the dotfile to its destination
     fn symlink(&self) -> Result<()>;
+
+    fn resolve_var_path(&self) -> Option<PathBuf>;
 }
 
 impl DotPaths for Dot {
@@ -93,6 +93,10 @@ impl DotPaths for Dot {
             .unwrap_or_else(|err| eprintln!("{:?}", err));
 
         Ok(())
+    }
+
+    fn resolve_var_path(&self) -> Option<PathBuf> {
+        self.resolve_from_source(&self.source, &self.vars)
     }
 }
 

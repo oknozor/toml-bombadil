@@ -1,4 +1,3 @@
-use crate::gpg::Gpg;
 use crate::paths::DotPaths;
 use crate::settings::dots::{Dot, DotOverride};
 use crate::templating::Variables;
@@ -8,14 +7,13 @@ use std::fs;
 use std::fs::File;
 use std::io::Write;
 use std::path::{Path, PathBuf};
+use crate::settings::dotfile_dir;
 
 impl Dot {
-    pub(crate) fn install<P: AsRef<Path>>(
+    pub(crate) fn install(
         &self,
-        dotfile_dir: P,
         vars: &Variables,
         auto_ignored: Vec<PathBuf>,
-        gpg: Option<&Gpg>,
     ) -> Result<()> {
         let source = &self.source()?;
         let copy_path = &self.build_copy_path();
@@ -26,8 +24,8 @@ impl Dot {
         // Add local vars to the global ones
         let mut vars = vars.clone();
 
-        if let Some(local_vars_path) = self.resolve_var_path(dotfile_dir.as_ref()) {
-            let local_vars = Dot::load_local_vars(&local_vars_path, gpg);
+        if let Some(local_vars_path) = self.resolve_var_path() {
+            let local_vars = Dot::load_local_vars(&local_vars_path);
             vars.extend(local_vars);
         }
 
@@ -38,8 +36,8 @@ impl Dot {
         self.traverse_and_copy(source, copy_path, ignored_paths.as_slice(), &vars)
     }
 
-    fn load_local_vars(source: &Path, gpg: Option<&Gpg>) -> Variables {
-        Variables::from_toml(source, gpg).unwrap_or_else(|err| {
+    fn load_local_vars(source: &Path) -> Variables {
+        Variables::from_toml(source).unwrap_or_else(|err| {
             eprintln!("{}", err.to_string().yellow());
             Variables::default()
         })
@@ -105,7 +103,6 @@ impl Dot {
 impl DotOverride {
     pub(crate) fn resolve_var_path(
         &self,
-        dotfile_dir: &Path,
         origin: Option<&PathBuf>,
     ) -> Option<PathBuf> {
         let source = match (self.get_source(), origin) {
@@ -115,14 +112,12 @@ impl DotOverride {
         };
 
         let vars = self.vars().unwrap_or_else(Dot::default_vars);
-        self.resolve_from_source(dotfile_dir, source, &vars)
+        self.resolve_from_source(source, &vars)
     }
 }
 
 impl Dot {
-    pub(crate) fn resolve_var_path(&self, dotfile_dir: &Path) -> Option<PathBuf> {
-        self.resolve_from_source(dotfile_dir, &self.source, &self.vars)
-    }
+
 }
 
 pub(crate) trait DotVar {
@@ -138,12 +133,11 @@ pub(crate) trait DotVar {
 
     fn resolve_from_source(
         &self,
-        dotfile_dir: &Path,
         source: &Path,
         path: &Path,
     ) -> Option<PathBuf> {
-        let relative_to_dot = dotfile_dir.join(source).join(path);
-        let relative_to_dotfile_dir = dotfile_dir.join(path);
+        let relative_to_dot = dotfile_dir().join(source).join(path);
+        let relative_to_dotfile_dir = dotfile_dir().join(path);
         // FIXME : we should not try to look for path like this
         // Instead "../vars.toml" should be used
         if relative_to_dot.exists() {
@@ -154,17 +148,16 @@ pub(crate) trait DotVar {
             } else if relative_to_dotfile_dir.exists() && !self.is_default_var_path() {
                 Some(relative_to_dotfile_dir)
             } else {
-                self.vars_path_not_found(dotfile_dir, source, path)
+                self.vars_path_not_found(source, path)
             }
         } else {
             // Warning is emitted only if the path is not "vars.toml"
-            self.vars_path_not_found(dotfile_dir, source, path)
+            self.vars_path_not_found(source, path)
         }
     }
 
     fn vars_path_not_found(
         &self,
-        dotfile_dir: &Path,
         source: &Path,
         path: &Path,
     ) -> Option<PathBuf> {
@@ -176,7 +169,7 @@ pub(crate) trait DotVar {
                 "was neither found in".yellow(),
                 source,
                 "nor in".yellow(),
-                dotfile_dir
+                dotfile_dir()
             );
         }
         None
@@ -269,77 +262,71 @@ mod tests {
             .is_equal_to(PathBuf::from("/etc/profile"));
     }
 
-    #[sealed_test(env = [("HOME", ".")])]
+    #[sealed_test(files = ["tests/dotfiles_simple"], before = setup("dotfiles_simple"))]
     fn symlink_ok() -> Result<()> {
         // Arrange
         run_cmd!(
-            mkdir .dots;
-            echo "Hello Tom" > .dots/dot;
+            mkdir dotfiles_simple/.dots;
+            echo "Hello Tom" > dotfiles_simple/.dots/template.css;
         )?;
 
         let dot = Dot {
-            source: PathBuf::from("dot"),
-            target: PathBuf::from("dot_target"),
+            source: PathBuf::from("template.css"),
+            target: PathBuf::from(".config/template.css"),
             ignore: vec![],
             vars: Dot::default_vars(),
         };
 
+
         // Act
         dot.symlink()?;
-        run_cmd!(tree -a;)?;
 
         // Assert
-        let symlink = PathBuf::from("dot_target");
+        let symlink = PathBuf::from(".config/template.css");
         assert_that!(symlink.is_symlink()).is_true();
         assert_that!(fs::read_to_string(symlink)?).is_equal_to(&"Hello Tom\n".to_string());
 
         Ok(())
     }
 
-    #[sealed_test(env = [("HOME", ".")])]
+    #[sealed_test(files = ["tests/dotfiles_with_multiple_nested_dir"], before = setup("dotfiles_with_multiple_nested_dir"))]
     fn copy() -> Result<()> {
         // Arrange
-        run_cmd!(
-            mkdir -p dir/subdir_one;
-            mkdir -p dir/subdir_two;
-            mkdir .dots;
-            echo "Hello From subdir 1" > dir/subdir_one/subfile;
-            echo "Hello From subdir 2" > dir/subdir_two/subfile;
-        )?;
-
         let dot = Dot {
             source: PathBuf::from("dir"),
-            target: PathBuf::from("."),
+            target: PathBuf::from(".config/dir"),
             ignore: vec![],
             vars: Dot::default_vars(),
         };
 
         // Act
         dot.traverse_and_copy(
-            PathBuf::from("dir").canonicalize()?.as_path(),
-            PathBuf::from(".dots/dir").as_path(),
+            PathBuf::from("dotfiles_with_multiple_nested_dir/dir").as_path(),
+            PathBuf::from("dotfiles_with_multiple_nested_dir/.dots/dir").as_path(),
             &vec![],
             &Variables::default(),
         )?;
 
+        run_cmd!(tree -a)?;
+
+
+
         // Assert
-        let file_one = PathBuf::from(".dots/dir/subdir_one/subfile");
-        let file_two = PathBuf::from(".dots/dir/subdir_two/subfile");
+        let file_one = PathBuf::from("dotfiles_with_multiple_nested_dir/.dots/dir/subdir_one/subfile");
+        let file_two = PathBuf::from("dotfiles_with_multiple_nested_dir/.dots/dir/subdir_two/subfile");
         assert_that!(file_one).exists();
         assert_that!(file_two).exists();
         assert_that!(fs::read_to_string(file_one)?)
-            .is_equal_to(&"Hello From subdir 1\n".to_string());
+            .is_equal_to(&"Hello From subdir 1".to_string());
         assert_that!(fs::read_to_string(file_two)?)
-            .is_equal_to(&"Hello From subdir 2\n".to_string());
+            .is_equal_to(&"Hello From subdir 2".to_string());
         Ok(())
     }
 
-    #[sealed_test(files = ["tests/dotfiles_non_utf8/ferris.png"],env = [("HOME", ".")])]
+    #[sealed_test(files = ["tests/dotfiles_non_utf8"], before = setup("dotfiles_non_utf8"))]
     fn copy_non_utf8() -> Result<()> {
-        run_cmd!(tree -a;)?;
-
-        let source = PathBuf::from("ferris.png");
-        let target = PathBuf::from("ferris.png");
+        let source = PathBuf::from("dotfiles_non_utf8/ferris.png");
+        let target = PathBuf::from("dotfiles_non_utf8/.config/ferris.png");
 
         let dot = Dot {
             source: source.clone(),
@@ -350,12 +337,14 @@ mod tests {
 
         dot.traverse_and_copy(
             &source,
-            PathBuf::from(".dots/ferris.png").as_path(),
+            PathBuf::from("dotfiles_non_utf8/.dots/ferris.png").as_path(),
             &vec![],
             &Variables::default(),
         )?;
 
-        assert_that!(PathBuf::from(".dots/ferris.png")).exists();
+        run_cmd!(tree -a)?;
+
+        assert_that!(PathBuf::from("dotfiles_non_utf8/.dots/ferris.png")).exists();
         Ok(())
     }
 
@@ -451,7 +440,7 @@ mod tests {
             vars: Dot::default_vars(),
         };
 
-        dot.install(env::current_dir()?, &Variables::default(), vec![], None)?;
+        dot.install(&Variables::default(), vec![])?;
 
         assert_that!(PathBuf::from(".dots")).exists();
         assert_that!(PathBuf::from(".dots/source_dot")).exists();
@@ -476,7 +465,7 @@ mod tests {
         vars.insert("name", "Tom Bombadil");
 
         // Act
-        dot.install(env::current_dir()?, &vars, vec![], None)?;
+        dot.install( &vars, vec![])?;
         let dot = PathBuf::from(".dots/dotfiles/dot");
 
         // Assert
@@ -513,7 +502,7 @@ mod tests {
             vars: PathBuf::from("my_vars.toml"),
         };
 
-        dot.install(env::current_dir()?, &Variables::default(), vec![], None)?;
+        dot.install(&Variables::default(), vec![])?;
 
         let content = fs::read_to_string(".dots/dir/template")?;
         assert_that!(content).is_equal_to(&"Hello Tom\n".to_string());
@@ -544,7 +533,7 @@ mod tests {
         };
 
         // Arrange
-        dot.install(env::current_dir()?, &Variables::default(), vec![], None)?;
+        dot.install( &Variables::default(), vec![])?;
 
         // Assert
         let content = fs::read_to_string(PathBuf::from(

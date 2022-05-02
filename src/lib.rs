@@ -21,10 +21,12 @@ mod dots;
 mod git;
 mod gpg;
 mod hook;
-pub mod paths;
-pub mod settings;
 mod state;
 mod templating;
+pub mod paths;
+pub mod install;
+pub mod settings;
+mod error;
 
 pub(crate) const BOMBADIL_CONFIG: &str = "bombadil.toml";
 
@@ -155,10 +157,8 @@ impl Bombadil {
         fs::create_dir(dot_copy_dir)?;
         for (key, dot) in self.dots.iter() {
             if let Err(err) = dot.install(
-                absolute_path_to_dot,
                 &self.vars,
                 self.get_auto_ignored_files(key),
-                self.gpg.as_ref(),
             ) {
                 eprintln!("{}", err);
                 continue;
@@ -414,7 +414,7 @@ impl Bombadil {
             });
 
             // Add profile vars
-            let variables = Variables::from_paths(&self.path, &profile.vars, self.gpg.as_ref())?;
+            let variables = Variables::from_paths(&self.path, &profile.vars)?;
             self.vars.extend(variables);
             // Add Profile pre hooks
             let prehooks = profile
@@ -470,7 +470,7 @@ impl Bombadil {
         };
 
         // Resolve variables from path
-        let mut vars = Variables::from_paths(&path, &config.settings.vars, gpg.as_ref())?;
+        let mut vars = Variables::from_paths(&path, &config.settings.vars)?;
 
         // Replace % reference with their ref value
         vars.resolve_ref();
@@ -567,11 +567,11 @@ impl Bombadil {
             .iter()
             .filter_map(|(_, profile)| profile.dots.get(dot_key))
             .filter(|dot| dot.vars.is_some())
-            .filter_map(|dot| dot.resolve_var_path(&self.path, origin_source))
+            .filter_map(|dot| dot.resolve_var_path(origin_source))
             .collect();
 
         let _ = dot_origin.map(|dot| {
-            dot.resolve_var_path(&self.path)
+            dot.resolve_var_path()
                 .map(|path| ignored.push(path))
         });
 
@@ -651,7 +651,7 @@ mod tests {
     fn install_should_fail_and_continue() -> Result<()> {
         // Act
         Bombadil::from_settings(NoGpg)?.install()?;
-        run_cmd!(tree - a)?;
+        run_cmd!(tree -a)?;
         // Assert
         assert_that!(PathBuf::from(".config/template.css")).exists();
         assert_that!(PathBuf::from(".config/invalid")).does_not_exist();
