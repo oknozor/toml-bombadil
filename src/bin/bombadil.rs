@@ -1,12 +1,11 @@
 use anyhow::Result;
-use clap::lazy_static::lazy_static;
 use clap::{AppSettings, IntoApp, Parser};
 use clap_complete::Shell;
 use std::io;
 use std::io::BufRead;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
-use toml_bombadil::settings::Settings;
+use toml_bombadil::settings::profiles;
 use toml_bombadil::{Bombadil, MetadataType, Mode};
 
 macro_rules! fatal {
@@ -15,18 +14,6 @@ macro_rules! fatal {
         writeln!(&mut ::std::io::stderr(), $($tt)*).unwrap();
         ::std::process::exit(1)
     }}
-}
-
-lazy_static! {
-    static ref SETTINGS: Settings = Settings::get().unwrap_or_default();
-}
-
-fn profiles() -> Vec<&'static str> {
-    SETTINGS
-        .profiles
-        .keys()
-        .map(|profile| profile.as_ref())
-        .collect()
 }
 
 /// Toml is a dotfile template manager, written in rust.
@@ -40,7 +27,7 @@ fn profiles() -> Vec<&'static str> {
     author = "Paul D. <paul.delafosse@protonmail.com>"
 )]
 enum Cli {
-    /// Link a given dotfile directory config to "XDG_CONFIG_DIR/bombadil.toml"
+    /// Link a given dotfile directory settings to "XDG_CONFIG_DIR/bombadil.toml"
     Install {
         /// Path to your dotfile directory
         #[clap(value_name = "CONFIG", required = false)]
@@ -58,7 +45,7 @@ enum Cli {
         #[clap(short, long, required = false, multiple_values = true)]
         profiles: Vec<String>,
     },
-    /// Symlink a copy of your dotfiles and inject variables according to bombadil.toml config
+    /// Symlink a copy of your dotfiles and inject variables according to bombadil.toml settings
     Link {
         /// A list of comma separated profiles to activate
         #[clap(short, long, required = false, multiple_values = true, possible_values = profiles())]

@@ -1,11 +1,14 @@
-use crate::dots::{Dot, DotVar};
+use self::settings::profiles::Profile;
+use crate::dots::DotVar;
 use crate::gpg::Gpg;
 use crate::hook::Hook;
-use crate::settings::{Profile, Settings};
+use crate::paths::DotPaths;
 use crate::state::BombadilState;
 use crate::templating::Variables;
 use anyhow::{anyhow, Result};
 use colored::*;
+use settings::dots::Dot;
+use settings::Settings;
 use std::collections::HashMap;
 use std::io::Write;
 use std::os::unix;
@@ -18,6 +21,7 @@ mod dots;
 mod git;
 mod gpg;
 mod hook;
+pub mod paths;
 pub mod settings;
 mod state;
 mod templating;
@@ -74,7 +78,7 @@ impl Bombadil {
             Some(config_dir) => {
                 let bombadil_xdg_config = config_dir.join(BOMBADIL_CONFIG);
 
-                // Attempt to locate a previous '$HOME/.config/bombadil.toml' link and remove it
+                // Attempt to locate a previous '$HOME/.settings/bombadil.toml' link and remove it
                 if fs::symlink_metadata(&bombadil_xdg_config).is_ok() {
                     fs::remove_file(&bombadil_xdg_config)?;
                 }
@@ -91,7 +95,7 @@ impl Bombadil {
                     .unwrap_or_else(|| PathBuf::from(BOMBADIL_CONFIG))
                     .canonicalize()?;
 
-                // Symlink to '$HOME/.config/bombadil.toml'
+                // Symlink to '$HOME/.settings/bombadil.toml'
                 unix::fs::symlink(&dotfiles_path, &bombadil_xdg_config)
                     .map_err(|err| {
                         anyhow!(
@@ -147,7 +151,7 @@ impl Bombadil {
             fs::remove_dir_all(&dot_copy_dir)?;
         }
 
-        // Render current config and create symlinks
+        // Render current settings and create symlinks
         fs::create_dir(dot_copy_dir)?;
         for (key, dot) in self.dots.iter() {
             if let Err(err) = dot.install(
@@ -161,7 +165,7 @@ impl Bombadil {
             }
 
             dot.unlink()?;
-            dot.symlink(absolute_path_to_dot)?;
+            dot.symlink()?;
         }
 
         // Run post install hooks
@@ -171,7 +175,7 @@ impl Bombadil {
             }
         });
 
-        // Dump current config
+        // Dump current settings
         BombadilState::from(self).write()?;
 
         Ok(())
@@ -311,7 +315,7 @@ impl Bombadil {
         if let Some(gpg) = &self.gpg {
             gpg.push_secret(key, value, var_file)
         } else {
-            Err(anyhow!("No gpg_user_id in bombadil config"))
+            Err(anyhow!("No gpg_user_id in bombadil settings"))
         }
     }
 
@@ -323,7 +327,7 @@ impl Bombadil {
             .for_each(|(key, value)| println!("{} = {}", key.red(), value))
     }
 
-    /// Enable a dotfile profile by merging its config with the default profile
+    /// Enable a dotfile profile by merging its settings with the default profile
     pub fn enable_profiles(&mut self, profile_keys: Vec<&str>) -> Result<()> {
         if profile_keys.is_empty() {
             return Ok(());
@@ -455,7 +459,7 @@ impl Bombadil {
         Ok(())
     }
 
-    /// Load Bombadil config from a `bombadil.toml`
+    /// Load Bombadil settings from a `bombadil.toml`
     pub fn from_settings(mode: Mode) -> Result<Bombadil> {
         let config = Settings::get()?;
         let path = config.get_dotfiles_path()?;
@@ -471,7 +475,7 @@ impl Bombadil {
         // Replace % reference with their ref value
         vars.resolve_ref();
 
-        // Resolve hooks from config
+        // Resolve hooks from settings
         let posthooks = config
             .settings
             .posthooks
@@ -514,9 +518,7 @@ impl Bombadil {
                         "{}: {} => {}",
                         k,
                         self.path.join(&v.source).display(),
-                        v.target_path()
-                            .unwrap_or_else(|_| v.target.clone())
-                            .display()
+                        v.target().unwrap_or_else(|_| v.target.clone()).display()
                     )
                 })
                 .collect(),
@@ -577,18 +579,6 @@ impl Bombadil {
     }
 }
 
-pub(crate) fn unlink<P: AsRef<Path> + ?Sized>(path: &P) -> Result<()> {
-    if fs::symlink_metadata(path).is_ok() {
-        if path.as_ref().is_dir() {
-            fs::remove_dir_all(path)?;
-        } else {
-            fs::remove_file(path)?;
-        }
-    }
-
-    Ok(())
-}
-
 pub enum MetadataType {
     Dots,
     PreHooks,
@@ -602,6 +592,7 @@ pub enum MetadataType {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::paths::unlink;
     use crate::Mode::NoGpg;
     use cmd_lib::{init_builtin_logger, run_cmd};
     use indoc::indoc;
@@ -613,7 +604,8 @@ mod tests {
     use std::{env, fs};
 
     fn setup(dotfiles: &str) {
-        env::set_var("HOME", env::current_dir().unwrap());
+        let home_dir = env::current_dir().unwrap().canonicalize().unwrap();
+        env::set_var("HOME", home_dir);
         init_builtin_logger();
         run_cmd!(
             mkdir .config;
@@ -659,7 +651,7 @@ mod tests {
     fn install_should_fail_and_continue() -> Result<()> {
         // Act
         Bombadil::from_settings(NoGpg)?.install()?;
-
+        run_cmd!(tree - a)?;
         // Assert
         assert_that!(PathBuf::from(".config/template.css")).exists();
         assert_that!(PathBuf::from(".config/invalid")).does_not_exist();

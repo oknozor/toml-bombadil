@@ -1,9 +1,10 @@
-use crate::{unlink, Bombadil};
+use crate::paths::{unlink, DotPaths};
+use crate::Bombadil;
 use anyhow::{anyhow, Result};
 use colored::*;
 use config::Config;
 use config::File;
-use serde_derive::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 use std::fs;
 use std::path::PathBuf;
@@ -57,7 +58,7 @@ impl BombadilState {
 
 impl From<&Bombadil> for BombadilState {
     fn from(current: &Bombadil) -> Self {
-        // Since we come from current bombadil config, unwrap is safe
+        // Since we come from current bombadil settings, unwrap is safe
         let path = current
             .dotfiles_absolute_path()
             .unwrap()
@@ -66,7 +67,7 @@ impl From<&Bombadil> for BombadilState {
         let symlinks = current
             .dots
             .iter()
-            .map(|dot| dot.1.target_path().unwrap())
+            .map(|dot| dot.1.target().unwrap())
             .collect();
 
         Self { path, symlinks }

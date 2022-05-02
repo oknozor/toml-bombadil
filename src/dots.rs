@@ -1,47 +1,13 @@
 use crate::gpg::Gpg;
+use crate::paths::DotPaths;
+use crate::settings::dots::{Dot, DotOverride};
 use crate::templating::Variables;
-use crate::unlink;
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use colored::*;
-use dirs::home_dir;
-use serde_derive::{Deserialize, Serialize};
 use std::fs;
 use std::fs::File;
 use std::io::Write;
-use std::os::unix;
 use std::path::{Path, PathBuf};
-
-/// Represent a link between a `source` dotfile in the user defined dotfiles directory
-/// and the XDG `target` path where it should be linked
-#[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct Dot {
-    /// Path relative to user defined dotfile
-    pub source: PathBuf,
-    /// Target path either relative to $HOME or absolute
-    pub target: PathBuf,
-    /// Glob pattern of files to ignore when creating symlinks
-    #[serde(default)]
-    #[serde(skip_serializing)]
-    pub ignore: Vec<String>,
-    // A single var file attached to the dot
-    #[serde(default = "Dot::default_vars")]
-    #[serde(skip_serializing)]
-    pub vars: PathBuf,
-}
-
-/// Same as dot but source and target are optionals
-#[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct DotOverride {
-    /// Path relative to user defined dotfile
-    pub source: Option<PathBuf>,
-    /// Target path either relative to $HOME or absolute
-    pub target: Option<PathBuf>,
-    /// Glob pattern of files to ignore when creating symlinks
-    #[serde(default)]
-    pub ignore: Vec<String>,
-    // A single var file attached to the dot
-    pub vars: Option<PathBuf>,
-}
 
 impl Dot {
     pub(crate) fn install<P: AsRef<Path>>(
@@ -51,8 +17,8 @@ impl Dot {
         auto_ignored: Vec<PathBuf>,
         gpg: Option<&Gpg>,
     ) -> Result<()> {
-        let source = &self.source_path(dotfile_dir.as_ref())?;
-        let copy_path = &self.copy_path(dotfile_dir.as_ref());
+        let source = &self.source()?;
+        let copy_path = &self.build_copy_path();
         let source_str = source.to_str().unwrap_or_default();
         let mut ignored_paths = self.get_ignored_paths(source_str)?;
         ignored_paths.extend_from_slice(&auto_ignored);
@@ -70,47 +36,6 @@ impl Dot {
 
         // Recursively copy dotfile to .dots directory
         self.traverse_and_copy(source, copy_path, ignored_paths.as_slice(), &vars)
-    }
-
-    pub(crate) fn symlink<P: AsRef<Path>>(&self, dotfile_dir: P) -> Result<()> {
-        let copy_path = &self.copy_path(dotfile_dir.as_ref());
-        let target = &self.target_path()?;
-
-        // Link
-        unix::fs::symlink(copy_path, target)
-            .map(|_result| {
-                let source = format!("{:?}", copy_path).blue();
-                let dest = format!("{:?}", target).green();
-                println!("{} => {}", source, dest)
-            })
-            .map_err(|err| {
-                let source = format!("{:?}", copy_path).blue();
-                let dest = format!("{:?}", &target).red();
-                let err = format!("{}", err).red().bold();
-                anyhow!("{} => {} : {}", source, dest, err)
-            })
-            .unwrap_or_else(|err| eprintln!("{}", err));
-
-        Ok(())
-    }
-
-    pub(crate) fn unlink(&self) -> Result<()> {
-        let target = &self.target_path()?;
-        unlink(target)
-    }
-
-    /// Return the target path of a dot entry either absolute or relative to $HOME
-    pub(crate) fn target_path(&self) -> Result<PathBuf> {
-        if self.target.is_absolute() {
-            Ok(self.target.clone())
-        } else {
-            home_dir()
-                .map(|home| home.join(&self.target))
-                .ok_or_else(|| {
-                    let err = format!("Unable to find dot path : {:?}", &self.target).red();
-                    anyhow!(err)
-                })
-        }
     }
 
     fn load_local_vars(source: &Path, gpg: Option<&Gpg>) -> Variables {
@@ -175,26 +100,6 @@ impl Dot {
         }
         Ok(())
     }
-
-    /// Resolve dot source copy path ({dotfiles/dotsource) against user defined dotfile directory
-    /// Check if file exists
-    fn source_path(&self, dotfile_dir: &Path) -> Result<PathBuf> {
-        let path = dotfile_dir.join(&self.source);
-
-        if path.exists() {
-            Ok(path)
-        } else {
-            Err(anyhow!(format!(
-                "{} {:?}",
-                "Path does not exist :".red(),
-                path
-            )))
-        }
-    }
-
-    pub(crate) fn copy_path<P: AsRef<Path>>(&self, dotfile_dir: P) -> PathBuf {
-        dotfile_dir.as_ref().join(".dots").join(&self.source)
-    }
 }
 
 impl DotOverride {
@@ -203,7 +108,7 @@ impl DotOverride {
         dotfile_dir: &Path,
         origin: Option<&PathBuf>,
     ) -> Option<PathBuf> {
-        let source = match (self.source(), origin) {
+        let source = match (self.get_source(), origin) {
             (Some(source), _) => source,
             (None, Some(origin)) => origin,
             _ => panic!("Dot has no source path"),
@@ -222,7 +127,7 @@ impl Dot {
 
 pub(crate) trait DotVar {
     fn vars(&self) -> Option<PathBuf>;
-    fn source(&self) -> Option<&PathBuf>;
+    fn get_source(&self) -> Option<&PathBuf>;
     fn default_vars() -> PathBuf {
         PathBuf::from("vars.toml")
     }
@@ -283,7 +188,7 @@ impl DotVar for Dot {
         Some(self.vars.clone())
     }
 
-    fn source(&self) -> Option<&PathBuf> {
+    fn get_source(&self) -> Option<&PathBuf> {
         Some(&self.source)
     }
 }
@@ -293,17 +198,18 @@ impl DotVar for DotOverride {
         self.vars.clone()
     }
 
-    fn source(&self) -> Option<&PathBuf> {
+    fn get_source(&self) -> Option<&PathBuf> {
         self.source.as_ref()
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::dots::{Dot, DotVar};
+    use crate::dots::DotVar;
+    use crate::settings::dots::Dot;
     use crate::templating::Variables;
-    use crate::Bombadil;
     use crate::Mode::NoGpg;
+    use crate::{Bombadil, DotPaths};
     use anyhow::Result;
     use cmd_lib::{init_builtin_logger, run_cmd};
     use sealed_test::prelude::*;
@@ -330,18 +236,18 @@ mod tests {
 
         let dot = Dot {
             source: Default::default(),
-            target: PathBuf::from(".config/sway"),
+            target: PathBuf::from(".settings/sway"),
             ignore: vec![],
             vars: Dot::default_vars(),
         };
 
         // Act
-        let result = dot.target_path();
+        let result = dot.target();
 
         // Assert
         assert_that!(result)
             .is_ok()
-            .is_equal_to(PathBuf::from(home).join(".config/sway"));
+            .is_equal_to(PathBuf::from(home).join(".settings/sway"));
     }
 
     #[sealed_test]
@@ -355,7 +261,7 @@ mod tests {
         };
 
         // Act
-        let result = dot.target_path();
+        let result = dot.target();
 
         // Assert
         assert_that!(result)
@@ -379,7 +285,7 @@ mod tests {
         };
 
         // Act
-        dot.symlink(".")?;
+        dot.symlink()?;
         run_cmd!(tree -a;)?;
 
         // Assert
@@ -518,7 +424,7 @@ mod tests {
             vars: Dot::default_vars(),
         };
 
-        dot.symlink(".")?;
+        dot.symlink()?;
 
         // Act
         dot.unlink()?;
@@ -615,27 +521,35 @@ mod tests {
         Ok(())
     }
 
-    #[sealed_test(files = ["tests/dotfiles_with_local_vars"])]
+    #[sealed_test(files = ["tests/dotfiles_with_local_vars"], env = [("HOME", ".")])]
     fn install_with_local_vars_default_path() -> Result<()> {
         run_cmd!(
-            mkdir source_dot;
-            echo "{{name}} is {{verb}}" > source_dot/file;
-            echo "name=\"Tom\"" > source_dot/vars.toml;
-            echo "verb=\"singing\"" >> source_dot/vars.toml;
+            mkdir .config;
+            mkdir dotfiles_with_local_vars/source_dot;
+            echo "{{name}} is {{verb}}" > dotfiles_with_local_vars/source_dot/file;
+            echo "name=\"Tom\"" > dotfiles_with_local_vars/source_dot/vars.toml;
+            echo "verb=\"singing\"" >> dotfiles_with_local_vars/source_dot/vars.toml;
         )?;
+
+        Bombadil::link_self_config(Some(PathBuf::from(
+            "dotfiles_with_local_vars/bombadil.toml",
+        )))?;
 
         let dot = Dot {
             source: PathBuf::from("source_dot"),
             target: PathBuf::from("target_dot"),
             ignore: vec![],
-            vars: PathBuf::from("vars.toml"),
+            // FIXME: this should be relative to the dotfile directory
+            vars: PathBuf::from("dotfiles_with_local_vars/source_dot/vars.toml"),
         };
 
         // Arrange
         dot.install(env::current_dir()?, &Variables::default(), vec![], None)?;
 
         // Assert
-        let content = fs::read_to_string(PathBuf::from(".dots/source_dot/file"))?;
+        let content = fs::read_to_string(PathBuf::from(
+            "dotfiles_with_local_vars/.dots/source_dot/file",
+        ))?;
         assert_eq!(content, "Tom is singing\n");
         Ok(())
     }
