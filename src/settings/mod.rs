@@ -1,6 +1,6 @@
 use crate::settings::imports::ImportPath;
 use crate::settings::profiles::ActiveProfile;
-use crate::{Profile, BOMBADIL_CONFIG};
+use crate::{Profile, BOMBADIL_CONFIG, Gpg};
 use anyhow::anyhow;
 use colored::*;
 use config::Config;
@@ -16,6 +16,12 @@ pub mod profiles;
 
 lazy_static! {
     pub static ref SETTINGS: Settings = Settings::get().unwrap_or_default();
+    pub static ref GPG: Option<Gpg> = {
+        SETTINGS
+            .gpg_user_id
+            .as_ref()
+            .map(|gpg| Gpg::new(gpg.as_str()))
+    };
 }
 
 pub fn profiles() -> Vec<&'static str> {
