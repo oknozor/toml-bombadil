@@ -7,9 +7,10 @@ use std::io::prelude::*;
 use std::io::BufReader;
 use std::path::{Path, PathBuf};
 use tera::Tera;
+use crate::settings::GPG;
 
 #[derive(Clone, Debug, Default)]
-pub(crate) struct Variables {
+pub struct Variables {
     /// holds the values defined in template.toml
     pub variables: HashMap<String, String>,
     /// Store decrypted secret value
@@ -21,11 +22,10 @@ impl Variables {
     pub(crate) fn from_paths(
         base_path: &Path,
         var_paths: &[PathBuf],
-        gpg: Option<&Gpg>,
     ) -> Result<Self> {
         let mut out = Self::default();
         for path in var_paths {
-            let variables = Self::from_toml(&base_path.join(path), gpg)?;
+            let variables = Self::from_toml(&base_path.join(path))?;
             out.extend(variables);
         }
 
@@ -33,7 +33,7 @@ impl Variables {
     }
 
     /// Deserialize a toml file struct Variables
-    pub(crate) fn from_toml(path: &Path, gpg: Option<&Gpg>) -> Result<Self> {
+    pub(crate) fn from_toml(path: &Path) -> Result<Self> {
         let file = File::open(path);
 
         if let Err(err) = file {
@@ -50,7 +50,7 @@ impl Variables {
             let variables: HashMap<String, String> = toml::from_str(&contents)
                 .map_err(|err| anyhow!("parse error in {:?} :  {}", path, err))?;
 
-            let vars = if let Some(gpg) = gpg {
+            let vars = if let Some(gpg) = GPG.as_ref() {
                 let secrets = Variables::decrypt_values(&variables, gpg)?;
                 Variables { variables, secrets }
             } else {
@@ -204,7 +204,7 @@ mod test {
 
     #[test]
     fn should_get_vars_from_toml() -> Result<()> {
-        let vars = Variables::from_toml(&Path::new("tests/dotfiles_with_meta/vars.toml"), None)?;
+        let vars = Variables::from_toml(&Path::new("tests/dotfiles_with_meta/vars.toml"))?;
 
         assert_eq!(vars.variables.get("red"), Some(&"%meta_red".to_string()));
         assert_eq!(vars.variables.get("black"), Some(&"#000000".to_string()));
@@ -217,7 +217,6 @@ mod test {
         let vars = Variables::from_paths(
             &Path::new("tests/dotfiles_with_meta/"),
             &[PathBuf::from("vars.toml"), PathBuf::from("meta_vars.toml")],
-            None,
         )?;
 
         assert_eq!(vars.variables.get("red"), Some(&"%meta_red".to_string()));

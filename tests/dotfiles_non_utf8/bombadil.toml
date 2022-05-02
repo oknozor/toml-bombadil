@@ -1,0 +1,4 @@
+dotfiles_dir = "dotfiles_non_utf8"
+
+[settings.dots]
+ferris = { source = "ferris.png", target = ".config/ferris.png" }
