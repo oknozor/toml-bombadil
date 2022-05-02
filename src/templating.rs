@@ -106,7 +106,7 @@ impl Variables {
                 let _ = self.variables.insert(key.to_string(), value.to_string());
             }
             None => {
-                let warning = format!("Reference ${} not found in config", &key).yellow();
+                let warning = format!("Reference ${} not found in settings", &key).yellow();
                 eprintln!("{}", warning);
             }
         });
