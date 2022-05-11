@@ -2,6 +2,30 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## [3.1.0](https://github.com/oknozor/toml-bombadil/compare/3.0.0..3.1.0) - 2022-05-11
+#### Bug Fixes
+- display undeclared variables when rendering templates - ([5e3c148](https://github.com/oknozor/toml-bombadil/commit/5e3c1481e2549ebc063432df99340d2e0021f84a)) - [@oknozor](https://github.com/oknozor)
+#### Continuous Integration
+- switch code coverage to cargo-llvm-cov - ([7e31e00](https://github.com/oknozor/toml-bombadil/commit/7e31e0046885c67c9810936d6e0bcfeb5974cdf4)) - [@oknozor](https://github.com/oknozor)
+#### Documentation
+- **(website)** Update dotfile templating guide for v3 - ([90b43e8](https://github.com/oknozor/toml-bombadil/commit/90b43e8c1d20c890922fd41a81d79e00c1f9ba0a)) - Arne Beer
+- **(website)** Add a changelog blogpost on v3 - ([f789e22](https://github.com/oknozor/toml-bombadil/commit/f789e22286f1d1593e0df36c071a559780326124)) - Arne Beer
+- Add updated installation instructions for Arch Linux - ([900a994](https://github.com/oknozor/toml-bombadil/commit/900a99485fe6930f5a76b79666ae8b74010cd3b8)) - Sven-Hendrik Haase
+#### Features
+- Add bombadil watch feature - ([e5b8ceb](https://github.com/oknozor/toml-bombadil/commit/e5b8ceb5febbdcee1250218fc9159f4429c4106d)) - Sven-Hendrik Haase
+#### Miscellaneous Chores
+- use a fixed version of rust in bats test docker image - ([9e11fe7](https://github.com/oknozor/toml-bombadil/commit/9e11fe7a755837d87182bc0877e06084200e8b02)) - [@oknozor](https://github.com/oknozor)
+- bump libgit2 to 0.14 - ([4c6009e](https://github.com/oknozor/toml-bombadil/commit/4c6009eeade1d2c89c7f3a9083149f065601998d)) - [@oknozor](https://github.com/oknozor)
+- Various smaller doc fixes - ([9b03122](https://github.com/oknozor/toml-bombadil/commit/9b031226eb9320569d1a16feeb141cb15fe2eb86)) - Sven-Hendrik Haase
+- Fix Arch installation instructions in book - ([3ecc202](https://github.com/oknozor/toml-bombadil/commit/3ecc202d6c1de92724b527d6cdaa977e0cfe4a9f)) - Sven-Hendrik Haase
+#### Refactoring
+- **(cli)** update to clap v3 - ([c3e798c](https://github.com/oknozor/toml-bombadil/commit/c3e798c122d5f418eaae519629587f2600e56a71)) - [@oknozor](https://github.com/oknozor)
+- check profile activation in the lib instead of the cli - ([eb025ad](https://github.com/oknozor/toml-bombadil/commit/eb025ad130238a80accda38c326a492df9d4aa24)) - [@oknozor](https://github.com/oknozor)
+- simplify bombadil link - ([7076663](https://github.com/oknozor/toml-bombadil/commit/70766631276511ba57f2e0623be6a17fb6ea1fd6)) - [@oknozor](https://github.com/oknozor)
+#### Tests
+- add sealed test to preserve developer environement - ([455eef3](https://github.com/oknozor/toml-bombadil/commit/455eef39b8df58fb9e7eabba98dcbfac93220498)) - [@oknozor](https://github.com/oknozor)
+- - -
+
 ## [3.0.0](https://github.com/oknozor/toml-bombadil/compare/2.2.4..3.0.0) - 2022-02-23
 #### Features
 - use tera for templating - ([0a528fd](https://github.com/oknozor/toml-bombadil/commit/0a528fdf0cc284726ab0c25afc7702ebe8a2fcc5)) - Arne Beer
