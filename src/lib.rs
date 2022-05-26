@@ -237,11 +237,24 @@ impl Bombadil {
         let mut runtime = RuntimeConfig::default();
         runtime.action_throttle(Duration::from_secs(1));
 
-        // Ignore stuff like .git dirs
-        let ignore_files = ignore::from_origin(dotfiles_path);
-        runtime.filterer(Arc::new(
-            ignore::IgnoreFilterer::new(dotfiles_path, &ignore_files.await.0).await?,
-        ));
+        // Ignore anything inside of these directories
+        let filters = vec![
+            ".DS_Store",
+            ".bzr",
+            "_darcs",
+            ".git",
+            ".hg",
+            ".pijul",
+            ".svn",
+        ];
+
+        // Also pick up ignore files
+        let ignore_files = ignore::from_origin(dotfiles_path).await;
+        let mut filterer = ignore::IgnoreFilterer::new(dotfiles_path, &ignore_files.0).await?;
+        filterer
+            .add_globs(&filters, Some(dotfiles_path.clone().to_path_buf()))
+            .await?;
+        runtime.filterer(Arc::new(filterer));
 
         runtime.pathset([dotfiles_path]);
         let dots_path = format!(
