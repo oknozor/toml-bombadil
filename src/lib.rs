@@ -70,7 +70,7 @@ impl Bombadil {
     pub fn link_self_config(dotfiles_path: Option<PathBuf>) -> Result<()> {
         let xdg_config_dir = dirs::config_dir();
         match xdg_config_dir {
-            None => return Err(anyhow!("$XDG_CONFIG does not exist")),
+            None => Err(anyhow!("$XDG_CONFIG does not exist")),
             Some(config_dir) => {
                 let bombadil_xdg_config = config_dir.join(BOMBADIL_CONFIG);
 
@@ -226,13 +226,14 @@ impl Bombadil {
             Watchexec,
         };
 
-        let mut bombadil = Bombadil::from_settings(Mode::Gpg)?;
-        bombadil.enable_profiles(profiles.iter().map(String::as_str).collect())?;
+        // For now, only get the path to the dotfiles from bombadil so we know what do watch. We'll
+        // use get another instance to actually install the dots later on.
+        let bombadil = Bombadil::from_settings(Mode::Gpg)?;
+        let dotfiles_path = &bombadil.dotfiles_absolute_path()?;
 
+        // Set up watchexec
         let mut init = InitConfig::default();
         init.on_error(PrintDebug(std::io::stderr()));
-
-        let dotfiles_path = &bombadil.dotfiles_absolute_path()?;
 
         let mut runtime = RuntimeConfig::default();
         runtime.action_throttle(Duration::from_secs(1));
@@ -263,7 +264,7 @@ impl Bombadil {
         );
 
         runtime.on_action(move |action: Action| {
-            let b = bombadil.clone();
+            let profiles = profiles.clone();
             let dots_path = dots_path.clone();
             async move {
                 for event in action.events.iter() {
@@ -280,6 +281,12 @@ impl Bombadil {
                             || matches!(t, &Tag::FileEventKind(FileEventKind::Remove(_)))
                     }) {
                         println!("{}", "Detected changes, re-linking dots".green());
+                        // Reload Bombadil from config as the config itself might have changed by
+                        // this point.
+                        let mut b = Bombadil::from_settings(Mode::Gpg)
+                            .map_err(|e| RuntimeError::External(e.into()))?;
+                        b.enable_profiles(profiles.iter().map(String::as_str).collect())
+                            .map_err(|e| RuntimeError::External(e.into()))?;
                         // Finally, install the dots like usual
                         b.install().map_err(|e| RuntimeError::Handler {
                             ctx: "bombadil install",
