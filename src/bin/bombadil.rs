@@ -1,5 +1,5 @@
 use anyhow::Result;
-use clap::lazy_static::lazy_static;
+use lazy_static::lazy_static;
 use clap::{AppSettings, IntoApp, Parser};
 use clap_complete::Shell;
 use std::io;
@@ -219,7 +219,7 @@ async fn main() -> Result<()> {
                 shell,
                 &mut Cli::command(),
                 "bombadil",
-                &mut std::io::stdout(),
+                &mut io::stdout(),
             );
         }
     };

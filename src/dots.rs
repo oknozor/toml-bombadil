@@ -10,6 +10,7 @@ use std::fs::File;
 use std::io::Write;
 use std::os::unix;
 use std::path::{Path, PathBuf};
+use std::fs::OpenOptions;
 
 /// Represent a link between a `source` dotfile in the user defined dotfiles directory
 /// and the XDG `target` path where it should be linked
@@ -43,6 +44,14 @@ pub struct DotOverride {
     pub vars: Option<PathBuf>,
 }
 
+#[derive(PartialEq, Eq, Debug)]
+pub enum LinkResult {
+    Modified,
+    Created,
+    Ignored,
+    Unchanged,
+}
+
 impl Dot {
     pub(crate) fn install<P: AsRef<Path>>(
         &self,
@@ -50,7 +59,7 @@ impl Dot {
         vars: &Variables,
         auto_ignored: Vec<PathBuf>,
         gpg: Option<&Gpg>,
-    ) -> Result<()> {
+    ) -> Result<LinkResult> {
         let source = &self.source_path(dotfile_dir.as_ref())?;
         let copy_path = &self.copy_path(dotfile_dir.as_ref());
         let source_str = source.to_str().unwrap_or_default();
@@ -137,43 +146,83 @@ impl Dot {
         target: &Path,
         ignored: &[PathBuf],
         vars: &Variables,
-    ) -> Result<()> {
+    ) -> Result<LinkResult> {
         if ignored.contains(&source.to_path_buf()) {
-            return Ok(());
+            return Ok(LinkResult::Ignored);
         }
 
         // Single file : inject vars and write to .dots/
         if source.is_file() {
-            fs::create_dir_all(&target.parent().unwrap())?;
+            if !&target.parent().unwrap().exists() {
+                fs::create_dir_all(&target.parent().unwrap())?;
+            }
+
             match vars.to_dot(source) {
                 Ok(content) => {
-                    let permissions = fs::metadata(source)?.permissions();
-                    let mut dot_copy = File::create(&target)?;
-                    dot_copy.write_all(content.as_bytes())?;
-                    dot_copy.set_permissions(permissions)?;
+                    if target.exists() {
+                        let target_content = fs::read_to_string(target)?;
+                        // Modify the target file if it exists
+                        if target_content != content {
+                            let mut file = OpenOptions::new()
+                                .write(true)
+                                .truncate(true)
+                                .open(target)?;
+
+                            file.write_all(content.as_bytes())?;
+                            Ok(LinkResult::Modified)
+                        } else {
+                            Ok(LinkResult::Unchanged)
+                        }
+                    } else {
+                        let permissions = fs::metadata(source)?.permissions();
+                        let mut dot_copy = File::create(&target)?;
+                        dot_copy.write_all(content.as_bytes())?;
+                        dot_copy.set_permissions(permissions)?;
+                        Ok(LinkResult::Created)
+                    }
                 }
                 Err(err) => {
                     // Something went wrong parsing or reading the source path,
                     // We just copy the file in place
                     fs::copy(source, target)?;
-                    eprintln!("{err:?}")
+                    eprintln!("{err:?}");
+                    Ok(LinkResult::Created)
                 }
             }
-        } else if source.is_dir() {
-            fs::create_dir_all(target)?;
+        } else {
+            let new_target = if !target.exists() {
+                fs::create_dir_all(target)?;
+                true
+            } else {
+                false
+            };
+
+            let mut links_results = vec![];
+
             for entry in source.read_dir()? {
                 let entry_path = &entry?.path();
                 let entry_name = entry_path.file_name().unwrap().to_str().unwrap();
-                self.traverse_and_copy(
+                let link_result = self.traverse_and_copy(
                     &source.join(entry_name),
                     &target.join(entry_name),
                     ignored,
                     vars,
-                )
-                .unwrap_or_else(|err| eprintln!("{}", err));
+                );
+
+                match link_result {
+                    Err(err) => eprintln!("{}", err),
+                    Ok(link_result) => links_results.push(link_result),
+                }
             }
+
+            Ok(if new_target {
+                LinkResult::Created
+            } else if links_results.contains(&LinkResult::Modified) || links_results.contains(&LinkResult::Created)  {
+                LinkResult::Modified
+            } else {
+                LinkResult::Unchanged
+            })
         }
-        Ok(())
     }
 
     /// Resolve dot source copy path ({dotfiles/dotsource) against user defined dotfile directory

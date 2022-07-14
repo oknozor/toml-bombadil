@@ -1,4 +1,4 @@
-use crate::dots::{Dot, DotVar};
+use crate::dots::{Dot, DotVar, LinkResult};
 use crate::gpg::Gpg;
 use crate::hook::Hook;
 use crate::settings::{Profile, Settings};
@@ -13,6 +13,17 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
 use std::{fs, io};
+use ignore_files::IgnoreFilter;
+use watchexec::{
+    action::{Action, Outcome},
+    config::{InitConfig, RuntimeConfig},
+    error::RuntimeError,
+    event::{filekind::FileEventKind, Tag},
+    handler::PrintDebug,
+    signal::source::MainSignal,
+    Watchexec,
+};
+use watchexec_filterer_ignore::IgnoreFilterer;
 
 mod dots;
 mod git;
@@ -70,7 +81,7 @@ impl Bombadil {
     pub fn link_self_config(dotfiles_path: Option<PathBuf>) -> Result<()> {
         let xdg_config_dir = dirs::config_dir();
         match xdg_config_dir {
-            None => return Err(anyhow!("$XDG_CONFIG does not exist")),
+            None => Err(anyhow!("$XDG_CONFIG does not exist")),
             Some(config_dir) => {
                 let bombadil_xdg_config = config_dir.join(BOMBADIL_CONFIG);
 
@@ -133,8 +144,9 @@ impl Bombadil {
 
         match previous_state {
             Ok(state) => {
-                state.remove_targets();
-                println!("{}", "Previous configuration cleaned up".green())
+                // Fixme
+                // state.remove_targets();
+                // println!("{}", "Previous configuration cleaned up".green())
             }
             Err(err) => println!(
                 "{} : {}",
@@ -143,25 +155,46 @@ impl Bombadil {
             ),
         }
 
-        if dot_copy_dir.exists() {
-            fs::remove_dir_all(&dot_copy_dir)?;
-        }
 
         // Render current config and create symlinks
-        fs::create_dir(dot_copy_dir)?;
+        if !dot_copy_dir.exists() {
+            fs::create_dir(dot_copy_dir)?;
+        }
+
         for (key, dot) in self.dots.iter() {
-            if let Err(err) = dot.install(
+            match dot.install(
                 absolute_path_to_dot,
                 &self.vars,
                 self.get_auto_ignored_files(key),
                 self.gpg.as_ref(),
             ) {
-                eprintln!("{}", err);
-                continue;
-            }
+                Err(err) => {
+                    eprintln!("{}", err);
+                    continue;
+                }
+                Ok(link) => {
+                    let copy_path = &dot.copy_path(absolute_path_to_dot);
+                    let target = &dot.target_path()?;
 
-            dot.unlink()?;
-            dot.symlink(absolute_path_to_dot)?;
+                    match link {
+                        LinkResult::Modified => {
+                            let source = format!("{:?}", copy_path).blue();
+                            let dest = format!("{:?}", target).blue();
+                            println!("Modified - {} => {}", source, dest)
+                        },
+                        LinkResult::Created => {
+                            dot.unlink()?;
+                            dot.symlink(absolute_path_to_dot)?;
+                        },
+                        LinkResult::Ignored => {
+                            let source = format!("{:?}", copy_path).blue();
+                            let dest = format!("{:?}", target).yellow();
+                            println!("Ignored - {} => {}", source, dest)
+                        },
+                        LinkResult::Unchanged => {}
+                    }
+                }
+            }
         }
 
         // Run post install hooks
@@ -215,16 +248,6 @@ impl Bombadil {
 
     /// Watch dotfiles and automatically run link on changes
     pub async fn watch(profiles: Vec<String>) -> Result<()> {
-        use watchexec::{
-            action::{Action, Outcome},
-            config::{InitConfig, RuntimeConfig},
-            error::RuntimeError,
-            event::{filekind::FileEventKind, Tag},
-            handler::PrintDebug,
-            ignore,
-            signal::source::MainSignal,
-            Watchexec,
-        };
 
         let mut bombadil = Bombadil::from_settings(Mode::Gpg)?;
         bombadil.enable_profiles(profiles.iter().map(String::as_str).collect())?;
@@ -238,10 +261,9 @@ impl Bombadil {
         runtime.action_throttle(Duration::from_secs(1));
 
         // Ignore stuff like .git dirs
-        let ignore_files = ignore::from_origin(dotfiles_path);
-        runtime.filterer(Arc::new(
-            ignore::IgnoreFilterer::new(dotfiles_path, &ignore_files.await.0).await?,
-        ));
+        let ignore_files = ignore_files::from_origin(dotfiles_path).await;
+        let ignore_filter = IgnoreFilter::new(dotfiles_path, &ignore_files.0).await?;
+        runtime.filterer(Arc::new(IgnoreFilterer(ignore_filter)));
 
         runtime.pathset([dotfiles_path]);
         let dots_path = format!(
