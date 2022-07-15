@@ -24,7 +24,6 @@ mod hook;
 mod state;
 mod templating;
 pub mod paths;
-pub mod install;
 pub mod settings;
 mod error;
 
