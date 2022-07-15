@@ -84,44 +84,46 @@ impl Bombadil {
 
     /// Symlink `bombadil.toml` to `$XDG_CONFIG/bombadil.toml` so we can later read it from there.
     pub fn link_self_config(dotfiles_path: Option<PathBuf>) -> Result<()> {
-        let xdg_config_dir = dirs::config_dir();
-        match xdg_config_dir {
-            None => Err(anyhow!("$XDG_CONFIG does not exist")),
-            Some(config_dir) => {
-                let bombadil_xdg_config = config_dir.join(BOMBADIL_CONFIG);
+        // Get the provided path and attempt to resolve 'bombadil.toml' if it's a directory
+        let path = match dotfiles_path {
+            None => PathBuf::from(BOMBADIL_CONFIG),
+            Some(path) if path.is_dir() => path.join(BOMBADIL_CONFIG),
+            Some(path) => path,
+        };
 
-                // Attempt to locate a previous '$HOME/.settings/bombadil.toml' link and remove it
-                if fs::symlink_metadata(&bombadil_xdg_config).is_ok() {
-                    fs::remove_file(&bombadil_xdg_config)?;
-                }
+        match path.canonicalize() {
+            Ok(path) => {
+                match dirs::config_dir() {
+                    None => Err(anyhow!("$XDG_CONFIG does not exist")),
+                    Some(config_dir) => {
+                        let bombadil_xdg_config = config_dir.join(BOMBADIL_CONFIG);
 
-                // Get the provided path and attempt to resolve 'bombadil.toml' if it's a directory
-                let dotfiles_path = dotfiles_path
-                    .map(|path| {
-                        if path.is_dir() {
-                            path.join(BOMBADIL_CONFIG)
-                        } else {
-                            path
+                        // Attempt to locate a previous '$HOME/.settings/bombadil.toml' link and remove it
+                        if fs::symlink_metadata(&bombadil_xdg_config).is_ok() {
+                            fs::remove_file(&bombadil_xdg_config)?;
                         }
-                    })
-                    .unwrap_or_else(|| PathBuf::from(BOMBADIL_CONFIG))
-                    .canonicalize()?;
 
-                // Symlink to '$HOME/.settings/bombadil.toml'
-                unix::fs::symlink(&dotfiles_path, &bombadil_xdg_config)
-                    .map_err(|err| {
-                        anyhow!(
-                            "Unable to symlink {:?} to {:?} : {}",
-                            dotfiles_path,
-                            bombadil_xdg_config,
-                            err
-                        )
-                    })
-                    .map(|_result| {
-                        let source = format!("{:?}", &dotfiles_path).blue();
-                        let dest = format!("{:?}", &bombadil_xdg_config).green();
-                        println!("{} => {}", source, dest)
-                    })
+                        // Symlink to '$HOME/.settings/bombadil.toml'
+                        unix::fs::symlink(&path, &bombadil_xdg_config)
+                            .map_err(|err| {
+                                anyhow!(
+                                    "Failed to symlink {:?} to {:?} : {}",
+                                    path,
+                                    bombadil_xdg_config,
+                                    err
+                                )
+                            })
+                            .map(|_result| {
+                                let source = format!("{:?}", &path).blue();
+                                let dest = format!("{:?}", &bombadil_xdg_config).green();
+                                println!("{} => {}", source, dest)
+                            })
+                    }
+                }
+            }
+            Err(_err) => {
+                let err = format!("{path:?} {}", "not found in current directory");
+                Err(anyhow!("{}", err.red()))
             }
         }
     }
@@ -643,7 +645,7 @@ mod tests {
     fn install_should_fail_and_continue() -> Result<()> {
         // Act
         Bombadil::from_settings(NoGpg)?.install()?;
-        run_cmd!(tree - a)?;
+        run_cmd!(tree -a;)?;
         // Assert
         assert_that!(PathBuf::from(".config/template.css")).exists();
         assert_that!(PathBuf::from(".config/invalid")).does_not_exist();
