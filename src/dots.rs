@@ -5,14 +5,26 @@ use crate::templating::Variables;
 use anyhow::Result;
 use colored::*;
 use std::fs;
-use std::fs::File;
+use std::fs::{File, OpenOptions};
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
+#[derive(PartialEq, Eq, Debug)]
+pub enum LinkResult {
+    Updated,
+    Created,
+    Ignored,
+    Unchanged,
+}
+
 impl Dot {
-    pub(crate) fn install(&self, vars: &Variables, auto_ignored: Vec<PathBuf>) -> Result<()> {
+    pub(crate) fn install(
+        &self,
+        vars: &Variables,
+        auto_ignored: Vec<PathBuf>,
+    ) -> Result<LinkResult> {
         let source = &self.source()?;
-        let copy_path = &self.build_copy_path();
+        let target = &self.build_copy_path();
         let source_str = source.to_str().unwrap_or_default();
 
         let ignored_paths = if self.ignore.is_empty() {
@@ -35,7 +47,7 @@ impl Dot {
         vars.resolve_ref();
 
         // Recursively copy dotfile to .dots directory
-        self.traverse_and_copy(source, copy_path, ignored_paths.as_slice(), &vars)
+        self.traverse_and_copy(source, target, ignored_paths.as_slice(), &vars)
     }
 
     fn load_local_vars(source: &Path) -> Variables {
@@ -58,47 +70,98 @@ impl Dot {
 
     fn traverse_and_copy(
         &self,
-        source: &Path,
-        target: &Path,
+        source: &PathBuf,
+        target: &PathBuf,
         ignored: &[PathBuf],
         vars: &Variables,
-    ) -> Result<()> {
-        if ignored.contains(&source.to_path_buf()) {
-            return Ok(());
+    ) -> Result<LinkResult> {
+        if ignored.contains(source) {
+            return Ok(LinkResult::Ignored);
         }
 
         // Single file : inject vars and write to .dots/
         if source.is_file() {
             fs::create_dir_all(&target.parent().unwrap())?;
             match vars.to_dot(source) {
-                Ok(content) => {
-                    let permissions = fs::metadata(source)?.permissions();
-                    let mut dot_copy = File::create(&target)?;
-                    dot_copy.write_all(content.as_bytes())?;
-                    dot_copy.set_permissions(permissions)?;
+                Ok(content) if target.exists() => self.update(source, target, content),
+                Ok(content) => self.create(source, target, content),
+                Err(_) if target.exists() => {
+                    // Fixme: we probabbly want to remove anyhow here
+                    // And handle specific error case (i.e: ignore utf8 error)
+                    self.update_raw(source, target)
                 }
-                Err(err) => {
-                    // Something went wrong parsing or reading the source path,
-                    // We just copy the file in place
+                Err(_) => {
                     fs::copy(source, target)?;
-                    eprintln!("{err:?}")
+                    Ok(LinkResult::Created)
                 }
             }
-        } else if source.is_dir() {
+        } else {
             fs::create_dir_all(target)?;
+            let mut link_results = vec![];
+
             for entry in source.read_dir()? {
                 let entry_path = &entry?.path();
                 let entry_name = entry_path.file_name().unwrap().to_str().unwrap();
-                self.traverse_and_copy(
+                let result = self.traverse_and_copy(
                     &source.join(entry_name),
                     &target.join(entry_name),
                     ignored,
                     vars,
-                )
-                .unwrap_or_else(|err| eprintln!("{}", err));
+                );
+
+                match result {
+                    Ok(result) => link_results.push(result),
+                    Err(err) => eprintln!("{err}"),
+                }
+            }
+
+            if link_results.contains(&LinkResult::Updated) {
+                Ok(LinkResult::Updated)
+            } else if link_results.contains(&LinkResult::Created) {
+                Ok(LinkResult::Created)
+            } else {
+                Ok(LinkResult::Unchanged)
             }
         }
-        Ok(())
+    }
+
+    fn create(&self, source: &PathBuf, target: &PathBuf, content: String) -> Result<LinkResult> {
+        let permissions = fs::metadata(source)?.permissions();
+        let mut dot_copy = File::create(&target)?;
+        dot_copy.write_all(content.as_bytes())?;
+        dot_copy.set_permissions(permissions)?;
+        Ok(LinkResult::Created)
+    }
+
+    fn update(&self, source: &PathBuf, target: &PathBuf, content: String) -> Result<LinkResult> {
+        let target_content = fs::read_to_string(target)?;
+        if target_content == content {
+            Ok(LinkResult::Unchanged)
+        } else {
+            let permissions = fs::metadata(source)?.permissions();
+            let mut dot_copy = OpenOptions::new().write(true).truncate(true).open(target)?;
+            dot_copy.write_all(content.as_bytes())?;
+            dot_copy.set_permissions(permissions)?;
+            dot_copy.sync_data()?;
+            Ok(LinkResult::Updated)
+        }
+    }
+
+    fn update_raw(&self, source: &PathBuf, target: &PathBuf) -> Result<LinkResult> {
+        let target_content = fs::read(target)?;
+        let content = fs::read(source)?;
+
+        if target_content == content {
+            Ok(LinkResult::Unchanged)
+        } else {
+            let permissions = fs::metadata(source)?.permissions();
+            let mut dot_copy = OpenOptions::new().write(true).truncate(true).open(target)?;
+
+            dot_copy.write_all(&content)?;
+            dot_copy.set_permissions(permissions)?;
+            dot_copy.sync_data()?;
+            Ok(LinkResult::Updated)
+        }
     }
 }
 
@@ -289,8 +352,8 @@ mod tests {
 
         // Act
         dot.traverse_and_copy(
-            PathBuf::from("dotfiles_with_multiple_nested_dir/dir").as_path(),
-            PathBuf::from("dotfiles_with_multiple_nested_dir/.dots/dir").as_path(),
+            &PathBuf::from("dotfiles_with_multiple_nested_dir/dir"),
+            &PathBuf::from("dotfiles_with_multiple_nested_dir/.dots/dir"),
             &vec![],
             &Variables::default(),
         )?;
@@ -323,7 +386,7 @@ mod tests {
 
         dot.traverse_and_copy(
             &source,
-            PathBuf::from("dotfiles_non_utf8/.dots/ferris.png").as_path(),
+            &PathBuf::from("dotfiles_non_utf8/.dots/ferris.png"),
             &vec![],
             &Variables::default(),
         )?;

@@ -2,7 +2,6 @@ use crate::error::Error::{SourceNotFound, Symlink, TargetNotFound, TemplateNotFo
 use crate::error::*;
 use crate::settings::dotfile_dir;
 use crate::{Dot, DotVar};
-use colored::*;
 use dirs::home_dir;
 use std::fs;
 use std::os::unix;
@@ -71,13 +70,14 @@ impl DotPaths for Dot {
         let copy_path = &self.copy_path()?;
         let target = &self.target()?;
 
+        if let Ok(target) = target.canonicalize() {
+            if &target == copy_path {
+                return Ok(());
+            }
+        }
+
         // Link
         unix::fs::symlink(copy_path, target)
-            .map(|_result| {
-                let source = format!("{:?}", copy_path).blue();
-                let dest = format!("{:?}", target).green();
-                println!("{} => {}", source, dest)
-            })
             .map_err(|cause| {
                 let source_path = self.source.clone();
                 let target = self.target.clone();
