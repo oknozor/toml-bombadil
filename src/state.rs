@@ -23,9 +23,10 @@ impl BombadilState {
         let state_path = path.join(".dots").join(STATE_FILE);
 
         if state_path.exists() {
-            let mut s = Config::new();
-            s.merge(File::from(state_path))?;
-            s.try_into()
+            Config::builder()
+                .add_source(File::from(state_path))
+                .build()?
+                .try_deserialize::<BombadilState>()
                 .map_err(|err| anyhow!("{} : {}", "Previous state format error".red(), err))
         } else {
             Err(anyhow!(
