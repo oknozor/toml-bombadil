@@ -1,15 +1,15 @@
 use crate::settings::imports::ImportPath;
 use crate::settings::profiles::ActiveProfile;
-use crate::{Profile, BOMBADIL_CONFIG, Gpg};
+use crate::{Gpg, Profile, BOMBADIL_CONFIG};
 use anyhow::anyhow;
 use colored::*;
 use config::Config;
 use config::{ConfigError, File};
+use dirs::home_dir;
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
-use dirs::home_dir;
 
 pub mod dots;
 pub mod imports;
@@ -34,7 +34,8 @@ pub fn profiles() -> Vec<&'static str> {
 }
 
 pub fn dotfile_dir() -> PathBuf {
-    home_dir().expect("$HOME should be set")
+    home_dir()
+        .expect("$HOME should be set")
         .join(&SETTINGS.dotfiles_dir)
 }
 

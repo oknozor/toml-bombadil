@@ -1,4 +1,5 @@
 use crate::gpg::{Gpg, GPG_PREFIX};
+use crate::settings::GPG;
 use anyhow::{anyhow, Result};
 use colored::Colorize;
 use std::collections::HashMap;
@@ -7,7 +8,6 @@ use std::io::prelude::*;
 use std::io::BufReader;
 use std::path::{Path, PathBuf};
 use tera::Tera;
-use crate::settings::GPG;
 
 #[derive(Clone, Debug, Default)]
 pub struct Variables {
@@ -19,10 +19,7 @@ pub struct Variables {
 }
 
 impl Variables {
-    pub(crate) fn from_paths(
-        base_path: &Path,
-        var_paths: &[PathBuf],
-    ) -> Result<Self> {
+    pub(crate) fn from_paths(base_path: &Path, var_paths: &[PathBuf]) -> Result<Self> {
         let mut out = Self::default();
         for path in var_paths {
             let variables = Self::from_toml(&base_path.join(path))?;
