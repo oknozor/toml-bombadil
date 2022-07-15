@@ -26,7 +26,9 @@ git2 = { version = "0.14.2", features = ["vendored-openssl"] }
 clap = { version = "^3", features = ["derive"], optional = true }
 clap_complete = { version = "3.0", optional = true }
 lazy_static = { version = "1.4.0", optional = true }
-watchexec = { version = "2.0.0-pre.14"}
+watchexec = "2.0.0"
+watchexec-filterer-ignore = "1.0.0"
+ignore-files = "1.0.0"
 tokio = { version = "1", features = ["macros", "rt"] }
 thiserror = "1.0.30"
 
