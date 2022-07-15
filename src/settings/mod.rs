@@ -66,11 +66,10 @@ impl Settings {
         match Self::bombadil_config_xdg_path() {
             Ok(path) => {
                 if path.exists() {
-                    let mut s = Config::new();
-                    s.merge(File::from(path))?;
-
-                    let mut settings: anyhow::Result<Settings> = s
-                        .try_into()
+                    let mut settings = Config::builder()
+                        .add_source(File::from(path))
+                        .build()?
+                        .try_deserialize::<Settings>()
                         .map_err(|err| anyhow!("{} : {}", "Config format error".red(), err));
 
                     if let Ok(settings) = settings.as_mut() {
