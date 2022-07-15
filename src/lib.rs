@@ -16,6 +16,17 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
 use std::{fs, io};
+use ignore_files::IgnoreFilter;
+use watchexec::{
+    action::{Action, Outcome},
+    config::{InitConfig, RuntimeConfig},
+    error::RuntimeError,
+    event::{filekind::FileEventKind, Tag},
+    handler::PrintDebug,
+    signal::source::MainSignal,
+    Watchexec,
+};
+use watchexec_filterer_ignore::IgnoreFilterer;
 
 mod dots;
 mod git;
@@ -218,16 +229,6 @@ impl Bombadil {
 
     /// Watch dotfiles and automatically run link on changes
     pub async fn watch(profiles: Vec<String>) -> Result<()> {
-        use watchexec::{
-            action::{Action, Outcome},
-            config::{InitConfig, RuntimeConfig},
-            error::RuntimeError,
-            event::{filekind::FileEventKind, Tag},
-            handler::PrintDebug,
-            ignore,
-            signal::source::MainSignal,
-            Watchexec,
-        };
 
         let mut bombadil = Bombadil::from_settings(Mode::Gpg)?;
         bombadil.enable_profiles(profiles.iter().map(String::as_str).collect())?;
@@ -241,10 +242,9 @@ impl Bombadil {
         runtime.action_throttle(Duration::from_secs(1));
 
         // Ignore stuff like .git dirs
-        let ignore_files = ignore::from_origin(dotfiles_path);
-        runtime.filterer(Arc::new(
-            ignore::IgnoreFilterer::new(dotfiles_path, &ignore_files.await.0).await?,
-        ));
+        let ignore_files = ignore_files::from_origin(dotfiles_path).await;
+        let ignore_filter = IgnoreFilter::new(dotfiles_path, &ignore_files.0).await?;
+        runtime.filterer(Arc::new(IgnoreFilterer(ignore_filter)));
 
         runtime.pathset([dotfiles_path]);
         let dots_path = format!(
