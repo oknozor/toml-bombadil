@@ -295,7 +295,7 @@ mod tests {
             &Variables::default(),
         )?;
 
-        run_cmd!(tree - a)?;
+        run_cmd!(tree -a;)?;
 
         // Assert
         let file_one =
@@ -328,7 +328,7 @@ mod tests {
             &Variables::default(),
         )?;
 
-        run_cmd!(tree - a)?;
+        run_cmd!(tree -a;)?;
 
         assert_that!(PathBuf::from("dotfiles_non_utf8/.dots/ferris.png")).exists();
         Ok(())
