@@ -1880,9 +1880,9 @@ dependencies = [
 
 [[package]]
 name = "speculoos"
-version = "0.8.0"
+version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "96b954b41a95bd4906a8da71c9b18ebfb984acc96e454f00a76ed4f3e7c497bb"
+checksum = "0bcff6a72e2ddfb09ce0064568857e70d3cf6f4342244ebb1f84fa6f89b16c26"
 dependencies = [
  "num",
 ]
