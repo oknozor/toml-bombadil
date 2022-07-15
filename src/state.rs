@@ -5,6 +5,7 @@ use colored::*;
 use config::Config;
 use config::File;
 use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
 use std::fmt::Debug;
 use std::fs;
 use std::path::PathBuf;
@@ -15,7 +16,7 @@ const STATE_FILE: &str = "previous_state.toml";
 pub(crate) struct BombadilState {
     #[serde(skip)]
     pub path: PathBuf,
-    pub symlinks: Vec<PathBuf>,
+    pub symlinks: HashSet<PathBuf>,
 }
 
 impl BombadilState {
@@ -39,6 +40,7 @@ impl BombadilState {
     pub fn write(&self) -> Result<()> {
         let content = toml::to_string(&self)?;
         fs::write(&self.path, &content)?;
+        fs::File::open(&self.path)?.sync_data()?;
         Ok(())
     }
 

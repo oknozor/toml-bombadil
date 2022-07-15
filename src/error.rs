@@ -12,6 +12,9 @@ pub enum Error {
     #[error("Dotfile source path {0} does not exist")]
     SourceNotFound(PathBuf),
 
+    #[error("IoError: {0}")]
+    Io(#[from] io::Error),
+
     #[error("Rendered template not found {path}, cause: {error}")]
     TemplateNotFound { path: PathBuf, error: io::Error },
 

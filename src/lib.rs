@@ -1,8 +1,8 @@
 use self::settings::profiles::Profile;
-use crate::dots::DotVar;
+use crate::dots::{DotVar, LinkResult};
 use crate::gpg::Gpg;
 use crate::hook::Hook;
-use crate::paths::DotPaths;
+use crate::paths::{unlink, DotPaths};
 use crate::state::BombadilState;
 use crate::templating::Variables;
 use anyhow::{anyhow, Result};
@@ -137,6 +137,7 @@ impl Bombadil {
     /// 6. Write current state to `.dot/previous_state.toml`
     pub fn install(&self) -> Result<()> {
         self.check_dotfile_dir()?;
+
         self.prehooks.iter().map(Hook::run).for_each(|result| {
             if let Err(err) = result {
                 eprintln!("{}", err);
@@ -144,36 +145,43 @@ impl Bombadil {
         });
         let dot_copy_dir = &self.path.join(".dots");
 
-        let absolute_path_to_dot = &self.dotfiles_absolute_path()?;
-
-        // Get previous state if any and remove symlinks
-        let previous_state = BombadilState::read(absolute_path_to_dot.to_owned());
-
-        match previous_state {
-            Ok(state) => {
-                state.remove_targets();
-                println!("{}", "Previous configuration cleaned up".green())
-            }
-            Err(err) => println!(
-                "{} : {}",
-                "No previous configuration found, skipping clean up".yellow(),
-                err
-            ),
-        }
-
-        if dot_copy_dir.exists() {
-            fs::remove_dir_all(&dot_copy_dir)?;
-        }
-
         // Render current settings and create symlinks
-        fs::create_dir(dot_copy_dir)?;
+        fs::create_dir_all(dot_copy_dir)?;
         for (key, dot) in self.dots.iter() {
-            if let Err(err) = dot.install(&self.vars, self.get_auto_ignored_files(key)) {
-                eprintln!("{}", err);
-                continue;
+            match dot.install(&self.vars, self.get_auto_ignored_files(key)) {
+                Err(err) => {
+                    eprintln!("{}", err);
+                    continue;
+                }
+                Ok(linked) => {
+                    let copy_path = &dot.copy_path()?;
+                    let target = &dot.target()?;
+
+                    match linked {
+                        LinkResult::Updated => {
+                            let source = format!("{:?}", copy_path).blue();
+                            let dest = format!("{:?}", target).yellow();
+                            println!("{} => {}", source, dest)
+                        }
+                        LinkResult::Created => {
+                            let source = format!("{:?}", copy_path).blue();
+                            let dest = format!("{:?}", target).green();
+                            println!("Created - {} => {}", source, dest)
+                        }
+                        LinkResult::Ignored => {
+                            let source = format!("{:?}", copy_path);
+                            let dest = format!("{:?}", target);
+                            println!("Ignored - {} => {}", source, dest)
+                        }
+                        LinkResult::Unchanged => {
+                            let source = format!("{:?}", copy_path);
+                            let dest = format!("{:?}", target);
+                            println!("Unchanged - {} => {}", source, dest)
+                        }
+                    }
+                }
             }
 
-            dot.unlink()?;
             dot.symlink()?;
         }
 
@@ -185,7 +193,38 @@ impl Bombadil {
         });
 
         // Dump current settings
-        BombadilState::from(self).write()?;
+        let absolute_path_to_dot = &self.dotfiles_absolute_path()?;
+
+        // Get previous state if any and remove symlinks
+        let previous_state = BombadilState::read(absolute_path_to_dot.to_owned());
+        let new_state = BombadilState::from(self);
+
+        match previous_state {
+            Ok(previous_state) => {
+                let diff = previous_state.symlinks.difference(&new_state.symlinks);
+
+                println!("{:?}", diff);
+
+                for orphan in diff {
+                    if orphan.exists() {
+                        if let Ok(canonicaliszed) = orphan.canonicalize() {
+                            unlink(orphan)?;
+                            if canonicaliszed.is_dir() {
+                                fs::remove_dir_all(&canonicaliszed)?;
+                            } else {
+                                fs::remove_file(&canonicaliszed)?;
+                            }
+                            println!("Deleted - {canonicaliszed:?} => {orphan:?}");
+                        }
+                    }
+                }
+            }
+            Err(err) => {
+                println!("No previous state: {err}")
+            }
+        }
+
+        new_state.write()?;
 
         Ok(())
     }
@@ -232,7 +271,7 @@ impl Bombadil {
         bombadil.enable_profiles(profiles.iter().map(String::as_str).collect())?;
 
         let mut init = InitConfig::default();
-        init.on_error(PrintDebug(std::io::stderr()));
+        init.on_error(PrintDebug(io::stderr()));
 
         let dotfiles_path = &bombadil.dotfiles_absolute_path()?;
 
@@ -251,7 +290,9 @@ impl Bombadil {
         );
 
         runtime.on_action(move |action: Action| {
-            let b = bombadil.clone();
+            let mut b = Bombadil::from_settings(Mode::Gpg).expect("Failed to get settings");
+            b.enable_profiles(profiles.iter().map(String::as_str).collect())
+                .expect("Failed to enable profiles");
             let dots_path = dots_path.clone();
             async move {
                 for event in action.events.iter() {
