@@ -7,6 +7,7 @@ use crate::state::BombadilState;
 use crate::templating::Variables;
 use anyhow::{anyhow, Result};
 use colored::*;
+use ignore_files::IgnoreFilter;
 use settings::dots::Dot;
 use settings::Settings;
 use std::collections::HashMap;
@@ -16,7 +17,6 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
 use std::{fs, io};
-use ignore_files::IgnoreFilter;
 use watchexec::{
     action::{Action, Outcome},
     config::{InitConfig, RuntimeConfig},
@@ -29,14 +29,14 @@ use watchexec::{
 use watchexec_filterer_ignore::IgnoreFilterer;
 
 mod dots;
+mod error;
 mod git;
 mod gpg;
 mod hook;
-mod state;
-mod templating;
 pub mod paths;
 pub mod settings;
-mod error;
+mod state;
+mod templating;
 
 pub(crate) const BOMBADIL_CONFIG: &str = "bombadil.toml";
 
@@ -86,7 +86,7 @@ impl Bombadil {
     pub fn link_self_config(dotfiles_path: Option<PathBuf>) -> Result<()> {
         let xdg_config_dir = dirs::config_dir();
         match xdg_config_dir {
-            None => return Err(anyhow!("$XDG_CONFIG does not exist")),
+            None => Err(anyhow!("$XDG_CONFIG does not exist")),
             Some(config_dir) => {
                 let bombadil_xdg_config = config_dir.join(BOMBADIL_CONFIG);
 
@@ -166,10 +166,7 @@ impl Bombadil {
         // Render current settings and create symlinks
         fs::create_dir(dot_copy_dir)?;
         for (key, dot) in self.dots.iter() {
-            if let Err(err) = dot.install(
-                &self.vars,
-                self.get_auto_ignored_files(key),
-            ) {
+            if let Err(err) = dot.install(&self.vars, self.get_auto_ignored_files(key)) {
                 eprintln!("{}", err);
                 continue;
             }
@@ -229,7 +226,6 @@ impl Bombadil {
 
     /// Watch dotfiles and automatically run link on changes
     pub async fn watch(profiles: Vec<String>) -> Result<()> {
-
         let mut bombadil = Bombadil::from_settings(Mode::Gpg)?;
         bombadil.enable_profiles(profiles.iter().map(String::as_str).collect())?;
 
@@ -569,10 +565,7 @@ impl Bombadil {
             .filter_map(|dot| dot.resolve_var_path(origin_source))
             .collect();
 
-        let _ = dot_origin.map(|dot| {
-            dot.resolve_var_path()
-                .map(|path| ignored.push(path))
-        });
+        let _ = dot_origin.map(|dot| dot.resolve_var_path().map(|path| ignored.push(path)));
 
         ignored
     }
@@ -650,7 +643,7 @@ mod tests {
     fn install_should_fail_and_continue() -> Result<()> {
         // Act
         Bombadil::from_settings(NoGpg)?.install()?;
-        run_cmd!(tree -a)?;
+        run_cmd!(tree - a)?;
         // Assert
         assert_that!(PathBuf::from(".config/template.css")).exists();
         assert_that!(PathBuf::from(".config/invalid")).does_not_exist();

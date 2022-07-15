@@ -1,11 +1,9 @@
-use crate::error::Error::{
-    SourceNotFound, Symlink, TargetNotFound, TemplateNotFound, Unlink,
-};
+use crate::error::Error::{SourceNotFound, Symlink, TargetNotFound, TemplateNotFound, Unlink};
+use crate::error::*;
 use crate::settings::dotfile_dir;
 use crate::{Dot, DotVar};
 use colored::*;
 use dirs::home_dir;
-use crate::error::*;
 use std::fs;
 use std::os::unix;
 use std::path::{Path, PathBuf};
