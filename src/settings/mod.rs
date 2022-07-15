@@ -9,6 +9,7 @@ use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
+use dirs::home_dir;
 
 pub mod dots;
 pub mod imports;
@@ -32,8 +33,9 @@ pub fn profiles() -> Vec<&'static str> {
         .collect()
 }
 
-pub fn dotfile_dir() -> &'static PathBuf {
-    &SETTINGS.dotfiles_dir
+pub fn dotfile_dir() -> PathBuf {
+    home_dir().expect("$HOME should be set")
+        .join(&SETTINGS.dotfiles_dir)
 }
 
 /// The Global bombadil configuration
