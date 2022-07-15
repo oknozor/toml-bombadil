@@ -44,11 +44,10 @@ impl Settings {
 
         for path in import_paths.iter() {
             if path.exists() {
-                let mut s = Config::new();
-                s.merge(File::from(path.to_owned()))?;
-
-                let sub_setting = s
-                    .try_into::<ImportedSettings>()
+                let sub_setting = Config::builder()
+                    .add_source(File::from(path.as_path()))
+                    .build()?
+                    .try_deserialize()
                     .map_err(|err| anyhow!("{} : {}", "Config format error".red(), err));
 
                 match sub_setting {
