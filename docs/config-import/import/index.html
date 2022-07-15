@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="x-ua-compatible" content="ie=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+  <link rel="preload" as="font" href="https://oknozor.github.io/toml-bombadil/fonts/vendor/jost/jost-v4-latin-regular.woff2" type="font/woff2" crossorigin>
+  <link rel="preload" as="font" href="https://oknozor.github.io/toml-bombadil/fonts/vendor/jost/jost-v4-latin-700.woff2"  type="font/woff2" crossorigin>
+
+
+<link rel="stylesheet" href="https://oknozor.github.io/toml-bombadil/main.css">
+
+
+
+  
+  
+    
+  
+
+  
+  
+    
+    
+  
+  
+  
+    
+  
+  
+  
+  
+    
+  
+  
+  
+
+
+  <meta name="robots" content="index, follow">
+  <meta name="googlebot" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
+  <meta name="bingbot" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
+
+
+	
+
+
+	
+
+<title>Manage imports | Toml Bombadil</title>
+<meta name="description" content="Manage imports">
+<link rel="canonical" href="https://oknozor.github.io/toml-bombadil/docs/config-import/import/">
+
+
+
+
+
+
+
+
+
+
+<script type="application/ld+json">
+  {
+    "@context": "http://schema.org",
+    "@type": "BreadcrumbList",
+    
+      
+      
+        
+        
+        
+        
+        
+        
+        
+        
+          {
+            "@type": "ListItem",
+            "position":  1 ,
+            "name": "Home",
+            "item": "https://oknozor.github.io/toml-bombadil/"
+          },
+          
+          
+          {
+            "@type": "ListItem",
+            "position":  2 ,
+            "name": "Docs",
+            "item": "https://oknozor.github.io/toml-bombadil/docs/"
+          },
+        
+      
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+          
+          
+          {
+            "@type": "ListItem",
+            "position":  3 ,
+            "name": "Config Import",
+            "item": "https://oknozor.github.io/toml-bombadil/docs/config-import/"
+          },
+        
+      
+        
+        
+        
+        
+        
+        
+        
+        
+          
+          
+          {
+            "@type": "ListItem",
+            "position":  4 ,
+            "name": "Import",
+            "item": "https://oknozor.github.io/toml-bombadil/docs/config-import/import/"
+          },
+        
+      
+    
+  }
+</script>
+
+
+
+
+  <meta name="theme-color" content="#000">
+  <link rel="apple-touch-icon" sizes="180x180" href="https://oknozor.github.io/toml-bombadil/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="https://oknozor.github.io/toml-bombadil/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="https://oknozor.github.io/toml-bombadil/favicon-16x16.png">
+  
+    <link rel="manifest" href="https://oknozor.github.io/toml-bombadil/site.webmanifest">
+  
+
+
+  
+
+</head>
+
+  
+
+<body class="docs single">
+  
+  
+  
+  
+<div class="header-bar fixed-top"></div>
+<header class="navbar fixed-top navbar-expand-md navbar-light">
+	<div class="container">
+		<input class="menu-btn order-0" type="checkbox" id="menu-btn">
+		<label class="menu-icon d-md-none" for="menu-btn"><span class="navicon"></span></label>
+		<a class="navbar-brand order-1 order-md-0 me-auto" href="https://oknozor.github.io/toml-bombadil/">Toml Bombadil</a>
+		<button id="mode" class="btn btn-link order-2 order-md-4" type="button" aria-label="Toggle mode">
+			<span class="toggle-dark"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-moon"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg></span>
+			<span class="toggle-light"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-sun"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg></span>
+		</button>
+		<ul class="navbar-nav fork-me order-3 order-md-5">
+			
+				
+					<li class="nav-item">
+						<a class="nav-link" href="https://github.com/oknozor/toml-bombadil"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-github"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path></svg><span class="ms-2 visually-hidden">GitHub</span></a>
+					</li>
+				
+					<li class="nav-item">
+						<a class="nav-link" href="https://twitter.com/AfkTartine"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-twitter"><path d="M23 3a10.9 10.9 0 0 1-3.14 1.53 4.48 4.48 0 0 0-7.86 3v1A10.66 10.66 0 0 1 3 4s-4 9 5 13a11.64 11.64 0 0 1-7 2c9 5 20 0 20-11.5a4.5 4.5 0 0 0-.08-.83A7.72 7.72 0 0 0 23 3z"></path></svg><span class="ms-2 visually-hidden">Twitter</span></a>
+					</li>
+				
+			
+		</ul>
+		<div class="collapse navbar-collapse order-4 order-md-1">
+			<ul class="navbar-nav main-nav me-auto order-5 order-md-2">
+				
+				<li class="nav-item">
+					<a class="nav-link" href="https://oknozor.github.io/toml-bombadil/docs/">Docs</a>
+				</li>
+				<li class="nav-item">
+					<a class="nav-link" href="https://oknozor.github.io/toml-bombadil/blog/">Blog</a>
+				</li>
+				
+			</ul>
+			<div class="break order-6 d-md-none"></div>
+			
+				<form class="navbar-form flex-grow-1 order-7 order-md-3">
+					<input id="userinput" class="form-control is-search" type="search" placeholder="Search docs..."
+						aria-label="Search docs..." autocomplete="off">
+					<div id="suggestions" class="shadow bg-white rounded"></div>
+				</form>
+			
+		</div>
+	</div>
+</header>
+
+
+
+  
+<div class="wrap container" role="document">
+  <div class="content">
+    <div class="row flex-xl-nowrap">
+	  
+<div class="col-lg-5 col-xl-4 docs-sidebar">
+	<nav class="docs-links" aria-label="Main navigation">
+			
+			
+			
+			
+					
+					
+					
+							<h3>Getting Started</h3>
+							<ul class="list-unstyled">
+							                           
+									<li><a class="docs-link" href="https://oknozor.github.io/toml-bombadil/docs/getting-started/introduction/">Introduction</a></li>
+							                           
+									<li><a class="docs-link" href="https://oknozor.github.io/toml-bombadil/docs/getting-started/quick-start/">Quick Start</a></li>
+							
+					</ul>
+					
+					
+					
+					
+							<h3>Templates and variables</h3>
+							<ul class="list-unstyled">
+							                           
+									<li><a class="docs-link" href="https://oknozor.github.io/toml-bombadil/docs/template-and-variables/variables/">Dotfile templates</a></li>
+							                           
+									<li><a class="docs-link" href="https://oknozor.github.io/toml-bombadil/docs/template-and-variables/variable-references/">Variable reference</a></li>
+							                           
+									<li><a class="docs-link" href="https://oknozor.github.io/toml-bombadil/docs/template-and-variables/variable-scope/">Scope</a></li>
+							                           
+									<li><a class="docs-link" href="https://oknozor.github.io/toml-bombadil/docs/template-and-variables/gpg-secret/">GPG secret</a></li>
+							
+					</ul>
+					
+					
+					
+					
+							<h3>Profiles and themes</h3>
+							<ul class="list-unstyled">
+							                           
+									<li><a class="docs-link" href="https://oknozor.github.io/toml-bombadil/docs/profiles-and-themes/profiles/">Profiles</a></li>
+							                           
+									<li><a class="docs-link" href="https://oknozor.github.io/toml-bombadil/docs/profiles-and-themes/profiles-overrides/">Dot overrides</a></li>
+							                           
+									<li><a class="docs-link" href="https://oknozor.github.io/toml-bombadil/docs/profiles-and-themes/profile-variables/">Profile variables</a></li>
+							
+					</ul>
+					
+					
+					
+					
+							<h3>Hooks</h3>
+							<ul class="list-unstyled">
+							                           
+									<li><a class="docs-link" href="https://oknozor.github.io/toml-bombadil/docs/hooks/hooks/">Hooks</a></li>
+							
+					</ul>
+					
+					
+					
+					
+							<h3>Profiles and themes</h3>
+							<ul class="list-unstyled">
+							                           
+									<li><a class="docs-link active" href="https://oknozor.github.io/toml-bombadil/docs/config-import/import/">Manage imports</a></li>
+							
+					</ul>
+					
+					
+					
+					
+							<h3>Contributing</h3>
+							<ul class="list-unstyled">
+							                           
+									<li><a class="docs-link" href="https://oknozor.github.io/toml-bombadil/docs/contributing/how-to-contribute/">How to Contribute</a></li>
+							                           
+									<li><a class="docs-link" href="https://oknozor.github.io/toml-bombadil/docs/contributing/code-of-conduct/">Code of Conduct</a></li>
+							
+					</ul>
+					
+					
+			
+	</nav>
+</div>
+
+	  
+  
+  <nav class="docs-toc d-none d-xl-block col-xl-3" aria-label="Secondary navigation">
+  	<div class="page-links">
+  			<h3>On this page</h3>
+  			<nav id="TableOfContents">
+  					<ul>
+  							
+  							<li><a href="https://oknozor.github.io/toml-bombadil/docs/config-import/import/#config-imports">Config imports</a></li>
+  							
+  							
+  					</ul>
+  			</nav>
+  	</div>
+  </nav>
+  
+
+      <main class="docs-content col-lg-11 col-xl-9">
+        <h1>Manage imports</h1>
+        <p class="lead">As your config grow bigger you will probably want to split it into multiple files.
+</p>
+        <h2 id="config-imports">Config imports</h2>
+<p>Instead of having all your configs defined in a single toml file, you can split it into multiple file :</p>
+<pre data-lang="toml" style="background-color:#2b303b;color:#c0c5ce;" class="language-toml "><code class="language-toml" data-lang="toml"><span>
+</span><span>[settings.dots]
+</span><span style="color:#bf616a;">alacritty </span><span>= { </span><span style="color:#bf616a;">source </span><span>= &quot;</span><span style="color:#a3be8c;">alacritty</span><span>&quot;, </span><span style="color:#bf616a;">target </span><span>= &quot;</span><span style="color:#a3be8c;">.config/alacritty</span><span>&quot; }
+</span><span style="color:#bf616a;">zsh </span><span>= { </span><span style="color:#bf616a;">source </span><span>= &quot;</span><span style="color:#a3be8c;">zsh/zshrc</span><span>&quot;, </span><span style="color:#bf616a;">target </span><span>= &quot;</span><span style="color:#a3be8c;">.zshrc</span><span>&quot; }
+</span><span>
+</span><span>[[import]]
+</span><span style="color:#bf616a;">path </span><span>= &quot;</span><span style="color:#a3be8c;">sway/sway.toml</span><span>&quot;
+</span><span>
+</span><span>[[import]]
+</span><span style="color:#bf616a;">path </span><span>= &quot;</span><span style="color:#a3be8c;">i3/i3.toml</span><span>&quot;
+</span></code></pre>
+<p>In this example we have defined our <code>i3</code> and <code>sway</code> profile in separate files :</p>
+<pre data-lang="toml" style="background-color:#2b303b;color:#c0c5ce;" class="language-toml "><code class="language-toml" data-lang="toml"><span style="color:#65737e;"># {dotfile_dir}/i3/i3.toml
+</span><span>[profiles.i3]
+</span><span style="color:#bf616a;">posthooks </span><span>= [&quot;</span><span style="color:#a3be8c;">i3-msg reload</span><span>&quot;]
+</span><span>
+</span><span>[profiles.i3.dots]
+</span><span style="color:#bf616a;">i3 </span><span>=  { </span><span style="color:#bf616a;">source </span><span>= &quot;</span><span style="color:#a3be8c;">i3/wm</span><span>&quot;, </span><span style="color:#bf616a;">target </span><span>= &quot;</span><span style="color:#a3be8c;">.config/i3</span><span>&quot; }
+</span><span style="color:#bf616a;">polybar </span><span>=  { </span><span style="color:#bf616a;">source </span><span>= &quot;</span><span style="color:#a3be8c;">i3/polybar</span><span>&quot;, </span><span style="color:#bf616a;">target </span><span>= &quot;</span><span style="color:#a3be8c;">.config/polybar</span><span>&quot; }
+</span><span style="color:#bf616a;">rofi </span><span>=  { </span><span style="color:#bf616a;">source </span><span>= &quot;</span><span style="color:#a3be8c;">i3/rofi</span><span>&quot;, </span><span style="color:#bf616a;">target </span><span>= &quot;</span><span style="color:#a3be8c;">.config/rofi</span><span>&quot; }
+</span></code></pre>
+
+        
+        
+<div class="docs-navigation d-flex justify-content-between">
+  
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+          
+        
+      
+        
+        
+          
+        
+      
+        
+        
+          
+            
+              
+              <a href="https:&#x2F;&#x2F;oknozor.github.io&#x2F;toml-bombadil&#x2F;docs&#x2F;hooks&#x2F;hooks&#x2F;">
+                <div class="card my-1">
+                  <div class="card-body py-2">
+                    &larr; Hooks
+                  </div>
+                </div>
+              </a>
+            
+            
+            
+          
+        
+      
+        
+        
+          
+        
+      
+        
+        
+          
+        
+      
+        
+        
+          
+        
+      
+    
+  
+
+  
+  
+  
+  
+  
+    
+    
+    
+      
+      
+        
+      
+    
+      
+      
+        
+      
+    
+      
+      
+        
+      
+    
+      
+      
+        
+      
+    
+      
+      
+        
+      
+    
+      
+      
+        
+          
+          
+          <a class="ms-auto" href="https:&#x2F;&#x2F;oknozor.github.io&#x2F;toml-bombadil&#x2F;docs&#x2F;contributing&#x2F;how-to-contribute&#x2F;">
+            <div class="card my-1">
+              <div class="card-body py-2">
+                How to Contribute &rarr;
+              </div>
+            </div>
+          </a>
+          
+          
+          
+        
+      
+    
+  
+</div>
+
+      </main>
+    </div>
+  </div>
+</div>
+
+
+  
+    
+<footer class="footer text-muted">
+	<div class="container">
+		<div class="row">
+			<div class="col-lg-8 order-last order-lg-first">
+				<ul class="list-inline">
+					
+						<li class="list-inline-item">Powered by <a href="https://www.netlify.com/">Netlify</a>, <a href="https://www.getzola.org/">Zola</a>, and <a href="https://github.com/aaranxu/adidoks">AdiDoks</a></li>
+					
+				</ul>
+			</div>
+			<div class="col-lg-8 order-first order-lg-last text-lg-end">
+				<ul class="list-inline">
+					
+				</ul>
+			</div>
+		</div>
+	</div>
+</footer>
+
+  
+
+  
+<script src="https://oknozor.github.io/toml-bombadil/js/main.js" defer></script>
+
+  <script src="https://oknozor.github.io/toml-bombadil/plugins/elasticlunr.min.js" defer></script>
+  <script src="https://oknozor.github.io/toml-bombadil/search_index.en.js" defer></script>
+  <script src="https://oknozor.github.io/toml-bombadil/js/search.js" defer></script>
+
+  
+</body>
+</html>

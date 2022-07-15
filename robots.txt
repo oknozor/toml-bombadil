@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://oknozor.github.io/toml-bombadil//sitemap.xml
