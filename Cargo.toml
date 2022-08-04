@@ -12,7 +12,7 @@ A dotfile manager.
 """
 
 [dependencies]
-config = "0.13.1"
+config = "0.13.2"
 dirs = "^4"
 toml = "^0"
 serde = { version = "1.0.139", features = ["derive"] }
