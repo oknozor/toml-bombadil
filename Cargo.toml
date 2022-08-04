@@ -28,7 +28,7 @@ watchexec = "2.0.0"
 watchexec-filterer-ignore = "1.0.0"
 ignore-files = "1.0.0"
 tokio = { version = "1.20.0", features = ["macros", "rt"] }
-thiserror = "1.0.30"
+thiserror = "1.0.32"
 
 [features]
 default = ["cli"]
