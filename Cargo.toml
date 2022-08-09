@@ -15,7 +15,7 @@ A dotfile manager.
 config = "0.13.1"
 dirs = "^4"
 toml = "^0"
-serde = { version = "1.0.139", features = ["derive"] }
+serde = { version = "1.0.143", features = ["derive"] }
 anyhow = "1.0.58"
 tera = "1.16.0"
 colored = "2.0.0"
