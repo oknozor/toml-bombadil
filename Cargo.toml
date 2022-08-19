@@ -16,7 +16,7 @@ config = "0.13.1"
 dirs = "^4"
 toml = "^0"
 serde = { version = "1.0.139", features = ["derive"] }
-anyhow = "1.0.58"
+anyhow = "1.0.62"
 tera = "1.16.0"
 colored = "2.0.0"
 globwalk = "0.8.1"
