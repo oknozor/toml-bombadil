@@ -1,7 +1,9 @@
+branch_whitelist = [ "main" ]
+ignore_merge_commits = true
+
 pre_bump_hooks = [
-    "sh -c \"./ci/check_branch.sh\"",
     "cargo bump {{version}}",
-    "cargo test -- --test-threads 1",
+    "cargo test",
     "cargo clippy",
     "cargo build --release",
     "cargo fmt --all",
