@@ -1,0 +1,5 @@
+website/* linguist-vendored
+bats-tests/* linguist-vendored
+ci/* linguist-vendored
+config_examplesi/* linguist-vendored
+asset/* linguist-vendored
