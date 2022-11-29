@@ -284,10 +284,6 @@ impl Bombadil {
         runtime.filterer(Arc::new(IgnoreFilterer(ignore_filter)));
 
         runtime.pathset([dotfiles_path]);
-        let dots_path = format!(
-            "{dotfiles_path}/.dots",
-            dotfiles_path = dotfiles_path.to_string_lossy()
-        );
 
         runtime.on_action(move |action: Action| {
             let mut b = Bombadil::from_settings(Mode::Gpg).expect("Failed to get settings");
