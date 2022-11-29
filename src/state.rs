@@ -39,7 +39,7 @@ impl BombadilState {
 
     pub fn write(&self) -> Result<()> {
         let content = toml::to_string(&self)?;
-        fs::write(&self.path, &content)?;
+        fs::write(&self.path, content)?;
         fs::File::open(&self.path)?.sync_data()?;
         Ok(())
     }
