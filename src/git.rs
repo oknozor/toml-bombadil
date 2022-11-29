@@ -109,3 +109,20 @@ fn git_credentials_callback(
 
     Err(git2::Error::from_str("no credential option available"))
 }
+
+#[cfg(test)]
+mod test {
+    use crate::git::clone;
+    use sealed_test::prelude::*;
+    use speculoos::prelude::*;
+    use std::path::PathBuf;
+
+    #[sealed_test]
+    fn should_clone_repository() {
+        let path = PathBuf::from("colo-rs");
+        // We are cloning a small repo, unrelated to toml-bombadil on purpose here
+        let clone_result = clone("https://github.com/oknozor/colo-rs.git", &path.as_path());
+        assert_that!(clone_result).is_ok();
+        assert_that!(PathBuf::from("colo-rs")).exists();
+    }
+}
