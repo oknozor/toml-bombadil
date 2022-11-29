@@ -555,7 +555,7 @@ impl Bombadil {
             MetadataType::Path => vec![self.path.display().to_string()],
             MetadataType::Profiles => {
                 let mut profiles = vec!["default".to_string()];
-                profiles.extend(self.profiles.iter().map(|(k, _)| k.clone()));
+                profiles.extend(self.profiles.keys().cloned());
                 profiles
             }
             MetadataType::Vars => self

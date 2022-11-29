@@ -35,7 +35,7 @@ impl Gpg {
         vars.insert(key, &encrypted);
 
         let toml = toml::to_string(&vars.variables)?;
-        std::fs::write(&var_file, toml)?;
+        std::fs::write(var_file, toml)?;
         println!("Added {} : {}", key, value);
 
         Ok(())

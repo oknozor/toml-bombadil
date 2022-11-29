@@ -81,7 +81,7 @@ impl Dot {
 
         // Single file : inject vars and write to .dots/
         if source.is_file() {
-            fs::create_dir_all(&target.parent().unwrap())?;
+            fs::create_dir_all(target.parent().unwrap())?;
             match vars.to_dot(source) {
                 Ok(content) if target.exists() => self.update(source, target, content),
                 Ok(content) => self.create(source, target, content),
@@ -127,7 +127,7 @@ impl Dot {
 
     fn create(&self, source: &PathBuf, target: &PathBuf, content: String) -> Result<LinkResult> {
         let permissions = fs::metadata(source)?.permissions();
-        let mut dot_copy = File::create(&target)?;
+        let mut dot_copy = File::create(target)?;
         dot_copy.write_all(content.as_bytes())?;
         dot_copy.set_permissions(permissions)?;
         Ok(LinkResult::Created)
