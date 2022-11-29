@@ -1,0 +1,4 @@
+dotfiles_dir = "dotfiles_vars"
+
+[settings]
+vars = [ "vars.toml" ]
