@@ -6,7 +6,6 @@ use std::process::{Command, Stdio};
 
 const PGP_HEADER: &str = "-----BEGIN PGP MESSAGE-----\n\n";
 const PGP_FOOTER: &str = "\n-----END PGP MESSAGE-----";
-pub(crate) const GPG_PREFIX: &str = "gpg:";
 
 #[derive(Clone)]
 pub struct Gpg {
@@ -26,15 +25,12 @@ impl Gpg {
         value: &str,
         var_file: &S,
     ) -> Result<()> {
-        let mut vars = Variables::from_toml(var_file.as_ref())?;
+        let mut vars = Variables::from_path(var_file.as_ref())?;
         let encrypted = self.encrypt(value)?;
         let encrypted = encrypted.replace(PGP_HEADER, "");
         let encrypted = encrypted.replace(PGP_FOOTER, "");
-
-        let encrypted = format!("gpg:{}", encrypted);
-        vars.insert(key, &encrypted);
-
-        let toml = toml::to_string(&vars.variables)?;
+        vars.push_secret(key, &encrypted);
+        let toml = toml::to_string(&vars)?;
         std::fs::write(var_file, toml)?;
         println!("Added {} : {}", key, value);
 
@@ -172,9 +168,9 @@ mod test {
 
         let result = std::fs::read_to_string("vars.toml")?;
         let toml: Value = toml::from_str(&result)?;
-        let value = toml.get("key");
+        let value = toml.get("secrets").unwrap().get("key").unwrap().as_str();
+
         assert_that!(value).is_some();
-        assert_that!(value.unwrap().as_str().unwrap().starts_with("gpg:"));
         Ok(())
     }
 
@@ -186,10 +182,13 @@ mod test {
 
         let result = std::fs::read_to_string("vars.toml")?;
         let toml: Value = toml::from_str(&result)?;
-        let value = toml.get("key");
-        let value = value.unwrap().as_str().unwrap();
-        let value = value.strip_prefix("gpg:").unwrap();
-
+        let value = toml
+            .get("secrets")
+            .unwrap()
+            .get("key")
+            .unwrap()
+            .as_str()
+            .unwrap();
         let decrypted = gpg.decrypt_secret(value)?;
 
         assert_eq!(decrypted, "value");

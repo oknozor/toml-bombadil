@@ -1,3 +1,5 @@
+extern crate core;
+
 use self::settings::profiles::Profile;
 use crate::dots::{DotVar, LinkResult};
 use crate::gpg::Gpg;
@@ -152,50 +154,87 @@ impl Bombadil {
                 eprintln!("{}", err);
             }
         });
+
         let dot_copy_dir = &self.path.join(".dots");
 
         // Render current settings and create symlinks
         fs::create_dir_all(dot_copy_dir)?;
+        let mut created = vec![];
+        let mut unchanged = vec![];
+        let mut ignored = vec![];
+        let mut updated = vec![];
+        let mut errored = vec![];
+
         for (key, dot) in self.dots.iter() {
             match dot.install(
                 &self.vars,
                 self.get_auto_ignored_files(key),
                 self.profile_enabled.as_slice(),
             ) {
-                Err(err) => {
-                    eprintln!("{}", err);
-                    continue;
-                }
+                Err(err) => errored.push(err),
                 Ok(linked) => {
-                    let copy_path = &dot.copy_path()?;
-                    let target = &dot.target()?;
-
                     match linked {
-                        LinkResult::Updated => {
-                            let source = format!("{:?}", copy_path).blue();
-                            let dest = format!("{:?}", target).yellow();
-                            println!("{} => {}", source, dest)
-                        }
-                        LinkResult::Created => {
-                            let source = format!("{:?}", copy_path).blue();
-                            let dest = format!("{:?}", target).green();
-                            println!("Created - {} => {}", source, dest)
-                        }
-                        LinkResult::Ignored => {
-                            let source = format!("{:?}", copy_path);
-                            let dest = format!("{:?}", target);
-                            println!("Ignored - {} => {}", source, dest)
-                        }
-                        LinkResult::Unchanged => {
-                            let source = format!("{:?}", copy_path);
-                            let dest = format!("{:?}", target);
-                            println!("Unchanged - {} => {}", source, dest)
-                        }
+                        LinkResult::Updated { .. } => updated.push(linked),
+                        LinkResult::Created { .. } => created.push(linked),
+                        LinkResult::Ignored { .. } => ignored.push(linked),
+                        LinkResult::Unchanged { .. } => unchanged.push(linked),
                     }
+                    dot.symlink()?;
                 }
             }
+        }
 
-            dot.symlink()?;
+        // TODO: Factorize this
+        if !created.is_empty() {
+            println!("{}", "[Created]".bold());
+            for created in created {
+                let LinkResult::Created { copy, target, source } = created else {
+                    unreachable!()
+                };
+                println!("\t{copy:?} => {target:?}",);
+            }
+            println!();
+        }
+
+        if !updated.is_empty() {
+            println!("{}", "[Updated]".bold());
+            for updated in updated {
+                let LinkResult::Updated { copy, target, source } = updated else {
+                    unreachable!()
+                };
+                println!("\t{copy:?} => {target:?}",);
+            }
+            println!();
+        }
+
+        if !unchanged.is_empty() {
+            println!("{}", "[Unchanged]".bold());
+            for unchanged in unchanged {
+                let LinkResult::Unchanged { target } = unchanged else {
+                    unreachable!()
+                };
+                println!("\t{target:?}",);
+            }
+            println!();
+        }
+
+        if !ignored.is_empty() {
+            println!("{}", "[Ignored]".bold());
+            for ignored in ignored {
+                let LinkResult::Ignored { source } = ignored else {
+                    unreachable!()
+                };
+                println!("\t{source:?}");
+            }
+            println!();
+        }
+
+        if !errored.is_empty() {
+            println!("{}", "[Errored]".bold().red());
+            for error in errored {
+                println!("\t{error:?}");
+            }
+            println!()
         }
 
         // Run post install hooks
@@ -212,6 +251,7 @@ impl Bombadil {
         let previous_state = BombadilState::read(absolute_path_to_dot.to_owned());
         let new_state = BombadilState::from(self);
 
+        let mut deletions = vec![];
         match previous_state {
             Ok(previous_state) => {
                 let diff = previous_state.symlinks.difference(&new_state.symlinks);
@@ -227,9 +267,17 @@ impl Bombadil {
                             } else {
                                 fs::remove_file(&canonicaliszed)?;
                             }
-                            println!("Deleted - {canonicaliszed:?} => {orphan:?}");
+                            deletions.push(format!("{canonicaliszed:?} => {orphan:?}"));
                         }
                     }
+                }
+
+                if !deletions.is_empty() {
+                    println!("{}", "[Deleted]".bold().red());
+                    for deleted in deletions {
+                        println!("\t{deleted}");
+                    }
+                    println!()
                 }
             }
             Err(err) => {
@@ -360,14 +408,6 @@ impl Bombadil {
         }
     }
 
-    /// Pretty print current bombadil variables
-    pub fn display_vars(&self) {
-        self.vars
-            .variables
-            .iter()
-            .for_each(|(key, value)| println!("{} = {}", key.red(), value))
-    }
-
     /// Enable a dotfile profile by merging its settings with the default profile
     pub fn enable_profiles(&mut self, profile_keys: Vec<&str>) -> Result<()> {
         if profile_keys.is_empty() {
@@ -426,7 +466,7 @@ impl Bombadil {
                         .yellow();
                         eprintln!("{}", warning);
                     }
-                // Nothing to override, let's create a new dot entry
+                    // Nothing to override, let's create a new dot entry
                 } else if let (Some(source), Some(target)) =
                     (&dot_override.source, &dot_override.target)
                 {
@@ -513,10 +553,7 @@ impl Bombadil {
         };
 
         // Resolve variables from path
-        let mut vars = Variables::from_paths(&path, &config.settings.vars)?;
-
-        // Replace % reference with their ref value
-        vars.resolve_ref();
+        let vars = Variables::from_paths(&path, &config.settings.vars)?;
 
         // Resolve hooks from settings
         let posthooks = config
@@ -552,42 +589,60 @@ impl Bombadil {
         &self,
         metadata_type: MetadataType,
         writer: &mut impl Write,
+        color: bool,
     ) -> io::Result<()> {
-        let rows = match metadata_type {
-            MetadataType::Dots => self
-                .dots
-                .iter()
-                .map(|(k, v)| {
-                    format!(
-                        "{}: {} => {}",
-                        k,
-                        self.path.join(&v.source).display(),
-                        v.target().unwrap_or_else(|_| v.target.clone()).display()
-                    )
-                })
-                .collect(),
-            MetadataType::PreHooks => self.prehooks.iter().map(|h| h.command.clone()).collect(),
-            MetadataType::PostHooks => self.posthooks.iter().map(|h| h.command.clone()).collect(),
-            MetadataType::Path => vec![self.path.display().to_string()],
+        match metadata_type {
+            MetadataType::Dots => {
+                let dots = self
+                    .dots
+                    .iter()
+                    .map(|(k, v)| {
+                        format!(
+                            "{}: {} => {}",
+                            k,
+                            self.path.join(&v.source).display(),
+                            v.target().unwrap_or_else(|_| v.target.clone()).display()
+                        )
+                    })
+                    .collect();
+                Self::rows_to_writer(writer, dots)?;
+            }
+            MetadataType::PreHooks => {
+                let hooks = self.prehooks.iter().map(|h| h.command.clone()).collect();
+                Self::rows_to_writer(writer, hooks)?;
+            }
+            MetadataType::PostHooks => {
+                let hooks = self.posthooks.iter().map(|h| h.command.clone()).collect();
+                Self::rows_to_writer(writer, hooks)?;
+            }
+            MetadataType::Path => {
+                let paths = vec![self.path.display().to_string()];
+                Self::rows_to_writer(writer, paths)?;
+            }
             MetadataType::Profiles => {
                 let mut profiles = vec!["default".to_string()];
                 profiles.extend(self.profiles.keys().cloned());
-                profiles
+                Self::rows_to_writer(writer, profiles)?;
             }
-            MetadataType::Vars => self
-                .vars
-                .variables
-                .iter()
-                .map(|(k, v)| format!("{}: {}", k, v))
-                .collect(),
-            MetadataType::Secrets => self
-                .vars
-                .secrets
-                .iter()
-                .map(|(k, v)| format!("{}: {}", k, v))
-                .collect(),
+            MetadataType::Vars => {
+                if color {
+                    colored_json::write_colored_json(&self.vars.inner(), writer)?;
+                } else {
+                    let value = serde_json::to_vec_pretty(&self.vars.inner())?;
+                    writer.write_all(&value)?;
+                };
+
+                writer.flush()?;
+            }
+            MetadataType::Secrets => {
+                todo!()
+            }
         };
 
+        Ok(())
+    }
+
+    fn rows_to_writer(writer: &mut (impl Write + Sized), rows: Vec<String>) -> io::Result<()> {
         if !rows.is_empty() {
             writer.write_all(rows.join("\n").as_bytes())?;
             writer.flush()?;
@@ -738,44 +793,29 @@ mod tests {
         Ok(())
     }
 
-    #[sealed_test(files = ["tests/dotfiles_with_meta"], before = setup("dotfiles_with_meta"))]
-    fn meta_var_works() -> Result<()> {
-        // Act
-        let bombadil = Bombadil::from_settings(NoGpg)?;
-
-        // Assert
-        assert_that!(bombadil.vars.variables.get("red"))
-            .is_some()
-            .is_equal_to(&"#FF0000".to_string());
-
-        assert_that!(bombadil.vars.variables.get("black"))
-            .is_some()
-            .is_equal_to(&"#000000".to_string());
-
-        assert_that!(bombadil.vars.variables.get("green"))
-            .is_some()
-            .is_equal_to(&"#008000".to_string());
-
-        Ok(())
-    }
-
-    #[sealed_test(files = [ "tests/dotfiles_with_meta" ], before = setup("dotfiles_with_meta"))]
+    #[sealed_test(files = [ "tests/dotfiles_vars" ], before = setup("dotfiles_vars"))]
     fn should_print_metadata() -> Result<()> {
         let bombadil = Bombadil::from_settings(NoGpg)?;
-
         let mut content = vec![];
         let mut writer = BufWriter::new(&mut content);
 
         // Act
-        bombadil.print_metadata(MetadataType::Vars, &mut writer)?;
+        bombadil.print_metadata(MetadataType::Vars, &mut writer, false)?;
         let result = String::from_utf8(writer.get_ref().to_vec())?;
         let result = result.as_str();
 
         // Assert
-        assert_that!(result).contains("black: #000000");
-        assert_that!(result).contains("green: #008000");
-        assert_that!(result).contains("red: #FF0000");
-        assert_that!(result).contains("meta_red: #FF0000");
+        assert_eq!(
+            result,
+            indoc! {
+                r##"
+            {
+              "red": "#FF0000",
+              "black": "#000000",
+              "green": "#008000"
+            }"##
+            }
+        );
 
         Ok(())
     }
@@ -832,9 +872,7 @@ mod tests {
         let bombadil = Bombadil::from_settings(NoGpg)?;
 
         assert_that!(bombadil.dots.get("maven")).is_some();
-        assert_that!(bombadil.vars.variables.get("hello"))
-            .is_some()
-            .is_equal_to(&"world".to_string());
+        assert_eq!(toml::to_string(&bombadil.vars)?, "hello = \"world\"\n");
 
         Ok(())
     }
