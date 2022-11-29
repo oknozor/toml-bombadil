@@ -63,7 +63,7 @@ impl Variables {
 
     /// Read file in the given path and return its content
     /// with variable replaced by their values.
-    pub(crate) fn to_dot(&self, path: &Path) -> Result<String> {
+    pub(crate) fn to_dot(&self, path: &Path, profiles: &[String]) -> Result<String> {
         // Read file content
         let file = File::open(path)?;
         let mut buf_reader = BufReader::new(file);
@@ -76,9 +76,18 @@ impl Variables {
             context.insert(name, value);
         }
 
+        let profiles_context = serde_json::to_value(profiles)?;
+
         self.secrets.iter().for_each(|(k, v)| {
-            context.insert(k.to_owned(), v);
+            if k == "profiles" {
+                eprintln!("Cannot insert variable '{k}{v}'");
+                eprintln!("'profiles' is a reserved variable name");
+            } else {
+                context.insert(k.to_owned(), v);
+            }
         });
+
+        context.insert("profiles", &profiles_context);
 
         let mut tera = Tera::default();
         let filename = path.as_os_str().to_str().expect("Non UTF8 filename");
@@ -157,7 +166,7 @@ mod test {
             variables,
             secrets: Default::default(),
         }
-        .to_dot(Path::new("tests/dotfiles_simple/template.css"))
+        .to_dot(Path::new("tests/dotfiles_simple/template.css"), &[])
         .unwrap();
 
         assert_eq!(
@@ -181,7 +190,7 @@ mod test {
         secrets.insert("pass".to_string(), "hunter2".to_string());
 
         let dot_content = Variables { variables, secrets }
-            .to_dot(Path::new("tests/dotfiles_with_secret/template"))
+            .to_dot(Path::new("tests/dotfiles_with_secret/template"), &[])
             .unwrap();
 
         assert_that!(dot_content).contains("color: red_value");
@@ -194,7 +203,7 @@ mod test {
             variables: HashMap::new(),
             secrets: Default::default(),
         }
-        .to_dot(Path::new("tests/dotfiles_non_utf8/ferris.png"));
+        .to_dot(Path::new("tests/dotfiles_non_utf8/ferris.png"), &[]);
 
         assert_that!(content).is_err();
     }
