@@ -293,15 +293,9 @@ impl Bombadil {
             let mut b = Bombadil::from_settings(Mode::Gpg).expect("Failed to get settings");
             b.enable_profiles(profiles.iter().map(String::as_str).collect())
                 .expect("Failed to enable profiles");
-            let dots_path = dots_path.clone();
+
             async move {
                 for event in action.events.iter() {
-                    // Skip .dots directory events as those are created by bombadil itself and
-                    // processing them would result in an infinite loop
-                    if event.paths().any(|(p, _)| p.starts_with(dots_path.clone())) {
-                        continue;
-                    }
-
                     // Select only relevant events (creations, modifications, deletions)
                     if event.tags.iter().any(|t| {
                         matches!(t, &Tag::FileEventKind(FileEventKind::Create(_)))
