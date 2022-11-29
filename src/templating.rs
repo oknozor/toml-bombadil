@@ -1,28 +1,53 @@
-use crate::gpg::{Gpg, GPG_PREFIX};
+use crate::gpg::Gpg;
 use crate::settings::GPG;
 use anyhow::{anyhow, Result};
 use colored::Colorize;
-use std::collections::HashMap;
+use serde::{Deserialize, Serialize};
+use serde_json_merge::{Dfs, Merge, Union};
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::BufReader;
 use std::path::{Path, PathBuf};
-use tera::Tera;
+use tera::{Context, Map, Tera, Value};
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[serde(transparent)]
 pub struct Variables {
     /// holds the values defined in template.toml
-    pub variables: HashMap<String, String>,
-    /// Store decrypted secret value
-    /// this might be empty if the var is deserialized without gpg option
-    pub secrets: HashMap<String, String>,
+    inner: Value,
 }
 
 impl Variables {
+    pub(crate) fn inner(&self) -> &Value {
+        &self.inner
+    }
+
+    pub(crate) fn get_secrets_mut(&mut self) -> Option<Map<String, Value>> {
+        self.inner
+            .get_mut("secrets")
+            .and_then(|value| value.as_object())
+            .cloned()
+    }
+
+    pub(crate) fn push_secret(&mut self, key: &str, encrypted: &str) {
+        match self.get_secrets_mut() {
+            None => {
+                let mut secrets_inner = tera::Map::new();
+                secrets_inner.insert(key.to_string(), Value::String(encrypted.to_string()));
+                let mut secrets = tera::Map::new();
+                secrets.insert("secrets".to_string(), Value::Object(secrets_inner));
+                self.inner.union::<Dfs>(&Value::Object(secrets));
+            }
+            Some(mut secrets) => {
+                secrets.insert(key.to_string(), Value::String(encrypted.to_string()));
+            }
+        };
+    }
+
     pub(crate) fn from_paths(base_path: &Path, var_paths: &[PathBuf]) -> Result<Self> {
         let mut out = Self::default();
         for path in var_paths {
-            let variables = Self::from_toml(&base_path.join(path))?;
+            let variables = Self::from_path(&base_path.join(path))?;
             out.extend(variables);
         }
 
@@ -30,7 +55,7 @@ impl Variables {
     }
 
     /// Deserialize a toml file struct Variables
-    pub(crate) fn from_toml(path: &Path) -> Result<Self> {
+    pub(crate) fn from_path(path: &Path) -> Result<Self> {
         let file = File::open(path);
 
         if let Err(err) = file {
@@ -44,17 +69,23 @@ impl Variables {
                 .read_to_string(&mut contents)
                 .map_err(|err| anyhow!("Cannot read var file {:?} : {}", &path, err))?;
 
-            let variables: HashMap<String, String> = toml::from_str(&contents)
+            let variables: tera::Value = toml::from_str(&contents)
                 .map_err(|err| anyhow!("parse error in {:?} :  {}", path, err))?;
 
             let vars = if let Some(gpg) = GPG.as_ref() {
-                let secrets = Variables::decrypt_values(&variables, gpg)?;
-                Variables { variables, secrets }
+                let secrets = variables
+                    .get("secrets")
+                    .and_then(|secrets| secrets.as_object());
+
+                // Replace secrets with their decrypted values
+                if let Some(secrets) = secrets {
+                    let secrets = Variables::decrypt_values(&secrets, gpg)?;
+                    variables.get("secrets").replace(&secrets);
+                };
+
+                Variables { inner: variables }
             } else {
-                Variables {
-                    variables,
-                    secrets: HashMap::default(),
-                }
+                Variables { inner: variables }
             };
 
             Ok(vars)
@@ -63,7 +94,7 @@ impl Variables {
 
     /// Read file in the given path and return its content
     /// with variable replaced by their values.
-    pub(crate) fn to_dot(&self, path: &Path, profiles: &[String]) -> Result<String> {
+    pub(crate) fn to_dot(&self, path: &Path, profiles: &[String]) -> tera::Result<String> {
         // Read file content
         let file = File::open(path)?;
         let mut buf_reader = BufReader::new(file);
@@ -72,78 +103,30 @@ impl Variables {
 
         // Create the tera context from variables and secrets.
         let mut context = tera::Context::new();
-        for (name, value) in self.variables.iter() {
-            context.insert(name, value);
-        }
-
+        let variable_context = Context::from_serialize(self.inner.clone())?;
         let profiles_context = serde_json::to_value(profiles)?;
-
-        self.secrets.iter().for_each(|(k, v)| {
-            if k == "profiles" {
-                eprintln!("Cannot insert variable '{k}{v}'");
-                eprintln!("'profiles' is a reserved variable name");
-            } else {
-                context.insert(k.to_owned(), v);
-            }
-        });
-
+        context.extend(variable_context);
         context.insert("profiles", &profiles_context);
-
         let mut tera = Tera::default();
         let filename = path.as_os_str().to_str().expect("Non UTF8 filename");
 
         tera.add_raw_template(filename, &contents)?;
-        tera.render(filename, &context).map_err(Into::into)
+        tera.render(filename, &context)
     }
 
-    pub(crate) fn resolve_ref(&mut self) {
-        // Collect variable references
-        let entries: Vec<(String, Option<String>)> = self
-            .variables
-            .iter()
-            .filter(|(_, value)| value.starts_with('%'))
-            .map(|(key, value)| (key, &value[1..value.len()]))
-            .map(|(key, ref_key)| (key.clone(), self.variables.get(ref_key).cloned()))
-            .collect();
-
-        // insert value in place of references
-        entries.iter().for_each(|(key, opt_value)| match opt_value {
-            Some(value) => {
-                let _ = self.variables.insert(key.to_string(), value.to_string());
-            }
-            None => {
-                let warning = format!("Reference ${} not found in settings", &key).yellow();
-                eprintln!("{}", warning);
-            }
-        });
+    pub(crate) fn extend(&mut self, other: Variables) {
+        self.inner.merge_recursive::<Dfs>(&other.inner);
     }
 
-    pub(crate) fn extend(&mut self, vars: Variables) {
-        self.variables.extend(vars.variables);
-        self.secrets.extend(vars.secrets);
-    }
-
-    pub(crate) fn insert(&mut self, key: &str, value: &str) {
-        self.variables.insert(key.to_string(), value.to_string());
-    }
-
-    fn decrypt_values(
-        vars: &HashMap<String, String>,
-        gpg: &Gpg,
-    ) -> Result<HashMap<String, String>> {
-        let encrypted_vars = vars
-            .iter()
-            .filter(|(_, value)| value.starts_with(GPG_PREFIX));
-
-        let mut secrets = HashMap::new();
-
-        for (key, value) in encrypted_vars {
-            let value = value.strip_prefix(GPG_PREFIX).unwrap();
-            let value = gpg.decrypt_secret(value)?;
-            let _ = secrets.insert(key.clone(), value);
+    fn decrypt_values(vars: &tera::Map<String, tera::Value>, gpg: &Gpg) -> Result<Value> {
+        let mut decrypted = tera::Map::new();
+        for (key, value) in vars {
+            let value = value.to_string();
+            let value = gpg.decrypt_secret(&value)?;
+            decrypted.insert(key.clone(), tera::Value::String(value));
         }
 
-        Ok(secrets)
+        Ok(Value::Object(decrypted))
     }
 }
 
@@ -153,21 +136,19 @@ mod test {
     use anyhow::Result;
     use indoc::indoc;
     use pretty_assertions::assert_eq;
+    use serde_json::{json, Map, Value};
     use speculoos::prelude::*;
-    use std::collections::HashMap;
-    use std::path::{Path, PathBuf};
+    use std::path::Path;
 
     #[test]
     fn should_inject_variables() {
-        let mut variables = HashMap::new();
-        variables.insert("red".to_string(), "red_value".to_string());
+        let mut variables = Map::new();
+        variables.insert("red".to_string(), Value::String("red_value".to_string()));
+        let variables = Value::Object(variables);
 
-        let dot = Variables {
-            variables,
-            secrets: Default::default(),
-        }
-        .to_dot(Path::new("tests/dotfiles_simple/template.css"), &[])
-        .unwrap();
+        let dot = Variables { inner: variables }
+            .to_dot(Path::new("tests/dotfiles_simple/template.css"), &[])
+            .unwrap();
 
         assert_eq!(
             dot,
@@ -181,27 +162,34 @@ mod test {
     }
 
     #[test]
-    fn should_inject_secret_variables() {
-        let mut variables = HashMap::new();
-        variables.insert("red".to_string(), "red_value".to_string());
-        variables.insert("pass".to_string(), "encrypted with gpg".to_string());
+    fn should_replace_existing_secret() -> Result<()> {
+        let mut variables = Map::new();
+        variables.insert("red".to_string(), Value::String("red_value".to_string()));
 
-        let mut secrets = HashMap::new();
-        secrets.insert("pass".to_string(), "hunter2".to_string());
+        let mut variables = Variables {
+            inner: Value::Object(variables),
+        };
 
-        let dot_content = Variables { variables, secrets }
+        variables.push_secret("pass", "hunter2");
+        let dot_content = variables
             .to_dot(Path::new("tests/dotfiles_with_secret/template"), &[])
             .unwrap();
 
-        assert_that!(dot_content).contains("color: red_value");
-        assert_that!(dot_content).contains("secret: hunter2");
+        assert_eq!(
+            dot_content,
+            indoc! {
+                r#"
+            color: red_value
+            secret: hunter2"#
+            }
+        );
+        Ok(())
     }
 
     #[test]
     fn should_fail_on_non_utf8_file() {
         let content = Variables {
-            variables: HashMap::new(),
-            secrets: Default::default(),
+            inner: Value::Object(Map::new()),
         }
         .to_dot(Path::new("tests/dotfiles_non_utf8/ferris.png"), &[]);
 
@@ -210,54 +198,70 @@ mod test {
 
     #[test]
     fn should_get_vars_from_toml() -> Result<()> {
-        let vars = Variables::from_toml(Path::new("tests/dotfiles_with_meta/vars.toml"))?;
+        let vars = Variables::from_path(&Path::new("tests/dotfiles_vars/vars.toml"))?;
 
-        assert_eq!(vars.variables.get("red"), Some(&"%meta_red".to_string()));
-        assert_eq!(vars.variables.get("black"), Some(&"#000000".to_string()));
-        assert_eq!(vars.variables.get("green"), Some(&"#008000".to_string()));
+        assert_eq!(
+            vars.inner.get("red").and_then(Value::as_str),
+            Some("#FF0000")
+        );
+        assert_eq!(
+            vars.inner.get("black").and_then(Value::as_str),
+            Some("#000000")
+        );
+        assert_eq!(
+            vars.inner.get("green").and_then(Value::as_str),
+            Some("#008000")
+        );
         Ok(())
     }
 
     #[test]
-    fn should_get_vars_multiple_path() -> Result<()> {
-        let vars = Variables::from_paths(
-            Path::new("tests/dotfiles_with_meta/"),
-            &[PathBuf::from("vars.toml"), PathBuf::from("meta_vars.toml")],
-        )?;
+    fn extend_should_overwrite_vars() -> Result<()> {
+        // Arrange
+        let mut variables: Variables = toml::from_str(indoc! {
+            "
+            white = \"#000000\"
+            black = \"#000000\"
 
-        assert_eq!(vars.variables.get("red"), Some(&"%meta_red".to_string()));
-        assert_eq!(vars.variables.get("black"), Some(&"#000000".to_string()));
-        assert_eq!(vars.variables.get("green"), Some(&"#008000".to_string()));
-        assert_eq!(vars.variables.get("meta_red"), Some(&"#FF0000".to_string()));
+            [secrets]
+            password = \"hunter2\"
+            "
+        })?;
+
+        let overrides: Variables = toml::from_str(indoc! {
+            "
+            white = \"#FFFFFF\"
+            other_var = 1
+
+            [secrets]
+            password = \"hunter3\"
+            other_secret = \"secret\"
+            "
+        })?;
+
+        // Act
+        variables.extend(overrides);
+
+        // Assert
+        // Note: if you wonder why json is used as the output format here
+        // Take a look at https://github.com/toml-rs/toml-rs/issues/142
+        // Also since this is never serialized back to toml but used in tera
+        // context only, comparison using json is not an issue
+        assert_eq!(
+            variables.inner,
+            json! {
+                {
+                  "white": "#FFFFFF",
+                  "black": "#000000",
+                  "secrets": {
+                    "password": "hunter3",
+                    "other_secret": "secret"
+                  },
+                  "other_var": 1
+                }
+            }
+        );
+
         Ok(())
-    }
-
-    #[test]
-    fn extend_should_overwrite_vars() {
-        let mut variables = HashMap::new();
-        variables.insert("white".to_string(), "#000000".to_string());
-
-        let mut secrets = HashMap::new();
-        secrets.insert("password".to_string(), "hunter2".to_string());
-
-        let mut extends = HashMap::new();
-        extends.insert("white".to_string(), "#FFFFFF".to_string());
-
-        let mut extends_secrets = HashMap::new();
-        extends_secrets.insert("password".to_string(), "hunter3".to_string());
-
-        let mut vars = Variables { variables, secrets };
-
-        let extends = Variables {
-            variables: extends,
-            secrets: extends_secrets,
-        };
-
-        vars.extend(extends);
-
-        assert_eq!(vars.variables.len(), 1);
-        assert_eq!(vars.secrets.len(), 1);
-        assert_eq!(vars.variables.get("white"), Some(&"#FFFFFF".to_string()));
-        assert_eq!(vars.secrets.get("password"), Some(&"hunter3".to_string()));
     }
 }

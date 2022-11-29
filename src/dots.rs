@@ -4,17 +4,31 @@ use crate::settings::dots::{Dot, DotOverride};
 use crate::templating::Variables;
 use anyhow::Result;
 use colored::*;
+use std::error::Error;
 use std::fs;
 use std::fs::{File, OpenOptions};
 use std::io::Write;
 use std::path::{Path, PathBuf};
+use tera::ErrorKind;
 
 #[derive(PartialEq, Eq, Debug)]
 pub enum LinkResult {
-    Updated,
-    Created,
-    Ignored,
-    Unchanged,
+    Updated {
+        source: PathBuf,
+        copy: PathBuf,
+        target: PathBuf,
+    },
+    Created {
+        source: PathBuf,
+        copy: PathBuf,
+        target: PathBuf,
+    },
+    Ignored {
+        source: PathBuf,
+    },
+    Unchanged {
+        target: PathBuf,
+    },
 }
 
 impl Dot {
@@ -44,15 +58,12 @@ impl Dot {
             vars.extend(local_vars);
         }
 
-        // Resolve % reference
-        vars.resolve_ref();
-
         // Recursively copy dotfile to .dots directory
         self.traverse_and_copy(source, target, ignored_paths.as_slice(), &vars, profiles)
     }
 
     fn load_local_vars(source: &Path) -> Variables {
-        Variables::from_toml(source).unwrap_or_else(|err| {
+        Variables::from_path(source).unwrap_or_else(|err| {
             eprintln!("{}", err.to_string().yellow());
             Variables::default()
         })
@@ -77,23 +88,38 @@ impl Dot {
         profiles: &[String],
     ) -> Result<LinkResult> {
         if ignored.contains(source) {
-            return Ok(LinkResult::Ignored);
+            return Ok(LinkResult::Ignored {
+                source: source.clone(),
+            });
         }
 
         // Single file : inject vars and write to .dots/
         if source.is_file() {
             fs::create_dir_all(target.parent().unwrap())?;
+
             match vars.to_dot(source, profiles) {
                 Ok(content) if target.exists() => self.update(source, target, content),
                 Ok(content) => self.create(source, target, content),
-                Err(_) if target.exists() => {
-                    // Fixme: we probabbly want to remove anyhow here
-                    // And handle specific error case (i.e: ignore utf8 error)
+                Err(e) if target.exists() => {
+                    match e.kind {
+                        ErrorKind::Utf8Conversion { .. } => {}
+                        ErrorKind::Io(_) => {}
+                        ErrorKind::Msg(message) => println!("\t{}", message.to_string().red()),
+                        _ => {
+                            if let Some(source) = e.source() {
+                                println!("\t{}", source);
+                            }
+                        }
+                    }
                     self.update_raw(source, target)
                 }
                 Err(_) => {
-                    fs::copy(source, target)?;
-                    Ok(LinkResult::Created)
+                    fs::copy(&source, &target)?;
+                    Ok(LinkResult::Created {
+                        source: source.clone(),
+                        target: target.clone(),
+                        copy: self.copy_path()?,
+                    })
                 }
             }
         } else {
@@ -117,12 +143,28 @@ impl Dot {
                 }
             }
 
-            if link_results.contains(&LinkResult::Updated) {
-                Ok(LinkResult::Updated)
-            } else if link_results.contains(&LinkResult::Created) {
-                Ok(LinkResult::Created)
+            if link_results
+                .iter()
+                .any(|res| matches!(res, LinkResult::Updated { .. }))
+            {
+                Ok(LinkResult::Updated {
+                    copy: self.copy_path()?,
+                    source: self.source()?,
+                    target: self.target()?,
+                })
+            } else if link_results
+                .iter()
+                .any(|res| matches!(res, LinkResult::Created { .. }))
+            {
+                Ok(LinkResult::Created {
+                    copy: self.copy_path()?,
+                    source: self.source()?,
+                    target: self.target()?,
+                })
             } else {
-                Ok(LinkResult::Unchanged)
+                Ok(LinkResult::Unchanged {
+                    target: self.target()?,
+                })
             }
         }
     }
@@ -132,20 +174,30 @@ impl Dot {
         let mut dot_copy = File::create(target)?;
         dot_copy.write_all(content.as_bytes())?;
         dot_copy.set_permissions(permissions)?;
-        Ok(LinkResult::Created)
+        Ok(LinkResult::Created {
+            target: self.target()?,
+            source: self.source()?,
+            copy: self.copy_path()?,
+        })
     }
 
     fn update(&self, source: &PathBuf, target: &PathBuf, content: String) -> Result<LinkResult> {
         let target_content = fs::read_to_string(target)?;
         if target_content == content {
-            Ok(LinkResult::Unchanged)
+            Ok(LinkResult::Unchanged {
+                target: self.target()?,
+            })
         } else {
             let permissions = fs::metadata(source)?.permissions();
             let mut dot_copy = OpenOptions::new().write(true).truncate(true).open(target)?;
             dot_copy.write_all(content.as_bytes())?;
             dot_copy.set_permissions(permissions)?;
             dot_copy.sync_data()?;
-            Ok(LinkResult::Updated)
+            Ok(LinkResult::Updated {
+                target: self.target()?,
+                source: self.source()?,
+                copy: self.copy_path()?,
+            })
         }
     }
 
@@ -154,7 +206,9 @@ impl Dot {
         let content = fs::read(source)?;
 
         if target_content == content {
-            Ok(LinkResult::Unchanged)
+            Ok(LinkResult::Unchanged {
+                target: self.target()?,
+            })
         } else {
             let permissions = fs::metadata(source)?.permissions();
             let mut dot_copy = OpenOptions::new().write(true).truncate(true).open(target)?;
@@ -162,7 +216,11 @@ impl Dot {
             dot_copy.write_all(&content)?;
             dot_copy.set_permissions(permissions)?;
             dot_copy.sync_data()?;
-            Ok(LinkResult::Updated)
+            Ok(LinkResult::Updated {
+                target: self.target()?,
+                source: self.source()?,
+                copy: self.copy_path()?,
+            })
         }
     }
 }
@@ -515,8 +573,7 @@ mod tests {
             vars: Dot::default_vars(),
         };
 
-        let mut vars = Variables::default();
-        vars.insert("name", "Tom Bombadil");
+        let vars: Variables = toml::from_str(r#"name = "Tom Bombadil""#)?;
 
         // Act
         dot.install(&vars, vec![], &[])?;
