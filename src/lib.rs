@@ -44,12 +44,21 @@ pub(crate) const BOMBADIL_CONFIG: &str = "bombadil.toml";
 /// dotfile directory and how to install it.
 #[derive(Clone)]
 pub struct Bombadil {
+    // path to self configuration, relative to $HOME
     path: PathBuf,
+    // A list of dotfiles to link for this instance
     dots: HashMap<String, Dot>,
+    // Variables for the tera template context
     vars: Variables,
+    // Pre-hook commands, run before `bombadil-link`
     prehooks: Vec<Hook>,
+    // Post-hook commands, run after `bombadil-link`
     posthooks: Vec<Hook>,
+    // Available profiles
     profiles: HashMap<String, Profile>,
+    // Profiles enabled for this isntance
+    profile_enabled: Vec<String>,
+    // A GPG user id, linking to user encryption/decryption key via gnupg
     gpg: Option<Gpg>,
 }
 
@@ -148,7 +157,11 @@ impl Bombadil {
         // Render current settings and create symlinks
         fs::create_dir_all(dot_copy_dir)?;
         for (key, dot) in self.dots.iter() {
-            match dot.install(&self.vars, self.get_auto_ignored_files(key)) {
+            match dot.install(
+                &self.vars,
+                self.get_auto_ignored_files(key),
+                self.profile_enabled.as_slice(),
+            ) {
                 Err(err) => {
                     eprintln!("{}", err);
                     continue;
@@ -361,6 +374,8 @@ impl Bombadil {
             return Ok(());
         }
 
+        self.profile_enabled = profile_keys.iter().map(ToString::to_string).collect();
+
         let mut profiles: Vec<Profile> = profile_keys
             .iter()
             // unwrap here is safe cause allowed profile keys are checked by clap
@@ -528,6 +543,7 @@ impl Bombadil {
             posthooks,
             profiles,
             gpg,
+            profile_enabled: vec![],
         })
     }
 
@@ -819,6 +835,23 @@ mod tests {
         assert_that!(bombadil.vars.variables.get("hello"))
             .is_some()
             .is_equal_to(&"world".to_string());
+
+        Ok(())
+    }
+
+    #[sealed_test(files = ["tests/dotfiles_with_profile_context"], before = setup("dotfiles_with_profile_context"))]
+    fn should_have_profile_context() -> Result<()> {
+        // Arrange
+        let mut bombadil = Bombadil::from_settings(NoGpg)?;
+        bombadil.enable_profiles(vec!["fancy"])?;
+
+        // Act
+        bombadil.install()?;
+        let target = fs::read_link(".config/template.css")?;
+        let content = fs::read_to_string(target)?;
+
+        // Assert
+        assert_that!(content).is_equal_to(".class {color: #de1f1f}\n".to_string());
 
         Ok(())
     }

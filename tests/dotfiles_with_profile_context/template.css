@@ -1,0 +1,7 @@
+.class {
+    {%- if profiles is containing("fancy") -%}
+    color: {{red}}
+    {%- else -%}
+    color: {{black}}
+    {%- endif -%}
+}

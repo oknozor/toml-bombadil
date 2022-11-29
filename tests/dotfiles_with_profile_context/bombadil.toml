@@ -1,0 +1,11 @@
+dotfiles_dir = "dotfiles_with_profile_context"
+
+[settings]
+vars = [ "vars.toml" ]
+
+
+
+[settings.dots]
+css = { source = "template.css", target = ".config/template.css" }
+
+[profiles.fancy]
