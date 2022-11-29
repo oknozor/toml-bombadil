@@ -1,5 +1,6 @@
 use anyhow::Result;
-use clap::{AppSettings, IntoApp, Parser};
+use clap::CommandFactory;
+use clap::Parser;
 use clap_complete::Shell;
 use std::io;
 use std::io::BufRead;
@@ -17,11 +18,8 @@ macro_rules! fatal {
 }
 
 /// Toml is a dotfile template manager, written in rust.
-#[derive(Parser, Debug)]
-#[clap(
-    global_setting = AppSettings::DeriveDisplayOrder,
-    subcommand_required = true,
-    arg_required_else_help = true,
+#[derive(Parser)]
+#[command(
     version,
     name = "Toml Bombadil",
     author = "Paul D. <paul.delafosse@protonmail.com>"
@@ -42,13 +40,13 @@ enum Cli {
         #[clap(short, long, required = false)]
         target: Option<PathBuf>,
         /// A list of comma separated profiles to activate
-        #[clap(short, long, required = false, multiple_values = true)]
+        #[clap(short, long, required = false, num_args(0..))]
         profiles: Vec<String>,
     },
     /// Symlink a copy of your dotfiles and inject variables according to bombadil.toml settings
     Link {
         /// A list of comma separated profiles to activate
-        #[clap(short, long, required = false, multiple_values = true, possible_values = profiles())]
+        #[clap(short, long, required = false, value_parser = profiles(), num_args(0..))]
         profiles: Vec<String>,
     },
     /// Remove all symlinks defined in your bombadil.toml
@@ -56,7 +54,7 @@ enum Cli {
     /// Watch dotfiles and automatically run link on changes
     Watch {
         /// A list of comma separated profiles to activate
-        #[clap(short, long, required = false, multiple_values = true, possible_values = profiles())]
+        #[clap(short, long, required = false, value_parser = profiles(), num_args(0..))]
         profiles: Vec<String>,
     },
     /// Add a secret var to bombadil environment
@@ -75,23 +73,23 @@ enum Cli {
     },
     /// Get metadata about dots, hooks, path, profiles, or vars
     Get {
-        #[clap(value_name = "VALUE", possible_values = &["dots", "prehooks", "posthooks", "path", "profiles", "vars", "secrets"])]
+        #[clap(value_name = "VALUE", value_parser = ["dots", "prehooks", "posthooks", "path", "profiles", "vars", "secrets"])]
         value: String,
-        #[clap(multiple_values = true, possible_values = profiles())]
+        #[clap(value_parser = profiles(), num_args(0..))]
         profiles: Vec<String>,
     },
     /// Generate shell completions
     /// Generate shell completions
     GenerateCompletions {
         /// Type of completions to generate
-        #[clap(name = "type", arg_enum)]
+        #[clap(name = "type", value_enum)]
         shell: Shell,
     },
 }
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let cli = Cli::parse();
+    let cli: Cli = Cli::parse();
 
     match cli {
         Cli::Install { config } => {
@@ -202,12 +200,7 @@ async fn main() -> Result<()> {
                 .expect("Failed to write metadata to stdout");
         }
         Cli::GenerateCompletions { shell } => {
-            clap_complete::generate(
-                shell,
-                &mut Cli::command(),
-                "bombadil",
-                &mut std::io::stdout(),
-            );
+            clap_complete::generate(shell, &mut Cli::command(), "bombadil", &mut io::stdout())
         }
     };
 
