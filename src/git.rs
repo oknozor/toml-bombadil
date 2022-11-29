@@ -100,7 +100,6 @@ fn git_credentials_callback(
     cred_types_allowed: git2::CredentialType,
 ) -> Result<git2::Cred, git2::Error> {
     let user = user_from_url.unwrap();
-
     if cred_types_allowed.contains(git2::CredentialType::SSH_KEY) {
         let private_key = dirs::home_dir().unwrap().join(".ssh").join("id_rsa");
         let cred = git2::Cred::ssh_key(user, None, &private_key, None);
