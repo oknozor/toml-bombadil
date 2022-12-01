@@ -27,7 +27,7 @@ impl Dot {
         profiles: &[String],
     ) -> Result<LinkResult> {
         let source = &self.source()?;
-        let target = &self.build_copy_path();
+        let target = &self.copy_path_unchecked();
         let source_str = source.to_str().unwrap_or_default();
 
         let ignored_paths = if self.ignore.is_empty() {
@@ -90,9 +90,12 @@ impl Dot {
                 Ok(content) => self.create(source, target, content),
                 Err(e) if target.exists() => {
                     match e.kind {
-                        ErrorKind::Utf8Conversion { .. } => {}
-                        ErrorKind::Io(_) => {}
-                        ErrorKind::Msg(message) => println!("\t{}", message.to_string().red()),
+                        ErrorKind::Utf8Conversion { .. } | ErrorKind::Io(..) => {
+                            // Skip non utf8 files like binaries, images etc.
+                            // Those should be symlinked directly once this is implemented
+                            // https://github.com/oknozor/toml-bombadil/issues/138
+                        }
+                        ErrorKind::Msg(message) => println!("\t{}", message.red()),
                         _ => {
                             if let Some(source) = e.source() {
                                 println!("\t{}", source);
@@ -102,10 +105,10 @@ impl Dot {
                     self.update_raw(source, target)
                 }
                 Err(_) => {
-                    fs::copy(&source, &target)?;
+                    fs::copy(source, target)?;
                     Ok(LinkResult::Created {
-                        target: target.clone(),
-                        copy: self.copy_path()?,
+                        target: self.target.clone(),
+                        copy: self.copy_path_unchecked(),
                     })
                 }
             }

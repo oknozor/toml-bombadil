@@ -1,4 +1,5 @@
 website/** linguist-documentation
+docs/** linguist-documentation
 bats-tests/** linguist-documentation
 ci/**linguist-documentation
 config_examplesi/** linguist-documentation
