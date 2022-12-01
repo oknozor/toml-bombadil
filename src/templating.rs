@@ -3,6 +3,7 @@ use crate::settings::GPG;
 use anyhow::{anyhow, Result};
 use colored::Colorize;
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use serde_json_merge::{Dfs, Merge, Union};
 use std::fs::File;
 use std::io::prelude::*;
@@ -18,8 +19,40 @@ pub struct Variables {
 }
 
 impl Variables {
-    pub(crate) fn inner(&self) -> &Value {
-        &self.inner
+    pub(crate) fn without_secrets(&self) -> Value {
+        let mut vars = self.inner.clone();
+        if let Some(vars) = vars.as_object_mut() {
+            vars.remove("secrets");
+        }
+
+        vars
+    }
+
+    pub(crate) fn get_secrets(&self) -> Result<Value> {
+        let secrets = self
+            .inner
+            .get("secrets")
+            .and_then(|value| value.as_object());
+
+        let Some(secrets) = secrets else {
+            return Ok(json!({}));
+        };
+
+        let Some(gpg) = GPG.as_ref() else {
+            return Err(anyhow!("Cannot decrypt secrets, no GPG user id configured"));
+        };
+
+        let mut decrypted_secrets = serde_json::Map::new();
+        for (key, value) in secrets {
+            let decrypted = gpg.decrypt_secret(
+                &value
+                    .as_str()
+                    .expect("Secret value mut be a gpg encrypted string"),
+            )?;
+            decrypted_secrets.insert(key.clone(), Value::String(decrypted));
+        }
+
+        Ok(json!({ "secrets": decrypted_secrets }))
     }
 
     pub(crate) fn get_secrets_mut(&mut self) -> Option<Map<String, Value>> {
@@ -118,10 +151,12 @@ impl Variables {
         self.inner.merge_recursive::<Dfs>(&other.inner);
     }
 
-    fn decrypt_values(vars: &tera::Map<String, tera::Value>, gpg: &Gpg) -> Result<Value> {
+    fn decrypt_values(vars: &Map<String, Value>, gpg: &Gpg) -> Result<Value> {
         let mut decrypted = tera::Map::new();
         for (key, value) in vars {
-            let value = value.to_string();
+            let value = value
+                .as_str()
+                .expect("'[secrets]' values must be a encrypted type string");
             let value = gpg.decrypt_secret(&value)?;
             decrypted.insert(key.clone(), tera::Value::String(value));
         }

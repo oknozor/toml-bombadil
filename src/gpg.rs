@@ -7,7 +7,7 @@ use std::process::{Command, Stdio};
 const PGP_HEADER: &str = "-----BEGIN PGP MESSAGE-----\n\n";
 const PGP_FOOTER: &str = "\n-----END PGP MESSAGE-----";
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Gpg {
     pub user_id: String,
 }
