@@ -163,7 +163,6 @@ impl Bombadil {
         // Render current settings and create symlinks
         fs::create_dir_all(dot_copy_dir)?;
         let mut created = vec![];
-        let mut unchanged = vec![];
         let mut ignored = vec![];
         let mut updated = vec![];
         let mut errored = vec![];
@@ -185,7 +184,10 @@ impl Bombadil {
                         LinkResult::Updated { .. } => updated.push(linked),
                         LinkResult::Created { .. } => created.push(linked),
                         LinkResult::Ignored { .. } => ignored.push(linked),
-                        LinkResult::Unchanged { .. } => unchanged.push(linked),
+                        LinkResult::Unchanged { .. } => {
+                            // Ignoring those for now
+                            // maybe we want to add them when implementing verbose mode
+                        }
                     }
                     dot.symlink()?;
                 }
@@ -196,7 +198,6 @@ impl Bombadil {
 
         links::write(created, &mut stdout, "Created")?;
         links::write(updated, &mut stdout, "Updated")?;
-        links::write(unchanged, &mut stdout, "Unchanged")?;
         links::write(ignored, &mut stdout, "Ignored")?;
         links::write_errors(errored, &mut stdout)?;
 
