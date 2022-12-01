@@ -3,7 +3,6 @@ use crate::settings::GPG;
 use anyhow::{anyhow, Result};
 use colored::Colorize;
 use serde::{Deserialize, Serialize};
-use serde_json::json;
 use serde_json_merge::{Dfs, Merge, Union};
 use std::fs::File;
 use std::io::prelude::*;
@@ -19,6 +18,14 @@ pub struct Variables {
 }
 
 impl Variables {
+    pub(crate) fn has_secrets(&self) -> bool {
+        self.inner
+            .get("secrets")
+            .and_then(|vars| vars.as_object())
+            .map(|secrets| !secrets.is_empty())
+            .unwrap_or(false)
+    }
+
     pub(crate) fn without_secrets(&self) -> Value {
         let mut vars = self.inner.clone();
         if let Some(vars) = vars.as_object_mut() {
@@ -28,14 +35,14 @@ impl Variables {
         vars
     }
 
-    pub(crate) fn get_secrets(&self) -> Result<Value> {
+    pub(crate) fn get_secrets(&self) -> Result<Map<String, Value>> {
         let secrets = self
             .inner
             .get("secrets")
             .and_then(|value| value.as_object());
 
         let Some(secrets) = secrets else {
-            return Ok(json!({}));
+            return Ok(Map::new());
         };
 
         let Some(gpg) = GPG.as_ref() else {
@@ -52,14 +59,7 @@ impl Variables {
             decrypted_secrets.insert(key.clone(), Value::String(decrypted));
         }
 
-        Ok(json!({ "secrets": decrypted_secrets }))
-    }
-
-    pub(crate) fn get_secrets_mut(&mut self) -> Option<Map<String, Value>> {
-        self.inner
-            .get_mut("secrets")
-            .and_then(|value| value.as_object())
-            .cloned()
+        Ok(decrypted_secrets)
     }
 
     pub(crate) fn push_secret(&mut self, key: &str, encrypted: &str) {
@@ -73,6 +73,7 @@ impl Variables {
             }
             Some(mut secrets) => {
                 secrets.insert(key.to_string(), Value::String(encrypted.to_string()));
+                self.inner.union::<Dfs>(&Value::Object(secrets));
             }
         };
     }
@@ -152,6 +153,14 @@ impl Variables {
         self.inner.merge_recursive::<Dfs>(&other.inner);
     }
 
+    pub(crate) fn with_secrets(&mut self, secrets: Map<String, Value>) {
+        let Some(vars) = self.inner.as_object_mut() else {
+            panic!("Variable should be a Value::Object")
+        };
+
+        vars.insert("secrets".to_string(), Value::Object(secrets));
+    }
+
     fn decrypt_values(vars: &Map<String, Value>, gpg: &Gpg) -> Result<Value> {
         let mut decrypted = tera::Map::new();
         for (key, value) in vars {
@@ -163,6 +172,13 @@ impl Variables {
         }
 
         Ok(Value::Object(decrypted))
+    }
+
+    fn get_secrets_mut(&mut self) -> Option<Map<String, Value>> {
+        self.inner
+            .get_mut("secrets")
+            .and_then(|value| value.as_object())
+            .cloned()
     }
 }
 
@@ -297,6 +313,41 @@ mod test {
                 }
             }
         );
+
+        Ok(())
+    }
+
+    #[test]
+    fn should_have_secrets() -> Result<()> {
+        // Arrange
+        let variables: Variables = toml::from_str(indoc! {
+            "
+            white = \"#000000\"
+            black = \"#000000\"
+
+            [secrets]
+            password = \"hunter2\"
+            "
+        })?;
+
+        // Act + Assert
+        assert_that!(variables.has_secrets()).is_true();
+
+        Ok(())
+    }
+
+    #[test]
+    fn should_not_have_secrets() -> Result<()> {
+        // Arrange
+        let variables: Variables = toml::from_str(indoc! {
+            "
+            white = \"#000000\"
+            black = \"#000000\"
+            "
+        })?;
+
+        // Act + Assert
+        assert_that!(variables.has_secrets()).is_false();
 
         Ok(())
     }

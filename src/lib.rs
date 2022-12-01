@@ -11,6 +11,7 @@ use crate::templating::Variables;
 use anyhow::{anyhow, Result};
 use colored::*;
 use ignore_files::IgnoreFilter;
+use serde_json::json;
 use settings::dots::Dot;
 use settings::Settings;
 use std::collections::HashMap;
@@ -148,7 +149,7 @@ impl Bombadil {
     /// 4. Copy and symlink dotfiles according to the current `$XDG_CONFIG/bombadil.toml` configuration
     /// 5. Run post install hooks
     /// 6. Write current state to `.dot/previous_state.toml`
-    pub fn install(&self) -> Result<()> {
+    pub fn install(&mut self) -> Result<()> {
         self.check_dotfile_dir()?;
 
         self.prehooks.iter().map(Hook::run).for_each(|result| {
@@ -166,6 +167,11 @@ impl Bombadil {
         let mut ignored = vec![];
         let mut updated = vec![];
         let mut errored = vec![];
+
+        if self.vars.has_secrets() {
+            let decrypted = self.vars.get_secrets()?;
+            self.vars.with_secrets(decrypted);
+        }
 
         for (key, dot) in self.dots.iter() {
             match dot.install(
@@ -587,10 +593,17 @@ impl Bombadil {
             }
             MetadataType::Secrets => {
                 if no_color {
-                    let value = serde_json::to_vec_pretty(&self.vars.get_secrets()?)?;
+                    let value = serde_json::to_vec_pretty(&json!({
+                        "secrets": &self.vars.get_secrets()?
+                    }))?;
                     writer.write_all(&value)?;
                 } else {
-                    colored_json::write_colored_json(&self.vars.get_secrets()?, writer)?;
+                    colored_json::write_colored_json(
+                        &json!({
+                            "secrets": &self.vars.get_secrets()?
+                        }),
+                        writer,
+                    )?;
                 };
 
                 writer.flush()?;
@@ -714,7 +727,7 @@ mod tests {
     #[sealed_test(files = ["tests/dotfiles_simple"], before = setup("dotfiles_simple"))]
     fn uninstall_works() -> Result<()> {
         Bombadil::link_self_config(Some(PathBuf::from("dotfiles_simple")))?;
-        let bombadil = Bombadil::from_settings(NoGpg)?;
+        let mut bombadil = Bombadil::from_settings(NoGpg)?;
 
         bombadil.install()?;
         assert_that!(PathBuf::from(".config/template.css")).exists();
@@ -726,7 +739,7 @@ mod tests {
 
     #[sealed_test(files = ["tests/dotfiles_simple"], before = setup("dotfiles_simple"))]
     fn posthook_ok() -> Result<()> {
-        let bombadil = Bombadil::from_settings(NoGpg)?;
+        let mut bombadil = Bombadil::from_settings(NoGpg)?;
 
         // Act
         bombadil.install()?;
@@ -739,7 +752,7 @@ mod tests {
 
     #[sealed_test(files = ["tests/dotfiles_simple"], before = setup("dotfiles_simple"))]
     fn prehook_ok() -> Result<()> {
-        let bombadil = Bombadil::from_settings(NoGpg)?;
+        let mut bombadil = Bombadil::from_settings(NoGpg)?;
 
         // Act
         bombadil.install()?;
