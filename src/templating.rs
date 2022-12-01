@@ -3,7 +3,7 @@ use crate::settings::GPG;
 use anyhow::{anyhow, Result};
 use colored::Colorize;
 use serde::{Deserialize, Serialize};
-use serde_json_merge::{Dfs, Merge, Union};
+use serde_json_merge::{Dfs, Merge};
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::BufReader;
@@ -65,15 +65,16 @@ impl Variables {
     pub(crate) fn push_secret(&mut self, key: &str, encrypted: &str) {
         match self.get_secrets_mut() {
             None => {
-                let mut secrets_inner = tera::Map::new();
-                secrets_inner.insert(key.to_string(), Value::String(encrypted.to_string()));
                 let mut secrets = tera::Map::new();
-                secrets.insert("secrets".to_string(), Value::Object(secrets_inner));
-                self.inner.union::<Dfs>(&Value::Object(secrets));
-            }
-            Some(mut secrets) => {
                 secrets.insert(key.to_string(), Value::String(encrypted.to_string()));
-                self.inner.union::<Dfs>(&Value::Object(secrets));
+                let Some(vars) = self.inner.as_object_mut() else {
+                    panic!("Variables should be a Value::Object");
+                };
+
+                vars.insert("secrets".to_string(), Value::Object(secrets));
+            }
+            Some(secrets) => {
+                secrets.insert(key.to_string(), Value::String(encrypted.to_string()));
             }
         };
     }
@@ -174,11 +175,10 @@ impl Variables {
         Ok(Value::Object(decrypted))
     }
 
-    fn get_secrets_mut(&mut self) -> Option<Map<String, Value>> {
+    fn get_secrets_mut(&mut self) -> Option<&mut Map<String, Value>> {
         self.inner
             .get_mut("secrets")
-            .and_then(|value| value.as_object())
-            .cloned()
+            .and_then(|value| value.as_object_mut())
     }
 }
 
@@ -223,6 +223,7 @@ mod test {
         };
 
         variables.push_secret("pass", "hunter2");
+
         let dot_content = variables
             .to_dot(Path::new("tests/dotfiles_with_secret/template"), &[])
             .unwrap();
