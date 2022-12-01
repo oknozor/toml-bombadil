@@ -1,0 +1,22 @@
+dotfiles_dir = "dotfiles_full"
+
+
+
+[settings]
+vars = [ "vars.toml" ]
+prehooks = [
+    "echo prehooks",
+    "echo another_hook"
+]
+posthooks = [ "echo posthooks" ]
+
+[settings.dots]
+css = { source = "template.css", target = ".config/template.css" }
+
+[profiles.one]
+vars = [ "profile_vars.toml" ]
+
+[profiles.one.dots]
+css = { target = ".config/template_with_yellow.css" }
+another = { source = "template.css", target = ".config/template_again.css" }
+

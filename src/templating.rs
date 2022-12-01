@@ -15,7 +15,7 @@ use tera::{Context, Map, Tera, Value};
 #[serde(transparent)]
 pub struct Variables {
     /// holds the values defined in template.toml
-    inner: Value,
+    pub(crate) inner: Value,
 }
 
 impl Variables {
@@ -88,7 +88,8 @@ impl Variables {
     }
 
     /// Deserialize a toml file struct Variables
-    pub(crate) fn from_path(path: &Path) -> Result<Self> {
+    pub(crate) fn from_path<P: AsRef<Path>>(path: P) -> Result<Self> {
+        let path = path.as_ref();
         let file = File::open(path);
 
         if let Err(err) = file {
