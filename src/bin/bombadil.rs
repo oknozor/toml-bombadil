@@ -77,8 +77,8 @@ enum Cli {
         value: String,
         #[clap(value_parser = profiles(), num_args(0..))]
         profiles: Vec<String>,
-        #[clap(short, long, default_value = "true")]
-        colored: bool,
+        #[clap(short, long)]
+        no_color: bool,
     },
     /// Generate shell completions
     /// Generate shell completions
@@ -178,7 +178,7 @@ async fn main() -> Result<()> {
         Cli::Get {
             value,
             profiles,
-            colored,
+            no_color,
         } => {
             let metadata_type = match value.as_str() {
                 "dots" => MetadataType::Dots,
@@ -202,7 +202,7 @@ async fn main() -> Result<()> {
                 .unwrap_or_else(|err| fatal!("{}", err));
 
             bombadil
-                .print_metadata(metadata_type, &mut io::stdout(), colored)
+                .print_metadata(metadata_type, &mut io::stdout(), no_color)
                 .expect("Failed to write metadata to stdout");
         }
         Cli::GenerateCompletions { shell } => {
@@ -210,5 +210,6 @@ async fn main() -> Result<()> {
         }
     };
 
+    println!();
     Ok(())
 }
