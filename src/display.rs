@@ -9,14 +9,10 @@ pub mod links {
     impl fmt::Display for LinkResult {
         fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
             match self {
-                LinkResult::Updated { copy, target, .. } => {
-                    writeln!(f, "\t{copy:?} => {target:?}")?
-                }
-                LinkResult::Created { copy, target, .. } => {
-                    writeln!(f, "\t{copy:?} => {target:?}")?
-                }
-                LinkResult::Ignored { source } => writeln!(f, "\t{source:?}")?,
-                LinkResult::Unchanged { target } => writeln!(f, "\t{target:?}")?,
+                LinkResult::Updated { copy, target, .. } => writeln!(f, "{copy:?} => {target:?}")?,
+                LinkResult::Created { copy, target, .. } => writeln!(f, "{copy:?} => {target:?}")?,
+                LinkResult::Ignored { source } => writeln!(f, "{source:?}")?,
+                LinkResult::Unchanged { .. } => {}
             }
 
             Ok(())
@@ -38,7 +34,7 @@ pub mod links {
         if !errored.is_empty() {
             writeln!(out, "{}", "[Errored]".bold().red())?;
             for error in errored {
-                writeln!(out, "\t{error:?}")?;
+                writeln!(out, "{error:?}")?;
             }
             writeln!(out)?;
         }
@@ -49,7 +45,7 @@ pub mod links {
         if !deleted.is_empty() {
             writeln!(out, "{}", "[Deleted]".bold().red())?;
             for deleted in deleted {
-                writeln!(out, "\t{deleted:?}")?;
+                writeln!(out, "{deleted:?}")?;
             }
             writeln!(out)?;
         }
