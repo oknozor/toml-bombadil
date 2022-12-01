@@ -29,7 +29,7 @@ pub mod links {
             for result in results {
                 write!(out, "{}", result)?;
             }
-            write!(out, "\n")?;
+            writeln!(out)?;
         }
         Ok(())
     }
@@ -40,7 +40,7 @@ pub mod links {
             for error in errored {
                 writeln!(out, "\t{error:?}")?;
             }
-            write!(out, "\n")?;
+            writeln!(out)?;
         }
         Ok(())
     }
@@ -51,7 +51,7 @@ pub mod links {
             for deleted in deleted {
                 writeln!(out, "\t{deleted:?}")?;
             }
-            write!(out, "\n")?;
+            writeln!(out)?;
         }
         Ok(())
     }

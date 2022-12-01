@@ -45,7 +45,7 @@ impl Variables {
         let mut decrypted_secrets = serde_json::Map::new();
         for (key, value) in secrets {
             let decrypted = gpg.decrypt_secret(
-                &value
+                value
                     .as_str()
                     .expect("Secret value mut be a gpg encrypted string"),
             )?;
@@ -112,7 +112,7 @@ impl Variables {
 
                 // Replace secrets with their decrypted values
                 if let Some(secrets) = secrets {
-                    let secrets = Variables::decrypt_values(&secrets, gpg)?;
+                    let secrets = Variables::decrypt_values(secrets, gpg)?;
                     variables.get("secrets").replace(&secrets);
                 };
 
@@ -157,7 +157,7 @@ impl Variables {
             let value = value
                 .as_str()
                 .expect("'[secrets]' values must be a encrypted type string");
-            let value = gpg.decrypt_secret(&value)?;
+            let value = gpg.decrypt_secret(value)?;
             decrypted.insert(key.clone(), tera::Value::String(value));
         }
 
