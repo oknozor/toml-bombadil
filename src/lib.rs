@@ -1,6 +1,7 @@
 extern crate core;
 
 use self::settings::profiles::Profile;
+use crate::display::links;
 use crate::dots::{DotVar, LinkResult};
 use crate::gpg::Gpg;
 use crate::hook::Hook;
@@ -30,6 +31,7 @@ use watchexec::{
 };
 use watchexec_filterer_ignore::IgnoreFilterer;
 
+mod display;
 mod dots;
 mod error;
 mod git;
@@ -44,7 +46,7 @@ pub(crate) const BOMBADIL_CONFIG: &str = "bombadil.toml";
 
 /// The main crate struct, it contains all needed medata about a
 /// dotfile directory and how to install it.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Bombadil {
     // path to self configuration, relative to $HOME
     path: PathBuf,
@@ -184,58 +186,13 @@ impl Bombadil {
             }
         }
 
-        // TODO: Factorize this
-        if !created.is_empty() {
-            println!("{}", "[Created]".bold());
-            for created in created {
-                let LinkResult::Created { copy, target, source } = created else {
-                    unreachable!()
-                };
-                println!("\t{copy:?} => {target:?}",);
-            }
-            println!();
-        }
+        let mut stdout = io::stdout();
 
-        if !updated.is_empty() {
-            println!("{}", "[Updated]".bold());
-            for updated in updated {
-                let LinkResult::Updated { copy, target, source } = updated else {
-                    unreachable!()
-                };
-                println!("\t{copy:?} => {target:?}",);
-            }
-            println!();
-        }
-
-        if !unchanged.is_empty() {
-            println!("{}", "[Unchanged]".bold());
-            for unchanged in unchanged {
-                let LinkResult::Unchanged { target } = unchanged else {
-                    unreachable!()
-                };
-                println!("\t{target:?}",);
-            }
-            println!();
-        }
-
-        if !ignored.is_empty() {
-            println!("{}", "[Ignored]".bold());
-            for ignored in ignored {
-                let LinkResult::Ignored { source } = ignored else {
-                    unreachable!()
-                };
-                println!("\t{source:?}");
-            }
-            println!();
-        }
-
-        if !errored.is_empty() {
-            println!("{}", "[Errored]".bold().red());
-            for error in errored {
-                println!("\t{error:?}");
-            }
-            println!()
-        }
+        links::write(created, &mut stdout, "Created")?;
+        links::write(updated, &mut stdout, "Updated")?;
+        links::write(unchanged, &mut stdout, "Unchanged")?;
+        links::write(ignored, &mut stdout, "Ignored")?;
+        links::write_errors(errored, &mut stdout)?;
 
         // Run post install hooks
         self.posthooks.iter().map(Hook::run).for_each(|result| {
@@ -256,8 +213,6 @@ impl Bombadil {
             Ok(previous_state) => {
                 let diff = previous_state.symlinks.difference(&new_state.symlinks);
 
-                println!("{:?}", diff);
-
                 for orphan in diff {
                     if orphan.exists() {
                         if let Ok(canonicaliszed) = orphan.canonicalize() {
@@ -267,18 +222,13 @@ impl Bombadil {
                             } else {
                                 fs::remove_file(&canonicaliszed)?;
                             }
+
                             deletions.push(format!("{canonicaliszed:?} => {orphan:?}"));
                         }
                     }
                 }
 
-                if !deletions.is_empty() {
-                    println!("{}", "[Deleted]".bold().red());
-                    for deleted in deletions {
-                        println!("\t{deleted}");
-                    }
-                    println!()
-                }
+                links::write_deletion(deletions, &mut stdout)?;
             }
             Err(err) => {
                 println!("No previous state: {err}")
@@ -569,6 +519,7 @@ impl Bombadil {
             .iter()
             .map(|cmd| Hook::new(cmd))
             .collect();
+
         let dots = config.settings.dots;
         let profiles = config.profiles;
 
@@ -589,8 +540,8 @@ impl Bombadil {
         &self,
         metadata_type: MetadataType,
         writer: &mut impl Write,
-        color: bool,
-    ) -> io::Result<()> {
+        no_color: bool,
+    ) -> Result<()> {
         match metadata_type {
             MetadataType::Dots => {
                 let dots = self
@@ -625,17 +576,24 @@ impl Bombadil {
                 Self::rows_to_writer(writer, profiles)?;
             }
             MetadataType::Vars => {
-                if color {
-                    colored_json::write_colored_json(&self.vars.inner(), writer)?;
-                } else {
-                    let value = serde_json::to_vec_pretty(&self.vars.inner())?;
+                if no_color {
+                    let value = serde_json::to_vec_pretty(&self.vars.without_secrets())?;
                     writer.write_all(&value)?;
+                } else {
+                    colored_json::write_colored_json(&self.vars.without_secrets(), writer)?;
                 };
 
                 writer.flush()?;
             }
             MetadataType::Secrets => {
-                todo!()
+                if no_color {
+                    let value = serde_json::to_vec_pretty(&self.vars.get_secrets()?)?;
+                    writer.write_all(&value)?;
+                } else {
+                    colored_json::write_colored_json(&self.vars.get_secrets()?, writer)?;
+                };
+
+                writer.flush()?;
             }
         };
 
