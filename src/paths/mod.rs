@@ -19,7 +19,7 @@ pub trait DotPaths {
     fn copy_path(&self) -> Result<PathBuf>;
 
     /// Build the rendered template path, use this to create the rendered file
-    fn build_copy_path(&self) -> PathBuf;
+    fn copy_path_unchecked(&self) -> PathBuf;
 
     /// Remove the dotfile target symlink
     fn unlink(&self) -> Result<()>;
@@ -52,13 +52,12 @@ impl DotPaths for Dot {
     }
 
     fn copy_path(&self) -> Result<PathBuf> {
-        let path = self.build_copy_path();
-
+        let path = self.copy_path_unchecked();
         path.canonicalize()
             .map_err(|error| TemplateNotFound { path, error })
     }
 
-    fn build_copy_path(&self) -> PathBuf {
+    fn copy_path_unchecked(&self) -> PathBuf {
         dotfile_dir().join(".dots").join(&self.source)
     }
 
