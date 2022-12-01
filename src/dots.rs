@@ -572,7 +572,7 @@ mod tests {
 
     #[sealed_test(files = ["tests/dotfiles_with_local_vars"], before = setup("dotfiles_with_local_vars"))]
     fn install_with_local_vars() -> Result<()> {
-        let bombadil = Bombadil::from_settings(NoGpg)?;
+        let mut bombadil = Bombadil::from_settings(NoGpg)?;
         bombadil.install()?;
 
         let dotfiles = bombadil.dots.get("sub_dir").unwrap();

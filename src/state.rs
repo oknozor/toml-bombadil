@@ -59,8 +59,8 @@ impl BombadilState {
     }
 }
 
-impl From<&Bombadil> for BombadilState {
-    fn from(current: &Bombadil) -> Self {
+impl From<&mut Bombadil> for BombadilState {
+    fn from(current: &mut Bombadil) -> Self {
         // Since we come from current bombadil settings, unwrap is safe
         let path = current
             .dotfiles_absolute_path()
