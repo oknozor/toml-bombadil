@@ -11,7 +11,7 @@ pub trait DotPaths {
     /// Return the target path of a dot entry either absolute or relative to $HOME
     fn target(&self) -> Result<PathBuf>;
 
-    /// Resolve dot source copy path ({dotfiles/dotsource) against user defined dotfile directory
+    /// Resolve dot source copy path ({dotfiles}/dotsource) against user defined dotfile directory
     /// Check if file exists
     fn source(&self) -> Result<PathBuf>;
 
