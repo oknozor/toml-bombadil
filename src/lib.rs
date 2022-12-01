@@ -654,7 +654,6 @@ mod tests {
     use sealed_test::prelude::*;
     use speculoos::prelude::*;
     use std::ffi::OsStr;
-    use std::io::BufWriter;
     use std::{env, fs};
 
     fn setup(dotfiles: &str) {
@@ -751,33 +750,6 @@ mod tests {
         Ok(())
     }
 
-    #[sealed_test(files = [ "tests/dotfiles_vars" ], before = setup("dotfiles_vars"))]
-    fn should_print_metadata() -> Result<()> {
-        let bombadil = Bombadil::from_settings(NoGpg)?;
-        let mut content = vec![];
-        let mut writer = BufWriter::new(&mut content);
-
-        // Act
-        bombadil.print_metadata(MetadataType::Vars, &mut writer, false)?;
-        let result = String::from_utf8(writer.get_ref().to_vec())?;
-        let result = result.as_str();
-
-        // Assert
-        assert_eq!(
-            result,
-            indoc! {
-                r##"
-            {
-              "red": "#FF0000",
-              "black": "#000000",
-              "green": "#008000"
-            }"##
-            }
-        );
-
-        Ok(())
-    }
-
     #[sealed_test(files = [ "tests/dotfiles_with_nested_dir" ], before = setup("dotfiles_with_nested_dir"))]
     fn should_get_auto_ignored_files() -> Result<()> {
         let bombadil = Bombadil::from_settings(NoGpg)?;
@@ -850,5 +822,126 @@ mod tests {
         assert_that!(content).is_equal_to(".class {color: #de1f1f}\n".to_string());
 
         Ok(())
+    }
+
+    mod metadata {
+        use super::*;
+        use crate::Mode::NoGpg;
+        use indoc::indoc;
+        use pretty_assertions::assert_eq;
+        use std::io::BufWriter;
+
+        impl Bombadil {
+            fn print_metadata_to_string(&self, data: MetadataType) -> Result<String> {
+                let mut content = vec![];
+                let mut writer = BufWriter::new(&mut content);
+                self.print_metadata(data, &mut writer, false)?;
+                let result = String::from_utf8(writer.get_ref().to_vec())?;
+                let result = result;
+                Ok(result)
+            }
+        }
+
+        #[sealed_test(files = [ "tests/dotfiles_full" ], before = setup("dotfiles_full"))]
+        fn should_print_vars_metadata() -> Result<()> {
+            let bombadil = Bombadil::from_settings(NoGpg)?;
+
+            // Act
+            let result = bombadil.print_metadata_to_string(MetadataType::Vars)?;
+
+            // Assert
+            assert_eq!(
+                result,
+                indoc! {
+                    r##"
+            {
+              "red": "#FF0000",
+              "black": "#000000",
+              "green": "#008000"
+            }"##
+                }
+            );
+
+            Ok(())
+        }
+
+        #[sealed_test(files = [ "tests/dotfiles_full" ], before = setup("dotfiles_full"))]
+        fn should_print_vars_metadata_with_profile() -> Result<()> {
+            let mut bombadil = Bombadil::from_settings(NoGpg)?;
+            bombadil.enable_profiles(vec!["one"])?;
+
+            // Act
+            let result = bombadil.print_metadata_to_string(MetadataType::Vars)?;
+
+            // Assert
+            assert_eq!(
+                result,
+                indoc! {
+                    r##"
+            {
+              "red": "#FF0000",
+              "black": "#000000",
+              "green": "#008000",
+              "yellow": "#f0f722"
+            }"##
+                }
+            );
+
+            Ok(())
+        }
+
+        #[sealed_test(files = [ "tests/dotfiles_full" ], before = setup("dotfiles_full"))]
+        fn should_print_profiles() -> Result<()> {
+            let bombadil = Bombadil::from_settings(NoGpg)?;
+
+            // Act
+            let result = bombadil.print_metadata_to_string(MetadataType::Profiles)?;
+
+            // Assert
+            assert_eq!(result, "default\none");
+
+            Ok(())
+        }
+
+        #[sealed_test(files = [ "tests/dotfiles_full" ], before = setup("dotfiles_full"))]
+        fn should_print_post_hooks() -> Result<()> {
+            let bombadil = Bombadil::from_settings(NoGpg)?;
+
+            // Act
+            let result = bombadil.print_metadata_to_string(MetadataType::PostHooks)?;
+
+            // Assert
+            assert_eq!(result, "echo posthooks");
+
+            Ok(())
+        }
+
+        #[sealed_test(files = [ "tests/dotfiles_full" ], before = setup("dotfiles_full"))]
+        fn should_print_pre_hooks() -> Result<()> {
+            let bombadil = Bombadil::from_settings(NoGpg)?;
+
+            // Act
+            let result = bombadil.print_metadata_to_string(MetadataType::PreHooks)?;
+
+            // Assert
+            assert_eq!(result, "echo prehooks\necho another_hook");
+
+            Ok(())
+        }
+
+        #[sealed_test(files = [ "tests/dotfiles_full" ], before = setup("dotfiles_full"))]
+        fn should_print_dots_with_profile() -> Result<()> {
+            let mut bombadil = Bombadil::from_settings(NoGpg)?;
+            bombadil.enable_profiles(vec!["one"])?;
+
+            // Act
+            let result = bombadil.print_metadata_to_string(MetadataType::Dots)?;
+            let lines: Vec<&str> = result.lines().collect();
+
+            // Assert
+            assert_that!(lines).has_length(2);
+
+            Ok(())
+        }
     }
 }
