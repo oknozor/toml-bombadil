@@ -24,7 +24,6 @@ impl Dot {
         &self,
         vars: &Variables,
         auto_ignored: Vec<PathBuf>,
-        profiles: &[String],
     ) -> Result<LinkResult> {
         let source = &self.source()?;
         let target = &self.copy_path_unchecked();
@@ -47,7 +46,7 @@ impl Dot {
         }
 
         // Recursively copy dotfile to .dots directory
-        self.traverse_and_copy(source, target, ignored_paths.as_slice(), &vars, profiles)
+        self.traverse_and_copy(source, target, ignored_paths.as_slice(), &vars)
     }
 
     fn load_local_vars(source: &Path) -> Variables {
@@ -73,7 +72,6 @@ impl Dot {
         target: &PathBuf,
         ignored: &[PathBuf],
         vars: &Variables,
-        profiles: &[String],
     ) -> Result<LinkResult> {
         if ignored.contains(source) {
             return Ok(LinkResult::Ignored {
@@ -85,7 +83,7 @@ impl Dot {
         if source.is_file() {
             fs::create_dir_all(target.parent().unwrap())?;
 
-            match vars.to_dot(source, profiles) {
+            match vars.to_dot(source) {
                 Ok(content) if target.exists() => self.update(source, target, content),
                 Ok(content) => self.create(source, target, content),
                 Err(e) if target.exists() => {
@@ -95,10 +93,10 @@ impl Dot {
                             // Those should be symlinked directly once this is implemented
                             // https://github.com/oknozor/toml-bombadil/issues/138
                         }
-                        ErrorKind::Msg(message) => println!("\t{}", message.red()),
                         _ => {
                             if let Some(source) = e.source() {
-                                println!("\t{}", source);
+                                let message = format!("{source}");
+                                println!("{}", message.red());
                             }
                         }
                     }
@@ -124,7 +122,6 @@ impl Dot {
                     &target.join(entry_name),
                     ignored,
                     vars,
-                    &[],
                 );
 
                 match result {
@@ -401,7 +398,6 @@ mod tests {
             &PathBuf::from("dotfiles_with_multiple_nested_dir/.dots/dir"),
             &[],
             &Variables::default(),
-            &[],
         )?;
 
         run_cmd!(tree -a;)?;
@@ -435,7 +431,6 @@ mod tests {
             &PathBuf::from("dotfiles_non_utf8/.dots/ferris.png"),
             &[],
             &Variables::default(),
-            &[],
         )?;
 
         run_cmd!(tree -a;)?;
@@ -475,7 +470,6 @@ mod tests {
                 PathBuf::from("source_dot/file.md"),
             ],
             &Variables::default(),
-            &[],
         )?;
 
         // Assert
@@ -537,7 +531,7 @@ mod tests {
             vars: Dot::default_vars(),
         };
 
-        dot.install(&Variables::default(), vec![], &[])?;
+        dot.install(&Variables::default(), vec![])?;
 
         assert_that!(PathBuf::from(".dots")).exists();
         assert_that!(PathBuf::from(".dots/source_dot")).exists();
@@ -561,7 +555,7 @@ mod tests {
         let vars: Variables = toml::from_str(r#"name = "Tom Bombadil""#)?;
 
         // Act
-        dot.install(&vars, vec![], &[])?;
+        dot.install(&vars, vec![])?;
         let dot = PathBuf::from(".dots/dotfiles/dot");
 
         // Assert
@@ -598,7 +592,7 @@ mod tests {
             vars: PathBuf::from("my_vars.toml"),
         };
 
-        dot.install(&Variables::default(), vec![], &[])?;
+        dot.install(&Variables::default(), vec![])?;
 
         let content = fs::read_to_string(".dots/dir/template")?;
         assert_that!(content).is_equal_to(&"Hello Tom\n".to_string());
@@ -629,7 +623,7 @@ mod tests {
         };
 
         // Arrange
-        dot.install(&Variables::default(), vec![], &[])?;
+        dot.install(&Variables::default(), vec![])?;
 
         // Assert
         let content = fs::read_to_string(PathBuf::from(
