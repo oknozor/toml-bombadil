@@ -130,7 +130,7 @@ impl Variables {
 
     /// Read file in the given path and return its content
     /// with variable replaced by their values.
-    pub(crate) fn to_dot(&self, path: &Path, profiles: &[String]) -> tera::Result<String> {
+    pub(crate) fn to_dot(&self, path: &Path) -> tera::Result<String> {
         // Read file content
         let file = File::open(path)?;
         let mut buf_reader = BufReader::new(file);
@@ -140,9 +140,7 @@ impl Variables {
         // Create the tera context from variables and secrets.
         let mut context = tera::Context::new();
         let variable_context = Context::from_serialize(self.inner.clone())?;
-        let profiles_context = serde_json::to_value(profiles)?;
         context.extend(variable_context);
-        context.insert("profiles", &profiles_context);
         let mut tera = Tera::default();
         let filename = path.as_os_str().to_str().expect("Non UTF8 filename");
 
@@ -199,7 +197,7 @@ mod test {
         let variables = Value::Object(variables);
 
         let dot = Variables { inner: variables }
-            .to_dot(Path::new("tests/dotfiles_simple/template.css"), &[])
+            .to_dot(Path::new("tests/dotfiles_simple/template.css"))
             .unwrap();
 
         assert_eq!(
@@ -225,7 +223,7 @@ mod test {
         variables.push_secret("pass", "hunter2");
 
         let dot_content = variables
-            .to_dot(Path::new("tests/dotfiles_with_secret/template"), &[])
+            .to_dot(Path::new("tests/dotfiles_with_secret/template"))
             .unwrap();
 
         assert_eq!(
@@ -244,7 +242,7 @@ mod test {
         let content = Variables {
             inner: Value::Object(Map::new()),
         }
-        .to_dot(Path::new("tests/dotfiles_non_utf8/ferris.png"), &[]);
+        .to_dot(Path::new("tests/dotfiles_non_utf8/ferris.png"));
 
         assert_that!(content).is_err();
     }
