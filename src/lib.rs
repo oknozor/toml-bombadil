@@ -11,7 +11,7 @@ use crate::templating::Variables;
 use anyhow::{anyhow, Result};
 use colored::*;
 use ignore_files::IgnoreFilter;
-use serde_json::json;
+use serde_json::{json, Value};
 use settings::dots::Dot;
 use settings::Settings;
 use std::collections::HashMap;
@@ -172,12 +172,15 @@ impl Bombadil {
             self.vars.with_secrets(decrypted);
         }
 
+        let profiles_values = serde_json::to_value(&self.profile_enabled)?;
+        let mut profiles_context = tera::Map::new();
+        profiles_context.insert("profiles".to_string(), profiles_values);
+        self.vars.extend(Variables {
+            inner: Value::Object(profiles_context),
+        });
+
         for (key, dot) in self.dots.iter() {
-            match dot.install(
-                &self.vars,
-                self.get_auto_ignored_files(key),
-                self.profile_enabled.as_slice(),
-            ) {
+            match dot.install(&self.vars, self.get_auto_ignored_files(key)) {
                 Err(err) => errored.push(err),
                 Ok(linked) => {
                     match linked {
@@ -316,7 +319,7 @@ impl Bombadil {
                             || matches!(t, &Tag::FileEventKind(FileEventKind::Modify(_)))
                             || matches!(t, &Tag::FileEventKind(FileEventKind::Remove(_)))
                     }) {
-                        println!("{}", "Detected changes, re-linking dots".green());
+                        println!("{}", "Detected changes, re-linking dots ...".green());
                         // Finally, install the dots like usual
                         b.install().map_err(|e| RuntimeError::Handler {
                             ctx: "bombadil install",
@@ -380,19 +383,25 @@ impl Bombadil {
             .cloned()
             .collect();
 
-        let sub_profiles: Vec<Profile> = profiles
+        let sub_profiles: Vec<(String, Profile)> = profiles
             .iter()
             .flat_map(|profile| {
                 profile
                     .extra_profiles
                     .iter()
-                    .flat_map(|sub_profile| self.profiles.get(sub_profile))
-                    .collect::<Vec<&Profile>>()
+                    .flat_map(|sub_profile| {
+                        self.profiles
+                            .get(sub_profile)
+                            .map(|p| (sub_profile.clone(), p.clone()))
+                    })
+                    .collect::<Vec<(String, Profile)>>()
             })
-            .cloned()
             .collect();
 
-        profiles.extend(sub_profiles);
+        for (sub, profile) in sub_profiles {
+            self.profile_enabled.push(sub);
+            profiles.push(profile);
+        }
 
         // Merge profile dots
         for profile in profiles.iter() {
