@@ -41,15 +41,21 @@ per profile hooks :
 
 ```toml
 [settings]
-prehooks = [ "echo \"Updating dots\""]
-posthooks = [ "echo \"Default profile\"" ]
+prehooks = [ "echo 'Updating dots'"]
+posthooks = [ "echo 'Default profile'" ]
 
 [profiles.sway]
-prehooks = [ "echo \"Sway profile\"" ]
+# Use toml multiline string to escape quotes and special characters
+prehooks = [ 
+  """
+  echo "Sway profile"
+  """ 
+]
+
 posthooks = [ "sway reload" ]
 
 [profiles.i3]
-prehooks = [ "echo \"i3 profile\"" ]
+prehooks = [ "echo 'i3 profile'" ]
 posthooks = [ "i3-msg reload" ]
 ```
 
@@ -59,16 +65,6 @@ posthooks = [ "i3-msg reload" ]
 
 ```toml
 posthooks = [ "source /home/user/.zshrc" ] # This does not work !
-```
-
-- Environment variables won't be expanded unless you explicitly call a sub-shell :
-
-```toml
-posthooks = [ "echo $HOME" ] # This will print "$HOME"
-```
-
-```toml
-posthooks = [ "zsh -c \"echo $HOME\"" ] # This works
 ```
 
 That's it for hooks, in the next chapter we will see how to split your Bombadil config into multiple files.

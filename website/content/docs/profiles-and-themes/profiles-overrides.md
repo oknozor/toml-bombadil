@@ -56,6 +56,7 @@ Notice on the `corporate` profile we are redefining the `maven` dot entry and on
 Linking the default profile with `bombadil link`, will produce the following link :
 ```bash
 bombadil link
+[Created]
 "/home/okno/dotfiles/.dots/maven/settings.xml" => "/home/okno/.m2/settings.xml"
 ```
 
@@ -63,6 +64,7 @@ Linking with the `corporate` profile will use the alternate source for `.m2/sett
 
 ```bash
 bombadil link -p corporate
+[Created]
 "/home/okno/dotfiles/.dots/maven/settings.corporate.xml" => "/home/okno/.m2/settings.xml"
 ```
 
