@@ -6,6 +6,9 @@ title = "Toml Bombadil"
 compile_sass = true
 highlight_code = true
 build_search_index = true
+taxonomies = [
+    { name = "authors", feed = false}
+]
 
 [markdown]
 highlight_code = true
