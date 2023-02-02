@@ -35,12 +35,16 @@ vars = [ "colors.toml", "env_vars.toml" ]
 
 ### Declare variables
 
-A Bombadil var files is a toml file containing key with string values only.
+A Bombadil var files is a normal toml file.  
 
 For example, you have the following file in `{dotfiles_dir}/vars.toml`.
 
 ```toml
+[apps]
 terminal = "alacritty"
+bar = "waybar"
+
+[theme.colors]
 background = "#292C3E"
 foreground = "#EBEBEB"
 text = "#FF261E"
@@ -51,8 +55,8 @@ green = "#A0E521"
 yellow = "#FFC620"
 blue = "#1BA6FA"
 
-# A flag to conditionally include some block of configuration.
-set_cursor_color = "true"
+[theme.settings]
+set_cursor_color = true
 ```
 
 Given the following dot entry : 
@@ -65,15 +69,14 @@ The `source` attributes point to a template dotfile named `alacritty.yaml`.
 We can use the previously defined variables using the `{{variable_name}}` syntax :
 
 ```yaml
-# {dotfiles}/alacritty.yml
 colors:
    primary:
-       background: "{{background}}"
-       foreground: "{{foreground}}"
-{%- if set_cursor_color == "true" %}
+       background: "{{theme.colors.background}}"
+       foreground: "{{theme.colors.foreground}}"
+{%- if theme.settings.set_cursor_color == "true" %}
    cursor:
-       text: "{{text}}"
-       cursor: "{{cursor}}"
+       text: "{{theme.colors.text}}"
+       cursor: "{{theme.colors.cursor}}"
 {% endif -%}
 ```
 
@@ -86,8 +89,6 @@ Templates will be rendered to the `.dots` directory, then symlinked according to
 In the previous example the output file actually linked to alacritty's config would look like this:
 
 ```yaml
-...
-# {dotfiles}/.dots/alacritty.yml
 colors:
   primary:
     background: "#292C3E"
@@ -95,7 +96,6 @@ colors:
   cursor:
     text: "#FF261E"
     cursor: "#FF261E"
-# ...
 ```
 
 In the next section we will see how to organize our variables to make reusable structured themes using variable references. 

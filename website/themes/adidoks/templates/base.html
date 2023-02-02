@@ -29,7 +29,7 @@
 {{ macros_head::favicons() }}
 {% block math %}{{ macros_math::math() }}{% endblock math %}
 </head>
-{% block body %}{% set page_class="home dark" %}{% endblock body %}
+{% block body %}{% set page_class="home" %}{% endblock body %}
 <body class="{{ page_class }}">
   {% block header %}
     {{ macros_header::header(current_section="/") }}

@@ -18,7 +18,7 @@ toc = true
 top = false
 +++
 
-### Variable scopes
+### Variable collocation
 
 By default, bombadil will look for a file named `vars.toml` in every dotfile entry source directory : 
 
@@ -44,16 +44,14 @@ wofi = { source = "wofi", target = ".config/wofi" }
 And some variables defined in `wofi/vars.toml` :
 
 ```toml
-# Here we use variable references from `theme.toml`
-bg = "%blue"
-input_bg = "%white"
-input_color = "%light_blue"
-input_focused_bg = "%blue"
+[colors]
+gb = "#292C3E"
+input_bg = "#EBEBEB"
+input_color = "#FF261E"
+input_focused_bg = "#FF261E"
 ```
 
-Running `bombadil link` will render variables defined in `wofi/vars.toml` only for templates that resides in `wofi/`.
-
-### Explicitly declare scoped variables
+### Explicitly declare variable collocation
 
 The previous example works fine as long as our dotfile source is a directory.
 Indeed, Bombadil will look for a variable file named `vars.toml` in the source directory and everything will be rendered
