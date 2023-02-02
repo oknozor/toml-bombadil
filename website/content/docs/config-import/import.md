@@ -23,7 +23,6 @@ top = false
 Instead of having all your configs defined in a single toml file, you can split it into multiple file :
 
 ```toml
-
 [settings.dots]
 alacritty = { source = "alacritty", target = ".config/alacritty" }
 zsh = { source = "zsh/zshrc", target = ".zshrc" }
@@ -33,6 +32,21 @@ path = "sway/sway.toml"
 
 [[import]]
 path = "i3/i3.toml"
+```
+
+Alternatively you can define multiple imports at once: 
+```toml
+dotfiles_dir = "dotfiles"
+
+import = [
+  { path = "sway/sway.toml" },
+  { path = "i3/i3.toml" },
+]
+
+[settings.dots]
+alacritty = { source = "terminals/alacritty", target = ".config/alacritty" }
+zsh = { source = "zsh/zshrc", target = ".zshrc" }
+# ...
 ```
 
 In this example we have defined our `i3` and `sway` profile in separate files :

@@ -21,15 +21,14 @@ Let's assume you have the following in your `.bashrc` dotfile:
 ```bash
 # ~/bombadil-example/bashrc
 export JAVA_HOME={{java_home}}
-# ...
 ```
 
 And your default profiles variable look like this:
 
 ```toml
 # ~/bombadil-example/vars.toml
-java_home = "/etc/java-openjdk"
-# ...
+[java]
+home = "/etc/java-openjdk"
 ```
 
 Here is our bombadil config:
@@ -40,7 +39,7 @@ dotfile_dir = "bombadil-example"
 vars = [ "vars.toml" ]
 
 [settings.dots]
-bashrc = { source = "bashrc", target = ".bashrc"}
+bashrc = { source = "bashrc", target = ".bashrc" }
 ```
 
 So far we have defined a variable for `$JAVA_HOME` and we are using it once.
@@ -57,7 +56,7 @@ dotfile_dir = "bombadil-example"
 vars = [ "vars.toml" ]
 
 [settings.dots]
-bashrc = { source = "bashrc", target = ".bashrc"}
+bashrc = { source = "bashrc", target = ".bashrc" }
 
 [profiles.corporate]
 vars = [ "java10-vars.toml" ]
@@ -66,8 +65,8 @@ vars = [ "java10-vars.toml" ]
 The profile variable file will be loaded after the default one and any matching variable name will override the default:
 
 ```toml
-java_home = "/etc/java10-openjdk"
-# ...
+[java]
+home = "/etc/java10-openjdk"
 ```
 
 Running `bombadil link -p corporate` would now produce the following `.bashrc` :

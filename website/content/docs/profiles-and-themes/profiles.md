@@ -17,7 +17,7 @@ top = false
 ## Profile configuration
 
 As we saw Bombadil allows to define a default profile. For some programs you might want to
-set an alternate configuration.
+set alternative configurations.
 
 Bombadil allow you two do this in several ways :
 - override dot entries `source` and/or `target` value.
