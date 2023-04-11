@@ -34,7 +34,7 @@ Here `%a_variable` points to `"42"`. Any template call to `{{variable_ref}}` wil
 The main idea behind variable references is to avoid repetition and inject values into multiple dotfiles.
 As you will see later in this documentation, references are meant to be mixed with profiles and scoped variable.
 
-For now let us define a simple layout. Assuming we are using sway as a window manager, and our terminal is allacritty, 
+For now let us define a simple layout. Assuming we are using sway as a window manager, and our terminal is alacritty, 
 we are going to define three separate variables files : 
 - A global variable file `theme_vars.toml`
 - A variable file for alacritty `alacritty_vars.toml`
