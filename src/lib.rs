@@ -356,7 +356,7 @@ impl Bombadil {
         if let Some(gpg) = &self.gpg {
             gpg.push_secret(key, value, var_file)
         } else {
-            Err(anyhow!("No gpg_user_id in bombadil settings"))
+            Err(anyhow!("No gpg_user_ids in bombadil settings"))
         }
     }
 
@@ -508,7 +508,7 @@ impl Bombadil {
         let path = config.get_dotfiles_path()?;
 
         let gpg = match mode {
-            Mode::Gpg => config.gpg_user_id.map(|user_id| Gpg::new(&user_id)),
+            Mode::Gpg => config.gpg_user_ids.map(|user_ids| Gpg::new(user_ids)),
             Mode::NoGpg => None,
         };
 

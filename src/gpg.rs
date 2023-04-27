@@ -10,14 +10,12 @@ pub(crate) const GPG_PREFIX: &str = "gpg:";
 
 #[derive(Clone)]
 pub struct Gpg {
-    pub user_id: String,
+    pub user_ids: Vec<String>,
 }
 
 impl Gpg {
-    pub(crate) fn new(user_id: &str) -> Self {
-        Gpg {
-            user_id: user_id.to_string(),
-        }
+    pub(crate) fn new(user_ids: Vec<String>) -> Self {
+        Gpg { user_ids }
     }
 
     pub(crate) fn push_secret<S: AsRef<Path> + ?Sized>(
@@ -47,11 +45,12 @@ impl Gpg {
     }
 
     fn encrypt(&self, content: &str) -> Result<String> {
-        let mut child = Command::new("gpg")
-            .arg("--encrypt")
-            .arg("--armor")
-            .arg("-r")
-            .arg(&self.user_id)
+        let mut cmd_binding = Command::new("gpg");
+        let cmd = cmd_binding.arg("--encrypt").arg("--armor");
+        for user_id in &self.user_ids {
+            cmd.arg("-r").arg(user_id);
+        }
+        let mut child = cmd
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .spawn()
@@ -77,12 +76,12 @@ impl Gpg {
     }
 
     fn decrypt(&self, content: &str) -> Result<String> {
-        let mut child = Command::new("gpg")
-            .arg("--decrypt")
-            .arg("--armor")
-            .arg("-r")
-            .arg(&self.user_id)
-            .arg("-q")
+        let mut cmd_binding = Command::new("gpg");
+        let cmd = cmd_binding.arg("--decrypt").arg("--armor").arg("-q");
+        for user_id in &self.user_ids {
+            cmd.arg("-r").arg(user_id);
+        }
+        let mut child = cmd
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .spawn()
@@ -120,7 +119,7 @@ mod test {
     use std::env;
     use toml::Value;
 
-    const GPG_ID: &str = "test@toml.bombadil.org";
+    const GPG_IDS: [&'static str; 2] = ["test@toml.bombadil.org", "me@ibotty.net"];
 
     fn gpg_setup() {
         let crate_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
@@ -134,7 +133,7 @@ mod test {
 
     #[sealed_test(before = gpg_setup())]
     fn should_encrypt() {
-        let gpg = Gpg::new(GPG_ID);
+        let gpg = Gpg::new(GPG_IDS.map(String::from).to_vec());
 
         let result = gpg.encrypt("test");
 
@@ -143,7 +142,7 @@ mod test {
 
     #[sealed_test(before = gpg_setup())]
     fn should_not_encrypt_unkown_gpg_user() {
-        let gpg = Gpg::new("unknown.user");
+        let gpg = Gpg::new(vec!("unknown.user".to_string()));
 
         let result = gpg.encrypt("test");
 
@@ -152,7 +151,7 @@ mod test {
 
     #[sealed_test(before = gpg_setup())]
     fn should_decrypt() -> Result<()> {
-        let gpg = Gpg::new(GPG_ID);
+        let gpg = Gpg::new(GPG_IDS.map(String::from).to_vec());
 
         let encrypted = gpg.encrypt("value")?;
         let decrypted = gpg.decrypt(&encrypted);
@@ -166,7 +165,7 @@ mod test {
 
     #[sealed_test(before = gpg_setup())]
     fn should_push_to_var() -> Result<()> {
-        let gpg = Gpg::new(GPG_ID);
+        let gpg = Gpg::new(GPG_IDS.map(String::from).to_vec());
         std::fs::write("vars.toml", "")?;
         gpg.push_secret("key", "value", "vars.toml")?;
 
@@ -180,7 +179,7 @@ mod test {
 
     #[sealed_test(before = gpg_setup())]
     fn should_decrypt_from_file() -> Result<()> {
-        let gpg = Gpg::new(GPG_ID);
+        let gpg = Gpg::new(GPG_IDS.map(String::from).to_vec());
         std::fs::write("vars.toml", "")?;
         gpg.push_secret("key", "value", "vars.toml")?;
 

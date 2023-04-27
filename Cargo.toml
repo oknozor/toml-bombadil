@@ -30,6 +30,7 @@ watchexec-filterer-ignore = "1.0.0"
 ignore-files = "1.0.1"
 tokio = { version = "1.22.0", features = ["macros", "rt"] }
 thiserror = "1.0.37"
+serde_with = "2.3.2"
 
 [features]
 default = ["cli"]
