@@ -29,10 +29,10 @@ Before going further with this ensure `.dots` is in your dotfiles repository `.g
     ```toml
     dotfile_dir = "bombadil-example"
     # The gpg user associated with the key pair you want to use
-    gpg_user_id = "me@example.org" 
-   
+    gpg_user_id = "me@example.org"
+
     vars = [ "vars.toml" ]
-    
+
     [settings.dots]
     maven = { source = "maven/settings.xml", target = ".m2/settings.xml"}
     ```
@@ -51,7 +51,7 @@ Alternatively If you want to avoid having secrets in your shell history :
 
 ### Use secrets
 
-Once you secret has been added to a variable file you can use it as a normal variable : 
+Once you secret has been added to a variable file you can use it as a normal variable :
 
 ```xml
     <server>
@@ -66,7 +66,7 @@ Once you secret has been added to a variable file you can use it as a normal var
 Make sure the secret has been written and encrypted :
 
    1. Get the decrypted value :
-   
+
    ```bash
   bombadil get secrets
    ```
