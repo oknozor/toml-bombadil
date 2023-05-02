@@ -28,8 +28,8 @@ Before going further with this ensure `.dots` is in your dotfiles repository `.g
 
     ```toml
     dotfile_dir = "bombadil-example"
-    # The gpg user associated with the key pair you want to use
-    gpg_user_id = "me@example.org"
+    # The gpg user ids associated with the key pairs you want to use
+    gpg_user_ids = [ "me@example.org", "my-colleague@example.org" ]
 
     vars = [ "vars.toml" ]
 
