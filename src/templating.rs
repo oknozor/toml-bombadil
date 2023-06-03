@@ -210,7 +210,7 @@ mod test {
 
     #[test]
     fn should_get_vars_from_toml() -> Result<()> {
-        let vars = Variables::from_toml(&Path::new("tests/dotfiles_with_meta/vars.toml"))?;
+        let vars = Variables::from_toml(Path::new("tests/dotfiles_with_meta/vars.toml"))?;
 
         assert_eq!(vars.variables.get("red"), Some(&"%meta_red".to_string()));
         assert_eq!(vars.variables.get("black"), Some(&"#000000".to_string()));
@@ -221,7 +221,7 @@ mod test {
     #[test]
     fn should_get_vars_multiple_path() -> Result<()> {
         let vars = Variables::from_paths(
-            &Path::new("tests/dotfiles_with_meta/"),
+            Path::new("tests/dotfiles_with_meta/"),
             &[PathBuf::from("vars.toml"), PathBuf::from("meta_vars.toml")],
         )?;
 

@@ -62,7 +62,6 @@ impl Dot {
         Ok(
             globwalk::GlobWalkerBuilder::from_patterns(source_str, self.ignore.as_slice())
                 .build()?
-                .into_iter()
                 .filter_map(Result::ok)
                 .map(|entry| entry.path().to_path_buf())
                 .collect(),
@@ -357,7 +356,7 @@ mod tests {
         dot.traverse_and_copy(
             &PathBuf::from("dotfiles_with_multiple_nested_dir/dir"),
             &PathBuf::from("dotfiles_with_multiple_nested_dir/.dots/dir"),
-            &vec![],
+            &[],
             &Variables::default(),
             &[],
         )?;
@@ -391,7 +390,7 @@ mod tests {
         dot.traverse_and_copy(
             &source,
             &PathBuf::from("dotfiles_non_utf8/.dots/ferris.png"),
-            &vec![],
+            &[],
             &Variables::default(),
             &[],
         )?;
@@ -428,7 +427,7 @@ mod tests {
         dot.traverse_and_copy(
             &PathBuf::from("source_dot").canonicalize()?,
             &PathBuf::from(".dots/source_dot"),
-            &vec![
+            &[
                 PathBuf::from("source_dot/subdir_two/subfile.md"),
                 PathBuf::from("source_dot/file.md"),
             ],
