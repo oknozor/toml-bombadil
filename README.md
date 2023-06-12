@@ -40,11 +40,7 @@
   <a href="https://oknozor.github.io/toml-bombadil">Documentation</a>
   ·
   <a href="https://oknozor.github.io/toml-bombadil/docs/getting-started/quick-start/">Installation</a>
-  ·
-  <a href="https://docs.cocogitto.io/config">Configuration</a>
 </p>
-
-<h1></h1>
 
 **A dotfile manager written in Rust**
 
