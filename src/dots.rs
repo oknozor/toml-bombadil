@@ -491,11 +491,11 @@ mod tests {
     #[sealed_test(env = [("HOME", ".")])]
     fn unlink() -> Result<()> {
         // Arrange
-        let source = PathBuf::from("source_dot");
-        let target = PathBuf::from("target_dot");
+        let source = PathBuf::from("source");
+        let target = PathBuf::from("target");
 
         fs::create_dir(".dots")?;
-        fs::write(".dots/source_dot", "Hello Tom")?;
+        fs::write(".dots/source", "Hello Tom")?;
 
         let dot = Dot {
             source,
@@ -510,7 +510,7 @@ mod tests {
         dot.unlink()?;
 
         // Assert
-        let target = dirs::home_dir().unwrap().join("target_dot");
+        let target = dirs::home_dir().unwrap().join("target");
 
         assert_that!(target).does_not_exist();
 
