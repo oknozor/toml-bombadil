@@ -80,6 +80,8 @@ your dot file progressively.
 
 ## Installation
 
+[![Packaging status](https://repology.org/badge/vertical-allrepos/toml-bombadil.svg)](https://repology.org/project/toml-bombadil/versions)
+
 **Arch Linux:**
 ```bash
 pacman -S toml-bombadil
