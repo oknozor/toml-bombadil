@@ -175,6 +175,7 @@ impl Bombadil {
         let profiles_values = serde_json::to_value(&self.profile_enabled)?;
         let mut profiles_context = tera::Map::new();
         profiles_context.insert("profiles".to_string(), profiles_values);
+
         self.vars.extend(Variables {
             inner: Value::Object(profiles_context),
         });
@@ -519,7 +520,8 @@ impl Bombadil {
         };
 
         // Resolve variables from path
-        let vars = Variables::from_paths(&path, &config.settings.vars)?;
+        let vars = Variables::from_paths(&path, &config.settings.vars)?
+            .with_os();
 
         // Resolve hooks from settings
         let posthooks = config
