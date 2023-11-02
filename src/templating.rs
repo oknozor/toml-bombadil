@@ -178,6 +178,15 @@ impl Variables {
             .get_mut("secrets")
             .and_then(|value| value.as_object_mut())
     }
+
+    pub(crate) fn with_os(mut self) -> Self  {
+        let Some(vars) = self.inner.as_object_mut() else {
+            panic!("Variables should be a Value::Object");
+        };
+
+        vars.insert("os".to_string(), Value::String(std::env::consts::OS.to_string()));
+        self
+    }
 }
 
 #[cfg(test)]
