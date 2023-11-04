@@ -10,11 +10,19 @@ use std::io::BufReader;
 use std::path::{Path, PathBuf};
 use tera::{Context, Map, Tera, Value};
 
-#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct Variables {
     /// holds the values defined in template.toml
     pub(crate) inner: Value,
+}
+
+impl Default for Variables {
+    fn default() -> Self {
+        Self {
+            inner: Value::Object(Map::new()),
+        }
+    }
 }
 
 impl Variables {
@@ -67,6 +75,7 @@ impl Variables {
             None => {
                 let mut secrets = tera::Map::new();
                 secrets.insert(key.to_string(), Value::String(encrypted.to_string()));
+                println!("{}", self.inner);
                 let Some(vars) = self.inner.as_object_mut() else {
                     panic!("Variables should be a Value::Object");
                 };
@@ -180,6 +189,7 @@ impl Variables {
     }
 
     pub(crate) fn with_os(mut self) -> Self {
+        println!("{}", self.inner);
         let Some(vars) = self.inner.as_object_mut() else {
             panic!("Variables should be a Value::Object");
         };
