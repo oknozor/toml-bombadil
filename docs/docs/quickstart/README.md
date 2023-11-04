@@ -2,13 +2,13 @@
 
 If you already have some dotfiles on a git repository, no need to start from scratch:
 
-   ```shell
+   ```bash
   git clone https://github.com/my_org/dotfiles
    ```
 
 Add Toml Bombadadil config to your dotfiles:
 
-```shell
+```bash
 cd my_dotfiles && touch bombadil.toml
 ```
 
@@ -17,7 +17,7 @@ Linking bombadil config:
 For Bombadil to be able to run from any directory and use different config files we need to symlink 
 its config to `$XDG_CONFIG_DIR/bombadil.toml`:
 
-```shell
+```bash
 bombadil install my_dotfiles/
 ```
 
@@ -67,12 +67,12 @@ gitconfig = { source = "git/gitconfig", target = ".gitconfig" }
 
 Once you have written your config simply run: 
 
-```shell
+```bash
 bombadil link
 ```
 
 Alternatively you can use hotreload while editing templates: 
-```shell
+```bash
 bombadil watch
 ```
 

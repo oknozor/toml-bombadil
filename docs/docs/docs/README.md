@@ -161,13 +161,13 @@ vars = [ "vars.toml" ]
 
 ### Adding secrets
 
-```shell
+```bash
 bombadil add-secret -k "server_password" -v "hunter2" -f vars.toml
 ```
 
 Alternatively If you want to avoid having secrets in your shell history :
 
-```shell
+```bash
 bombadil add-secret -k "server_password" -f vars.toml --ask
 ```
 
@@ -175,7 +175,7 @@ bombadil add-secret -k "server_password" -f vars.toml --ask
 Note that from now on bombadil will prompt for your GPG key password each time you link dot entries. 
 Make sure to configure the desired [pinentry](~/.gnupg/gpg-agent.conf) program in `~/.gnupg/gpg-agent.conf`.
 
-```shell
+```bash
 # File: /home/okno/.gnupg/gpg-agent.conf
 pinentry-program /usr/bin/pinentry-gnome3
 # ...
@@ -226,20 +226,20 @@ polybar =  { source = "i3/rofi", target = ".config/rofi" }
 
 From there we could link either `sway` profile or `i3` running one of the following: 
 
-```shell
+```bash
 bombadil link -p sway
 bombadil link -p i3
 ```
 
 It is also possible to combine multiple profile : 
-```shell
+```bash
 bombadil link -p sway i3
 ```
 
 ### Meta profiles
 
 When using multiple profile you will often find yourself typing command like this one: 
-```shell
+```bash
 bombadil link -p sway rofi solarized material-icons
 ```
 
@@ -251,7 +251,7 @@ extra_profiles = [ "sway", "rofi", "solarized", "material-icons"]
 ```
 
 Now you can simply run: 
-```shell
+```bash
 bombadil -p cool-sway
 ```
 
@@ -259,7 +259,7 @@ bombadil -p cool-sway
 
 To list available profiles you can run `bombadil link --help` :
 
-```shell
+```bash
 ❯ bombadil link --help      
 Symlink a copy of your dotfiles and inject variables according to bombadil.toml settings
 
@@ -272,7 +272,7 @@ Options:
 
 Alternatively the `bombadil get profiles` produce a one profiles per line output, suited for shell scripting :
 
-```shell
+```bash
 ❯ bombadil get profiles     
 default
 wofi
@@ -322,7 +322,7 @@ Notice on the `sway` profile we are redefining the rofi dot entry and only speci
 
 Like for dotfiles variable can be overridden by profile variables: 
 
-```shell
+```bash
 dotfile_dir = "dotfiles"
 
 [settings]
@@ -363,7 +363,7 @@ white = "#bfbfbf"
 ```
 
 We can now switch between color themes: 
-```shell
+```bash
 bombadil link # default theme
 bombadil link -p darcula # darcula theme enabled
 ```
@@ -371,7 +371,7 @@ bombadil link -p darcula # darcula theme enabled
 ::: tip
 Using this approach you can combine several profiles to achieve any combination. 
 
-```shell
+```bash
 bombadil link -p sway darcula
 bombadil link -p i3 solarized material-icon
 ```
