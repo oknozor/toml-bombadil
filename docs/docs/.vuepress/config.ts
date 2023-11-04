@@ -1,5 +1,6 @@
 import {defaultTheme, defineUserConfig} from 'vuepress'
 import {searchPlugin} from "@vuepress/plugin-search";
+import {highlightjsPlugin} from "./hljs/hlJsPlugin";
 
 export default defineUserConfig({
     lang: 'en-US',
@@ -22,10 +23,12 @@ export default defineUserConfig({
         ['meta', {property: 'og:width', content: '100'}],
     ],
 
+
     plugins: [
         searchPlugin({
             // options
         }),
+        highlightjsPlugin,
     ],
 
     theme: defaultTheme({

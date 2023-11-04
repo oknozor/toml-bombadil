@@ -61,7 +61,7 @@ pub struct Bombadil {
     posthooks: Vec<Hook>,
     // Available profiles
     profiles: HashMap<String, Profile>,
-    // Profiles enabled for this isntance
+    // Profiles enabled for this instance
     profile_enabled: Vec<String>,
     // A GPG user id, linking to user encryption/decryption key via gnupg
     gpg: Option<Gpg>,
