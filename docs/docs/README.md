@@ -46,13 +46,13 @@ symlinks and templatize your dot file progressively.
 
 ### Archlinux
 
-```shell
+```bash
 pacman -S toml-bombadil
 ```
 
 ### Cargo
 
-```shell
+```bash
 cargo install toml-bombadil
 ```
 
