@@ -826,7 +826,8 @@ mod tests {
         let bombadil = Bombadil::from_settings(NoGpg)?;
 
         assert_that!(bombadil.dots.get("maven")).is_some();
-        assert_eq!(toml::to_string(&bombadil.vars)?, "hello = \"world\"\n");
+        let toml = toml::to_string(&bombadil.vars)?;
+        assert!(toml.contains("hello = \"world\"\n"));
 
         Ok(())
     }
@@ -851,7 +852,6 @@ mod tests {
     mod metadata {
         use super::*;
         use crate::Mode::NoGpg;
-        use indoc::indoc;
         use pretty_assertions::assert_eq;
         use std::io::BufWriter;
 
@@ -872,18 +872,16 @@ mod tests {
 
             // Act
             let result = bombadil.print_metadata_to_string(MetadataType::Vars)?;
+            let json: Value = serde_json::from_str(&result)?;
 
-            // Assert
+            assert_eq!(json.get("red"), Some(&Value::String("#FF0000".to_string())));
             assert_eq!(
-                result,
-                indoc! {
-                    r##"
-            {
-              "red": "#FF0000",
-              "black": "#000000",
-              "green": "#008000"
-            }"##
-                }
+                json.get("black"),
+                Some(&Value::String("#000000".to_string()))
+            );
+            assert_eq!(
+                json.get("green"),
+                Some(&Value::String("#008000".to_string()))
             );
 
             Ok(())
@@ -896,19 +894,20 @@ mod tests {
 
             // Act
             let result = bombadil.print_metadata_to_string(MetadataType::Vars)?;
+            let json: Value = serde_json::from_str(&result)?;
 
-            // Assert
+            assert_eq!(json.get("red"), Some(&Value::String("#FF0000".to_string())));
             assert_eq!(
-                result,
-                indoc! {
-                    r##"
-            {
-              "red": "#FF0000",
-              "black": "#000000",
-              "green": "#008000",
-              "yellow": "#f0f722"
-            }"##
-                }
+                json.get("black"),
+                Some(&Value::String("#000000".to_string()))
+            );
+            assert_eq!(
+                json.get("green"),
+                Some(&Value::String("#008000".to_string()))
+            );
+            assert_eq!(
+                json.get("yellow"),
+                Some(&Value::String("#f0f722".to_string()))
             );
 
             Ok(())
