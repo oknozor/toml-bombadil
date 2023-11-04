@@ -1,3 +1,4 @@
+
 name: CI
 
 on:
@@ -7,42 +8,75 @@ on:
   pull_request:
     branches:
       - main
+
+env:
+  CARGO_TERM_COLOR: always
+
 jobs:
   test:
-    name: Tests
-    runs-on: ubuntu-latest
+    name: Tests for platform  ${{ matrix.os }}/${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: macos-latest
+            target: x86_64-osx
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-musl
+            coverage: true
+            conventional_commit_check: true
+          - os: ubuntu-latest
+            target: armv7-unknown-linux-musleabihf
     steps:
-      - name: Checkout sources
-        uses: actions/checkout@v2
+      - uses: actions/checkout@v4
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          cache-all-crates: "true"
+          key: "${{ matrix.os }}-${{ matrix.target }}"
 
       - name: Install stable toolchain
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
           toolchain: stable
-          override: true
-          components: llvm-tools-preview
 
       - name: Install cargo-llvm-cov
+        if: ${{matrix.coverage}}
         uses: taiki-e/install-action@cargo-llvm-cov
 
-      - uses: actions-rs/cargo@v1
-        with:
-          command: llvm-cov
-          args: --ignore-filename-regex bin --all-features --workspace --lcov --output-path lcov.info
+      - name: Install nextest
+        uses: taiki-e/install-action@nextest
+
+      - name: Collect coverage data
+        if: ${{matrix.coverage}}
+        run: cargo llvm-cov nextest --lcov --output-path lcov.info
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v1
+        if: ${{matrix.coverage}}
+        uses: codecov/codecov-action@v3
         with:
           files: lcov.info
           fail_ci_if_error: true
+
+      - name: Test with latest nextest release
+        if: ${{ ! matrix.coverage }}
+        uses: actions-rs/cargo@v1
+        with:
+          command: nextest
+          args: run
+
 
   lints:
     name: Lints & Format
     runs-on: ubuntu-latest
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          cache-all-crates: "true"
 
       - name: Install stable toolchain
         uses: actions-rs/toolchain@v1
@@ -70,7 +104,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           submodules: recursive
 
