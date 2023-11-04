@@ -520,8 +520,7 @@ impl Bombadil {
         };
 
         // Resolve variables from path
-        let vars = Variables::from_paths(&path, &config.settings.vars)?
-            .with_os();
+        let vars = Variables::from_paths(&path, &config.settings.vars)?.with_os();
 
         // Resolve hooks from settings
         let posthooks = config
