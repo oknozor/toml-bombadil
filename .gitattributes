@@ -1,4 +1,3 @@
-website/** linguist-documentation
 docs/** linguist-documentation
 bats-tests/** linguist-documentation
 ci/**linguist-documentation
