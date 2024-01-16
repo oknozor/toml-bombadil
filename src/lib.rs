@@ -686,7 +686,6 @@ mod tests {
         init_builtin_logger();
         run_cmd!(
             mkdir .config;
-            tree -a;
         )
         .unwrap();
 
@@ -728,7 +727,7 @@ mod tests {
     fn install_should_fail_and_continue() -> Result<()> {
         // Act
         Bombadil::from_settings(NoGpg)?.install()?;
-        run_cmd!(tree -a;)?;
+
         // Assert
         assert_that!(PathBuf::from(".config/template.css")).exists();
         assert_that!(PathBuf::from(".config/invalid")).does_not_exist();
