@@ -309,7 +309,6 @@ mod tests {
         init_builtin_logger();
         run_cmd!(
             mkdir .config;
-            tree -a;
         )
         .unwrap();
 
@@ -400,8 +399,6 @@ mod tests {
             &Variables::default(),
         )?;
 
-        run_cmd!(tree -a;)?;
-
         // Assert
         let file_one =
             PathBuf::from("dotfiles_with_multiple_nested_dir/.dots/dir/subdir_one/subfile");
@@ -432,8 +429,6 @@ mod tests {
             &[],
             &Variables::default(),
         )?;
-
-        run_cmd!(tree -a;)?;
 
         assert_that!(PathBuf::from("dotfiles_non_utf8/.dots/ferris.png")).exists();
         Ok(())
