@@ -45,8 +45,11 @@ pub fn dotfile_dir() -> PathBuf {
 pub struct Settings {
     /// User define dotfiles directory, usually your versioned dotfiles
     pub dotfiles_dir: PathBuf,
-    pub verbosity: bool,
+
     pub gpg_user_id: Option<String>,
+
+    #[serde(default)]
+    pub verbosity: bool,
 
     #[serde(default)]
     pub settings: ActiveProfile,
