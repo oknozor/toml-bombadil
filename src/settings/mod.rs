@@ -49,6 +49,9 @@ pub struct Settings {
     pub gpg_user_id: Option<String>,
 
     #[serde(default)]
+    pub verbosity: bool,
+
+    #[serde(default)]
     pub settings: ActiveProfile,
 
     #[serde(default)]
