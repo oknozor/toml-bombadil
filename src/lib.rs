@@ -490,6 +490,15 @@ impl Bombadil {
         Ok(())
     }
 
+    /// Enable a dotfile profile by merging its settings with the default profile
+    pub fn configure_verbosity(&mut self, verbose: bool) -> Result<()> {
+	if verbose {
+	    self.verbosity = true;
+	}
+
+        Ok(())
+    }
+
     fn check_dotfile_dir(&self) -> Result<()> {
         if !self.path.exists() {
             return Err(anyhow!(
