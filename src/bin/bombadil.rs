@@ -93,7 +93,7 @@ async fn main() -> Result<()> {
 
     match cli {
         Cli::Install { config } => {
-            Bombadil::link_self_config(config).unwrap_or_else(|err| fatal!("{}", err));
+            Bombadil::link_self_config(config)?;
         }
         Cli::Clone {
             remote,
@@ -122,22 +122,16 @@ async fn main() -> Result<()> {
                 .unwrap_or_else(|err| fatal!("{}", err));
         }
         Cli::Link { profiles } => {
-            let mut bombadil =
-                Bombadil::from_settings(Mode::Gpg).unwrap_or_else(|err| fatal!("{}", err));
+            let mut bombadil = Bombadil::from_settings(Mode::Gpg)?;
 
-            bombadil
-                .enable_profiles(profiles.iter().map(String::as_str).collect())
-                .unwrap_or_else(|err| fatal!("{}", err));
-
-            bombadil.install().unwrap_or_else(|err| fatal!("{}", err));
+            bombadil.enable_profiles(profiles.iter().map(String::as_str).collect())?;
+            bombadil.install()?;
         }
         Cli::Watch { profiles } => {
             Bombadil::watch(profiles).await?;
         }
         Cli::Unlink => {
-            Bombadil::from_settings(Mode::NoGpg)
-                .and_then(|bombadil| bombadil.uninstall())
-                .unwrap_or_else(|err| fatal!("{}", err));
+            Bombadil::from_settings(Mode::NoGpg).and_then(|bombadil| bombadil.uninstall())?;
         }
         Cli::AddSecret {
             key,
@@ -152,26 +146,18 @@ async fn main() -> Result<()> {
                 value
             };
 
-            let var_file = file;
-            let path = Path::new(&var_file);
+            let path = Path::new(&file);
 
             if !path.exists() {
-                fatal!(
-                    "Error trying to write secret to {} : No such file",
-                    var_file
-                )
-            };
+                fatal!("Error trying to write secret to {} : No such file", file)
+            }
 
             if path.is_dir() {
-                fatal!(
-                    "Error trying to write secret to {} : is a directory",
-                    var_file
-                )
+                fatal!("Error trying to write secret to {} : is a directory", file)
             }
 
             Bombadil::from_settings(Mode::Gpg)
-                .and_then(|bombadil| bombadil.add_secret(&key, &value, &var_file))
-                .unwrap_or_else(|err| fatal!("{}", err));
+                .and_then(|bombadil| bombadil.add_secret(&key, &value, &file))?;
         }
         Cli::Get { value, profiles } => {
             let metadata_type = match value.as_str() {
@@ -186,15 +172,11 @@ async fn main() -> Result<()> {
             };
 
             let mut bombadil = match metadata_type {
-                MetadataType::Secrets => Bombadil::from_settings(Mode::Gpg),
-                _ => Bombadil::from_settings(Mode::NoGpg),
-            }
-            .unwrap_or_else(|err| fatal!("{}", err));
+                MetadataType::Secrets => Bombadil::from_settings(Mode::Gpg)?,
+                _ => Bombadil::from_settings(Mode::NoGpg)?,
+            };
 
-            bombadil
-                .enable_profiles(profiles.iter().map(String::as_str).collect())
-                .unwrap_or_else(|err| fatal!("{}", err));
-
+            bombadil.enable_profiles(profiles.iter().map(String::as_str).collect())?;
             bombadil
                 .print_metadata(metadata_type, &mut io::stdout())
                 .expect("Failed to write metadata to stdout");
