@@ -1,4 +1,7 @@
+extern crate core;
+
 use self::settings::profiles::Profile;
+use crate::display::links;
 use crate::dots::{DotVar, LinkResult};
 use crate::gpg::Gpg;
 use crate::hook::Hook;
@@ -8,6 +11,7 @@ use crate::templating::Variables;
 use anyhow::{anyhow, Result};
 use colored::*;
 use ignore_files::IgnoreFilter;
+use serde_json::{json, Value};
 use settings::dots::Dot;
 use settings::Settings;
 use std::collections::HashMap;
@@ -28,6 +32,7 @@ use watchexec::{
 };
 use watchexec_filterer_ignore::IgnoreFilterer;
 
+mod display;
 mod dots;
 mod error;
 mod git;
@@ -42,7 +47,7 @@ pub(crate) const BOMBADIL_CONFIG: &str = "bombadil.toml";
 
 /// The main crate struct, it contains all needed medata about a
 /// dotfile directory and how to install it.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Bombadil {
     // path to self configuration, relative to $HOME
     path: PathBuf,
@@ -56,7 +61,7 @@ pub struct Bombadil {
     posthooks: Vec<Hook>,
     // Available profiles
     profiles: HashMap<String, Profile>,
-    // Profiles enabled for this isntance
+    // Profiles enabled for this instance
     profile_enabled: Vec<String>,
     // A GPG user id, linking to user encryption/decryption key via gnupg
     gpg: Option<Gpg>,
@@ -144,7 +149,7 @@ impl Bombadil {
     /// 4. Copy and symlink dotfiles according to the current `$XDG_CONFIG/bombadil.toml` configuration
     /// 5. Run post install hooks
     /// 6. Write current state to `.dot/previous_state.toml`
-    pub fn install(&self) -> Result<()> {
+    pub fn install(&mut self) -> Result<()> {
         self.check_dotfile_dir()?;
 
         self.prehooks.iter().map(Hook::run).for_each(|result| {
@@ -152,51 +157,53 @@ impl Bombadil {
                 eprintln!("{}", err);
             }
         });
+
         let dot_copy_dir = &self.path.join(".dots");
 
         // Render current settings and create symlinks
         fs::create_dir_all(dot_copy_dir)?;
-        for (key, dot) in self.dots.iter() {
-            match dot.install(
-                &self.vars,
-                self.get_auto_ignored_files(key),
-                self.profile_enabled.as_slice(),
-            ) {
-                Err(err) => {
-                    eprintln!("{}", err);
-                    continue;
-                }
-                Ok(linked) => {
-                    let copy_path = &dot.copy_path()?;
-                    let target = &dot.target()?;
+        let mut created = vec![];
+        let mut ignored = vec![];
+        let mut updated = vec![];
+        let mut errored = vec![];
 
+        if self.vars.has_secrets() {
+            let decrypted = self.vars.get_secrets()?;
+            self.vars.with_secrets(decrypted);
+        }
+
+        let profiles_values = serde_json::to_value(&self.profile_enabled)?;
+        let mut profiles_context = tera::Map::new();
+        profiles_context.insert("profiles".to_string(), profiles_values);
+
+        self.vars.extend(Variables {
+            inner: Value::Object(profiles_context),
+        });
+
+        for (key, dot) in self.dots.iter() {
+            match dot.install(&self.vars, self.get_auto_ignored_files(key)) {
+                Err(err) => errored.push(err),
+                Ok(linked) => {
                     match linked {
-                        LinkResult::Updated => {
-                            let source = format!("{:?}", copy_path).blue();
-                            let dest = format!("{:?}", target).yellow();
-                            println!("{} => {}", source, dest)
-                        }
-                        LinkResult::Created => {
-                            let source = format!("{:?}", copy_path).blue();
-                            let dest = format!("{:?}", target).green();
-                            println!("Created - {} => {}", source, dest)
-                        }
-                        LinkResult::Ignored => {
-                            let source = format!("{:?}", copy_path);
-                            let dest = format!("{:?}", target);
-                            println!("Ignored - {} => {}", source, dest)
-                        }
-                        LinkResult::Unchanged => {
-                            let source = format!("{:?}", copy_path);
-                            let dest = format!("{:?}", target);
-                            println!("Unchanged - {} => {}", source, dest)
+                        LinkResult::Updated { .. } => updated.push(linked),
+                        LinkResult::Created { .. } => created.push(linked),
+                        LinkResult::Ignored { .. } => ignored.push(linked),
+                        LinkResult::Unchanged { .. } => {
+                            // Ignoring those for now
+                            // maybe we want to add them when implementing verbose mode
                         }
                     }
+                    dot.symlink()?;
                 }
             }
-
-            dot.symlink()?;
         }
+
+        let mut stdout = io::stdout();
+
+        links::write(created, &mut stdout, "Created")?;
+        links::write(updated, &mut stdout, "Updated")?;
+        links::write(ignored, &mut stdout, "Ignored")?;
+        links::write_errors(errored, &mut stdout)?;
 
         // Run post install hooks
         self.posthooks.iter().map(Hook::run).for_each(|result| {
@@ -212,11 +219,10 @@ impl Bombadil {
         let previous_state = BombadilState::read(absolute_path_to_dot.to_owned());
         let new_state = BombadilState::from(self);
 
+        let mut deletions = vec![];
         match previous_state {
             Ok(previous_state) => {
                 let diff = previous_state.symlinks.difference(&new_state.symlinks);
-
-                println!("{:?}", diff);
 
                 for orphan in diff {
                     if orphan.exists() {
@@ -227,10 +233,13 @@ impl Bombadil {
                             } else {
                                 fs::remove_file(&canonicaliszed)?;
                             }
-                            println!("Deleted - {canonicaliszed:?} => {orphan:?}");
+
+                            deletions.push(format!("{canonicaliszed:?} => {orphan:?}"));
                         }
                     }
                 }
+
+                links::write_deletion(deletions, &mut stdout)?;
             }
             Err(err) => {
                 println!("No previous state: {err}")
@@ -311,7 +320,7 @@ impl Bombadil {
                             || matches!(t, &Tag::FileEventKind(FileEventKind::Modify(_)))
                             || matches!(t, &Tag::FileEventKind(FileEventKind::Remove(_)))
                     }) {
-                        println!("{}", "Detected changes, re-linking dots".green());
+                        println!("{}", "Detected changes, re-linking dots ...".green());
                         // Finally, install the dots like usual
                         b.install().map_err(|e| RuntimeError::Handler {
                             ctx: "bombadil install",
@@ -360,14 +369,6 @@ impl Bombadil {
         }
     }
 
-    /// Pretty print current bombadil variables
-    pub fn display_vars(&self) {
-        self.vars
-            .variables
-            .iter()
-            .for_each(|(key, value)| println!("{} = {}", key.red(), value))
-    }
-
     /// Enable a dotfile profile by merging its settings with the default profile
     pub fn enable_profiles(&mut self, profile_keys: Vec<&str>) -> Result<()> {
         if profile_keys.is_empty() {
@@ -383,19 +384,25 @@ impl Bombadil {
             .cloned()
             .collect();
 
-        let sub_profiles: Vec<Profile> = profiles
+        let sub_profiles: Vec<(String, Profile)> = profiles
             .iter()
             .flat_map(|profile| {
                 profile
                     .extra_profiles
                     .iter()
-                    .flat_map(|sub_profile| self.profiles.get(sub_profile))
-                    .collect::<Vec<&Profile>>()
+                    .flat_map(|sub_profile| {
+                        self.profiles
+                            .get(sub_profile)
+                            .map(|p| (sub_profile.clone(), p.clone()))
+                    })
+                    .collect::<Vec<(String, Profile)>>()
             })
-            .cloned()
             .collect();
 
-        profiles.extend(sub_profiles);
+        for (sub, profile) in sub_profiles {
+            self.profile_enabled.push(sub);
+            profiles.push(profile);
+        }
 
         // Merge profile dots
         for profile in profiles.iter() {
@@ -426,7 +433,7 @@ impl Bombadil {
                         .yellow();
                         eprintln!("{}", warning);
                     }
-                // Nothing to override, let's create a new dot entry
+                    // Nothing to override, let's create a new dot entry
                 } else if let (Some(source), Some(target)) =
                     (&dot_override.source, &dot_override.target)
                 {
@@ -513,10 +520,7 @@ impl Bombadil {
         };
 
         // Resolve variables from path
-        let mut vars = Variables::from_paths(&path, &config.settings.vars)?;
-
-        // Replace % reference with their ref value
-        vars.resolve_ref();
+        let vars = Variables::from_paths(&path, &config.settings.vars)?.with_os();
 
         // Resolve hooks from settings
         let posthooks = config
@@ -532,6 +536,7 @@ impl Bombadil {
             .iter()
             .map(|cmd| Hook::new(cmd))
             .collect();
+
         let dots = config.settings.dots;
         let profiles = config.profiles;
 
@@ -552,42 +557,74 @@ impl Bombadil {
         &self,
         metadata_type: MetadataType,
         writer: &mut impl Write,
-    ) -> io::Result<()> {
-        let rows = match metadata_type {
-            MetadataType::Dots => self
-                .dots
-                .iter()
-                .map(|(k, v)| {
-                    format!(
-                        "{}: {} => {}",
-                        k,
-                        self.path.join(&v.source).display(),
-                        v.target().unwrap_or_else(|_| v.target.clone()).display()
-                    )
-                })
-                .collect(),
-            MetadataType::PreHooks => self.prehooks.iter().map(|h| h.command.clone()).collect(),
-            MetadataType::PostHooks => self.posthooks.iter().map(|h| h.command.clone()).collect(),
-            MetadataType::Path => vec![self.path.display().to_string()],
+        no_color: bool,
+    ) -> Result<()> {
+        match metadata_type {
+            MetadataType::Dots => {
+                let dots = self
+                    .dots
+                    .iter()
+                    .map(|(k, v)| {
+                        format!(
+                            "{}: {} => {}",
+                            k,
+                            self.path.join(&v.source).display(),
+                            v.target().unwrap_or_else(|_| v.target.clone()).display()
+                        )
+                    })
+                    .collect();
+                Self::rows_to_writer(writer, dots)?;
+            }
+            MetadataType::PreHooks => {
+                let hooks = self.prehooks.iter().map(|h| h.command.clone()).collect();
+                Self::rows_to_writer(writer, hooks)?;
+            }
+            MetadataType::PostHooks => {
+                let hooks = self.posthooks.iter().map(|h| h.command.clone()).collect();
+                Self::rows_to_writer(writer, hooks)?;
+            }
+            MetadataType::Path => {
+                let paths = vec![self.path.display().to_string()];
+                Self::rows_to_writer(writer, paths)?;
+            }
             MetadataType::Profiles => {
                 let mut profiles = vec!["default".to_string()];
                 profiles.extend(self.profiles.keys().cloned());
-                profiles
+                Self::rows_to_writer(writer, profiles)?;
             }
-            MetadataType::Vars => self
-                .vars
-                .variables
-                .iter()
-                .map(|(k, v)| format!("{}: {}", k, v))
-                .collect(),
-            MetadataType::Secrets => self
-                .vars
-                .secrets
-                .iter()
-                .map(|(k, v)| format!("{}: {}", k, v))
-                .collect(),
+            MetadataType::Vars => {
+                if no_color {
+                    let value = serde_json::to_vec_pretty(&self.vars.without_secrets())?;
+                    writer.write_all(&value)?;
+                } else {
+                    colored_json::write_colored_json(&self.vars.without_secrets(), writer)?;
+                };
+
+                writer.flush()?;
+            }
+            MetadataType::Secrets => {
+                if no_color {
+                    let value = serde_json::to_vec_pretty(&json!({
+                        "secrets": &self.vars.get_secrets()?
+                    }))?;
+                    writer.write_all(&value)?;
+                } else {
+                    colored_json::write_colored_json(
+                        &json!({
+                            "secrets": &self.vars.get_secrets()?
+                        }),
+                        writer,
+                    )?;
+                };
+
+                writer.flush()?;
+            }
         };
 
+        Ok(())
+    }
+
+    fn rows_to_writer(writer: &mut (impl Write + Sized), rows: Vec<String>) -> io::Result<()> {
         if !rows.is_empty() {
             writer.write_all(rows.join("\n").as_bytes())?;
             writer.flush()?;
@@ -641,7 +678,6 @@ mod tests {
     use sealed_test::prelude::*;
     use speculoos::prelude::*;
     use std::ffi::OsStr;
-    use std::io::BufWriter;
     use std::{env, fs};
 
     fn setup(dotfiles: &str) {
@@ -650,7 +686,6 @@ mod tests {
         init_builtin_logger();
         run_cmd!(
             mkdir .config;
-            tree -a;
         )
         .unwrap();
 
@@ -692,7 +727,7 @@ mod tests {
     fn install_should_fail_and_continue() -> Result<()> {
         // Act
         Bombadil::from_settings(NoGpg)?.install()?;
-        run_cmd!(tree -a;)?;
+
         // Assert
         assert_that!(PathBuf::from(".config/template.css")).exists();
         assert_that!(PathBuf::from(".config/invalid")).does_not_exist();
@@ -702,7 +737,7 @@ mod tests {
     #[sealed_test(files = ["tests/dotfiles_simple"], before = setup("dotfiles_simple"))]
     fn uninstall_works() -> Result<()> {
         Bombadil::link_self_config(Some(PathBuf::from("dotfiles_simple")))?;
-        let bombadil = Bombadil::from_settings(NoGpg)?;
+        let mut bombadil = Bombadil::from_settings(NoGpg)?;
 
         bombadil.install()?;
         assert_that!(PathBuf::from(".config/template.css")).exists();
@@ -714,7 +749,7 @@ mod tests {
 
     #[sealed_test(files = ["tests/dotfiles_simple"], before = setup("dotfiles_simple"))]
     fn posthook_ok() -> Result<()> {
-        let bombadil = Bombadil::from_settings(NoGpg)?;
+        let mut bombadil = Bombadil::from_settings(NoGpg)?;
 
         // Act
         bombadil.install()?;
@@ -727,55 +762,13 @@ mod tests {
 
     #[sealed_test(files = ["tests/dotfiles_simple"], before = setup("dotfiles_simple"))]
     fn prehook_ok() -> Result<()> {
-        let bombadil = Bombadil::from_settings(NoGpg)?;
+        let mut bombadil = Bombadil::from_settings(NoGpg)?;
 
         // Act
         bombadil.install()?;
 
         // Assert
         assert_that!(PathBuf::from(".config/prehook_file")).exists();
-
-        Ok(())
-    }
-
-    #[sealed_test(files = ["tests/dotfiles_with_meta"], before = setup("dotfiles_with_meta"))]
-    fn meta_var_works() -> Result<()> {
-        // Act
-        let bombadil = Bombadil::from_settings(NoGpg)?;
-
-        // Assert
-        assert_that!(bombadil.vars.variables.get("red"))
-            .is_some()
-            .is_equal_to(&"#FF0000".to_string());
-
-        assert_that!(bombadil.vars.variables.get("black"))
-            .is_some()
-            .is_equal_to(&"#000000".to_string());
-
-        assert_that!(bombadil.vars.variables.get("green"))
-            .is_some()
-            .is_equal_to(&"#008000".to_string());
-
-        Ok(())
-    }
-
-    #[sealed_test(files = [ "tests/dotfiles_with_meta" ], before = setup("dotfiles_with_meta"))]
-    fn should_print_metadata() -> Result<()> {
-        let bombadil = Bombadil::from_settings(NoGpg)?;
-
-        let mut content = vec![];
-        let mut writer = BufWriter::new(&mut content);
-
-        // Act
-        bombadil.print_metadata(MetadataType::Vars, &mut writer)?;
-        let result = String::from_utf8(writer.get_ref().to_vec())?;
-        let result = result.as_str();
-
-        // Assert
-        assert_that!(result).contains("black: #000000");
-        assert_that!(result).contains("green: #008000");
-        assert_that!(result).contains("red: #FF0000");
-        assert_that!(result).contains("meta_red: #FF0000");
 
         Ok(())
     }
@@ -832,9 +825,8 @@ mod tests {
         let bombadil = Bombadil::from_settings(NoGpg)?;
 
         assert_that!(bombadil.dots.get("maven")).is_some();
-        assert_that!(bombadil.vars.variables.get("hello"))
-            .is_some()
-            .is_equal_to(&"world".to_string());
+        let toml = toml::to_string(&bombadil.vars)?;
+        assert!(toml.contains("hello = \"world\"\n"));
 
         Ok(())
     }
@@ -854,5 +846,124 @@ mod tests {
         assert_that!(content).is_equal_to(".class {color: #de1f1f}\n".to_string());
 
         Ok(())
+    }
+
+    mod metadata {
+        use super::*;
+        use crate::Mode::NoGpg;
+        use pretty_assertions::assert_eq;
+        use std::io::BufWriter;
+
+        impl Bombadil {
+            fn print_metadata_to_string(&self, data: MetadataType) -> Result<String> {
+                let mut content = vec![];
+                let mut writer = BufWriter::new(&mut content);
+                self.print_metadata(data, &mut writer, false)?;
+                let result = String::from_utf8(writer.get_ref().to_vec())?;
+                let result = result;
+                Ok(result)
+            }
+        }
+
+        #[sealed_test(files = [ "tests/dotfiles_full" ], before = setup("dotfiles_full"))]
+        fn should_print_vars_metadata() -> Result<()> {
+            let bombadil = Bombadil::from_settings(NoGpg)?;
+
+            // Act
+            let result = bombadil.print_metadata_to_string(MetadataType::Vars)?;
+            let json: Value = serde_json::from_str(&result)?;
+
+            assert_eq!(json.get("red"), Some(&Value::String("#FF0000".to_string())));
+            assert_eq!(
+                json.get("black"),
+                Some(&Value::String("#000000".to_string()))
+            );
+            assert_eq!(
+                json.get("green"),
+                Some(&Value::String("#008000".to_string()))
+            );
+
+            Ok(())
+        }
+
+        #[sealed_test(files = [ "tests/dotfiles_full" ], before = setup("dotfiles_full"))]
+        fn should_print_vars_metadata_with_profile() -> Result<()> {
+            let mut bombadil = Bombadil::from_settings(NoGpg)?;
+            bombadil.enable_profiles(vec!["one"])?;
+
+            // Act
+            let result = bombadil.print_metadata_to_string(MetadataType::Vars)?;
+            let json: Value = serde_json::from_str(&result)?;
+
+            assert_eq!(json.get("red"), Some(&Value::String("#FF0000".to_string())));
+            assert_eq!(
+                json.get("black"),
+                Some(&Value::String("#000000".to_string()))
+            );
+            assert_eq!(
+                json.get("green"),
+                Some(&Value::String("#008000".to_string()))
+            );
+            assert_eq!(
+                json.get("yellow"),
+                Some(&Value::String("#f0f722".to_string()))
+            );
+
+            Ok(())
+        }
+
+        #[sealed_test(files = [ "tests/dotfiles_full" ], before = setup("dotfiles_full"))]
+        fn should_print_profiles() -> Result<()> {
+            let bombadil = Bombadil::from_settings(NoGpg)?;
+
+            // Act
+            let result = bombadil.print_metadata_to_string(MetadataType::Profiles)?;
+
+            // Assert
+            assert_eq!(result, "default\none");
+
+            Ok(())
+        }
+
+        #[sealed_test(files = [ "tests/dotfiles_full" ], before = setup("dotfiles_full"))]
+        fn should_print_post_hooks() -> Result<()> {
+            let bombadil = Bombadil::from_settings(NoGpg)?;
+
+            // Act
+            let result = bombadil.print_metadata_to_string(MetadataType::PostHooks)?;
+
+            // Assert
+            assert_eq!(result, "echo posthooks");
+
+            Ok(())
+        }
+
+        #[sealed_test(files = [ "tests/dotfiles_full" ], before = setup("dotfiles_full"))]
+        fn should_print_pre_hooks() -> Result<()> {
+            let bombadil = Bombadil::from_settings(NoGpg)?;
+
+            // Act
+            let result = bombadil.print_metadata_to_string(MetadataType::PreHooks)?;
+
+            // Assert
+            assert_eq!(result, "echo prehooks\necho another_hook");
+
+            Ok(())
+        }
+
+        #[sealed_test(files = [ "tests/dotfiles_full" ], before = setup("dotfiles_full"))]
+        fn should_print_dots_with_profile() -> Result<()> {
+            let mut bombadil = Bombadil::from_settings(NoGpg)?;
+            bombadil.enable_profiles(vec!["one"])?;
+
+            // Act
+            let result = bombadil.print_metadata_to_string(MetadataType::Dots)?;
+            let lines: Vec<&str> = result.lines().collect();
+
+            // Assert
+            assert_that!(lines).has_length(2);
+
+            Ok(())
+        }
     }
 }

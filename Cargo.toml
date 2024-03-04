@@ -17,11 +17,13 @@ dirs = "5"
 toml = "0.8"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+serde_json_merge = "0.0.4"
+colored_json = "3.0.1"
 anyhow = "1"
 tera = "1"
 colored = "2.0.0"
 globwalk = "0.9"
-git2 = { version = "0.17.2", features = ["vendored-openssl"] }
+git2 = { version = "0.17.2", features = ["https", "vendored-libgit2", "vendored-openssl"] }
 clap = { version = "4", features = ["derive"], optional = true }
 clap_complete = { version = "4", optional = true }
 lazy_static = { version = "1.4.0", optional = true }

@@ -4,17 +4,19 @@ use crate::settings::dots::{Dot, DotOverride};
 use crate::templating::Variables;
 use anyhow::Result;
 use colored::*;
+use std::error::Error;
 use std::fs;
 use std::fs::{File, OpenOptions};
 use std::io::Write;
 use std::path::{Path, PathBuf};
+use tera::ErrorKind;
 
 #[derive(PartialEq, Eq, Debug)]
 pub enum LinkResult {
-    Updated,
-    Created,
-    Ignored,
-    Unchanged,
+    Updated { copy: PathBuf, target: PathBuf },
+    Created { copy: PathBuf, target: PathBuf },
+    Ignored { source: PathBuf },
+    Unchanged { target: PathBuf },
 }
 
 impl Dot {
@@ -22,10 +24,9 @@ impl Dot {
         &self,
         vars: &Variables,
         auto_ignored: Vec<PathBuf>,
-        profiles: &[String],
     ) -> Result<LinkResult> {
         let source = &self.source()?;
-        let target = &self.build_copy_path();
+        let target = &self.copy_path_unchecked();
         let source_str = source.to_str().unwrap_or_default();
 
         let ignored_paths = if self.ignore.is_empty() {
@@ -44,15 +45,12 @@ impl Dot {
             vars.extend(local_vars);
         }
 
-        // Resolve % reference
-        vars.resolve_ref();
-
         // Recursively copy dotfile to .dots directory
-        self.traverse_and_copy(source, target, ignored_paths.as_slice(), &vars, profiles)
+        self.traverse_and_copy(source, target, ignored_paths.as_slice(), &vars)
     }
 
     fn load_local_vars(source: &Path) -> Variables {
-        Variables::from_toml(source).unwrap_or_else(|err| {
+        Variables::from_path(source).unwrap_or_else(|err| {
             eprintln!("{}", err.to_string().yellow());
             Variables::default()
         })
@@ -74,26 +72,42 @@ impl Dot {
         target: &PathBuf,
         ignored: &[PathBuf],
         vars: &Variables,
-        profiles: &[String],
     ) -> Result<LinkResult> {
         if ignored.contains(source) {
-            return Ok(LinkResult::Ignored);
+            return Ok(LinkResult::Ignored {
+                source: source.clone(),
+            });
         }
 
         // Single file : inject vars and write to .dots/
         if source.is_file() {
             fs::create_dir_all(target.parent().unwrap())?;
-            match vars.to_dot(source, profiles) {
+
+            match vars.to_dot(source) {
                 Ok(content) if target.exists() => self.update(source, target, content),
                 Ok(content) => self.create(source, target, content),
-                Err(_) if target.exists() => {
-                    // Fixme: we probabbly want to remove anyhow here
-                    // And handle specific error case (i.e: ignore utf8 error)
+                Err(e) if target.exists() => {
+                    match e.kind {
+                        ErrorKind::Utf8Conversion { .. } | ErrorKind::Io(..) => {
+                            // Skip non utf8 files like binaries, images etc.
+                            // Those should be symlinked directly once this is implemented
+                            // https://github.com/oknozor/toml-bombadil/issues/138
+                        }
+                        _ => {
+                            if let Some(source) = e.source() {
+                                let message = format!("{source}");
+                                println!("{}", message.red());
+                            }
+                        }
+                    }
                     self.update_raw(source, target)
                 }
                 Err(_) => {
                     fs::copy(source, target)?;
-                    Ok(LinkResult::Created)
+                    Ok(LinkResult::Created {
+                        target: self.target.clone(),
+                        copy: self.copy_path_unchecked(),
+                    })
                 }
             }
         } else {
@@ -108,7 +122,6 @@ impl Dot {
                     &target.join(entry_name),
                     ignored,
                     vars,
-                    &[],
                 );
 
                 match result {
@@ -117,12 +130,26 @@ impl Dot {
                 }
             }
 
-            if link_results.contains(&LinkResult::Updated) {
-                Ok(LinkResult::Updated)
-            } else if link_results.contains(&LinkResult::Created) {
-                Ok(LinkResult::Created)
+            if link_results
+                .iter()
+                .any(|res| matches!(res, LinkResult::Updated { .. }))
+            {
+                Ok(LinkResult::Updated {
+                    copy: self.copy_path()?,
+                    target: self.target()?,
+                })
+            } else if link_results
+                .iter()
+                .any(|res| matches!(res, LinkResult::Created { .. }))
+            {
+                Ok(LinkResult::Created {
+                    copy: self.copy_path()?,
+                    target: self.target()?,
+                })
             } else {
-                Ok(LinkResult::Unchanged)
+                Ok(LinkResult::Unchanged {
+                    target: self.target()?,
+                })
             }
         }
     }
@@ -132,20 +159,28 @@ impl Dot {
         let mut dot_copy = File::create(target)?;
         dot_copy.write_all(content.as_bytes())?;
         dot_copy.set_permissions(permissions)?;
-        Ok(LinkResult::Created)
+        Ok(LinkResult::Created {
+            target: self.target()?,
+            copy: self.copy_path()?,
+        })
     }
 
     fn update(&self, source: &PathBuf, target: &PathBuf, content: String) -> Result<LinkResult> {
         let target_content = fs::read_to_string(target)?;
         if target_content == content {
-            Ok(LinkResult::Unchanged)
+            Ok(LinkResult::Unchanged {
+                target: self.target()?,
+            })
         } else {
             let permissions = fs::metadata(source)?.permissions();
             let mut dot_copy = OpenOptions::new().write(true).truncate(true).open(target)?;
             dot_copy.write_all(content.as_bytes())?;
             dot_copy.set_permissions(permissions)?;
             dot_copy.sync_data()?;
-            Ok(LinkResult::Updated)
+            Ok(LinkResult::Updated {
+                target: self.target()?,
+                copy: self.copy_path()?,
+            })
         }
     }
 
@@ -154,7 +189,9 @@ impl Dot {
         let content = fs::read(source)?;
 
         if target_content == content {
-            Ok(LinkResult::Unchanged)
+            Ok(LinkResult::Unchanged {
+                target: self.target()?,
+            })
         } else {
             let permissions = fs::metadata(source)?.permissions();
             let mut dot_copy = OpenOptions::new().write(true).truncate(true).open(target)?;
@@ -162,7 +199,10 @@ impl Dot {
             dot_copy.write_all(&content)?;
             dot_copy.set_permissions(permissions)?;
             dot_copy.sync_data()?;
-            Ok(LinkResult::Updated)
+            Ok(LinkResult::Updated {
+                target: self.target()?,
+                copy: self.copy_path()?,
+            })
         }
     }
 }
@@ -269,7 +309,6 @@ mod tests {
         init_builtin_logger();
         run_cmd!(
             mkdir .config;
-            tree -a;
         )
         .unwrap();
 
@@ -358,10 +397,7 @@ mod tests {
             &PathBuf::from("dotfiles_with_multiple_nested_dir/.dots/dir"),
             &[],
             &Variables::default(),
-            &[],
         )?;
-
-        run_cmd!(tree -a;)?;
 
         // Assert
         let file_one =
@@ -392,10 +428,7 @@ mod tests {
             &PathBuf::from("dotfiles_non_utf8/.dots/ferris.png"),
             &[],
             &Variables::default(),
-            &[],
         )?;
-
-        run_cmd!(tree -a;)?;
 
         assert_that!(PathBuf::from("dotfiles_non_utf8/.dots/ferris.png")).exists();
         Ok(())
@@ -432,7 +465,6 @@ mod tests {
                 PathBuf::from("source_dot/file.md"),
             ],
             &Variables::default(),
-            &[],
         )?;
 
         // Assert
@@ -454,11 +486,11 @@ mod tests {
     #[sealed_test(env = [("HOME", ".")])]
     fn unlink() -> Result<()> {
         // Arrange
-        let source = PathBuf::from("source_dot");
-        let target = PathBuf::from("target_dot");
+        let source = PathBuf::from("source");
+        let target = PathBuf::from("target");
 
         fs::create_dir(".dots")?;
-        fs::write(".dots/source_dot", "Hello Tom")?;
+        fs::write(".dots/source", "Hello Tom")?;
 
         let dot = Dot {
             source,
@@ -473,7 +505,7 @@ mod tests {
         dot.unlink()?;
 
         // Assert
-        let target = dirs::home_dir().unwrap().join("target_dot");
+        let target = dirs::home_dir().unwrap().join("target");
 
         assert_that!(target).does_not_exist();
 
@@ -494,7 +526,7 @@ mod tests {
             vars: Dot::default_vars(),
         };
 
-        dot.install(&Variables::default(), vec![], &[])?;
+        dot.install(&Variables::default(), vec![])?;
 
         assert_that!(PathBuf::from(".dots")).exists();
         assert_that!(PathBuf::from(".dots/source_dot")).exists();
@@ -515,11 +547,10 @@ mod tests {
             vars: Dot::default_vars(),
         };
 
-        let mut vars = Variables::default();
-        vars.insert("name", "Tom Bombadil");
+        let vars: Variables = toml::from_str(r#"name = "Tom Bombadil""#)?;
 
         // Act
-        dot.install(&vars, vec![], &[])?;
+        dot.install(&vars, vec![])?;
         let dot = PathBuf::from(".dots/dotfiles/dot");
 
         // Assert
@@ -530,7 +561,7 @@ mod tests {
 
     #[sealed_test(files = ["tests/dotfiles_with_local_vars"], before = setup("dotfiles_with_local_vars"))]
     fn install_with_local_vars() -> Result<()> {
-        let bombadil = Bombadil::from_settings(NoGpg)?;
+        let mut bombadil = Bombadil::from_settings(NoGpg)?;
         bombadil.install()?;
 
         let dotfiles = bombadil.dots.get("sub_dir").unwrap();
@@ -556,7 +587,7 @@ mod tests {
             vars: PathBuf::from("my_vars.toml"),
         };
 
-        dot.install(&Variables::default(), vec![], &[])?;
+        dot.install(&Variables::default(), vec![])?;
 
         let content = fs::read_to_string(".dots/dir/template")?;
         assert_that!(content).is_equal_to(&"Hello Tom\n".to_string());
@@ -587,7 +618,7 @@ mod tests {
         };
 
         // Arrange
-        dot.install(&Variables::default(), vec![], &[])?;
+        dot.install(&Variables::default(), vec![])?;
 
         // Assert
         let content = fs::read_to_string(PathBuf::from(

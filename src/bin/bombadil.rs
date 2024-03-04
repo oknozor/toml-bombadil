@@ -77,6 +77,8 @@ enum Cli {
         value: String,
         #[clap(value_parser = profiles(), num_args(0..))]
         profiles: Vec<String>,
+        #[clap(short, long)]
+        no_color: bool,
     },
     /// Generate shell completions
     /// Generate shell completions
@@ -159,7 +161,11 @@ async fn main() -> Result<()> {
             Bombadil::from_settings(Mode::Gpg)
                 .and_then(|bombadil| bombadil.add_secret(&key, &value, &file))?;
         }
-        Cli::Get { value, profiles } => {
+        Cli::Get {
+            value,
+            profiles,
+            no_color,
+        } => {
             let metadata_type = match value.as_str() {
                 "dots" => MetadataType::Dots,
                 "prehooks" => MetadataType::PreHooks,
@@ -178,7 +184,7 @@ async fn main() -> Result<()> {
 
             bombadil.enable_profiles(profiles.iter().map(String::as_str).collect())?;
             bombadil
-                .print_metadata(metadata_type, &mut io::stdout())
+                .print_metadata(metadata_type, &mut io::stdout(), no_color)
                 .expect("Failed to write metadata to stdout");
         }
         Cli::GenerateCompletions { shell } => {
@@ -186,5 +192,6 @@ async fn main() -> Result<()> {
         }
     };
 
+    println!();
     Ok(())
 }

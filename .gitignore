@@ -1,4 +1,5 @@
 /target
+website/static/**
 .idea
 *.bk
 test_tmp*
