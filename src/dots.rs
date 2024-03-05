@@ -306,6 +306,7 @@ mod tests {
 
     fn setup(dotfiles: &str) {
         env::set_var("HOME", env::current_dir().unwrap());
+        println!("Fake home: {}", env::var("HOME").unwrap());
         init_builtin_logger();
         run_cmd!(
             mkdir .config;
