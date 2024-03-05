@@ -53,8 +53,13 @@ impl DotPaths for Dot {
 
     fn copy_path(&self) -> Result<PathBuf> {
         let path = self.copy_path_unchecked();
-        path.canonicalize()
-            .map_err(|error| TemplateNotFound { path, error })
+        let path = path.to_string_lossy();
+        let path = shellexpand::tilde(path.as_ref());
+        let path = Path::new(path.as_ref());
+        path.canonicalize().map_err(|error| TemplateNotFound {
+            path: path.into(),
+            error,
+        })
     }
 
     fn copy_path_unchecked(&self) -> PathBuf {
@@ -68,6 +73,9 @@ impl DotPaths for Dot {
     fn symlink(&self) -> Result<()> {
         let copy_path = &self.copy_path()?;
         let target = &self.target()?;
+        let path = target.to_string_lossy();
+        let path = shellexpand::tilde(path.as_ref());
+        let target = Path::new(path.as_ref());
 
         if let Ok(target) = target.canonicalize() {
             if &target == copy_path {
