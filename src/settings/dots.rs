@@ -14,7 +14,7 @@ pub struct Dot {
     #[serde(default)]
     #[serde(skip_serializing)]
     pub ignore: Vec<String>,
-    // A single var file attached to the dot
+    /// A single var file attached to the dot
     #[serde(default = "Dot::default_vars")]
     #[serde(skip_serializing)]
     pub vars: PathBuf,
@@ -30,6 +30,6 @@ pub struct DotOverride {
     /// Glob pattern of files to ignore when creating symlinks
     #[serde(default)]
     pub ignore: Vec<String>,
-    // A single var file attached to the dot
+    /// A single var file attached to the dot
     pub vars: Option<PathBuf>,
 }

@@ -42,7 +42,7 @@ setup() {
   assert_output --partial 'Added server_password : hunter2'
 
   run bombadil get secrets
-  assert_output --partial 'server_password: hunter2'
+  assert_output --partial '"server_password": "hunter2"'
 
   run bombadil link
   assert_success

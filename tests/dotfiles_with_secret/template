@@ -1,2 +1,2 @@
 color: {{red}}
-secret: {{pass-}}
+secret: {{secrets.pass-}}

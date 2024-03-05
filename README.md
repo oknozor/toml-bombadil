@@ -40,11 +40,7 @@
   <a href="https://oknozor.github.io/toml-bombadil">Documentation</a>
   ·
   <a href="https://oknozor.github.io/toml-bombadil/docs/getting-started/quick-start/">Installation</a>
-  ·
-  <a href="https://docs.cocogitto.io/config">Configuration</a>
 </p>
-
-<h1></h1>
 
 **A dotfile manager written in Rust**
 
@@ -79,6 +75,8 @@ In addition, this is completely optional, you could start using Toml Bombadil on
 your dot file progressively.
 
 ## Installation
+
+[![Packaging status](https://repology.org/badge/vertical-allrepos/toml-bombadil.svg)](https://repology.org/project/toml-bombadil/versions)
 
 **Arch Linux:**
 ```bash

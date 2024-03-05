@@ -1,7 +1,0 @@
-dotfiles_dir = "dotfiles_with_meta"
-
-[settings]
-vars = [
-    "meta_vars.toml",
-    "vars.toml",
-]

@@ -16,7 +16,7 @@ realistic test cases without breaking your workstation dotfiles.
 3. Run it `docker run -it bombadil-tests` : 
 
 ```
-❯ docker run -it bombadil-tests 
+❯ docker run -it bombadil-tests
  ✓ Print help
  ✓ Print version
  ✓ Symlink bombadil config

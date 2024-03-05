@@ -11,7 +11,7 @@ pub trait DotPaths {
     /// Return the target path of a dot entry either absolute or relative to $HOME
     fn target(&self) -> Result<PathBuf>;
 
-    /// Resolve dot source copy path ({dotfiles/dotsource) against user defined dotfile directory
+    /// Resolve dot source copy path ({dotfiles}/dotsource) against user defined dotfile directory
     /// Check if file exists
     fn source(&self) -> Result<PathBuf>;
 
@@ -19,7 +19,7 @@ pub trait DotPaths {
     fn copy_path(&self) -> Result<PathBuf>;
 
     /// Build the rendered template path, use this to create the rendered file
-    fn build_copy_path(&self) -> PathBuf;
+    fn copy_path_unchecked(&self) -> PathBuf;
 
     /// Remove the dotfile target symlink
     fn unlink(&self) -> Result<()>;
@@ -52,13 +52,17 @@ impl DotPaths for Dot {
     }
 
     fn copy_path(&self) -> Result<PathBuf> {
-        let path = self.build_copy_path();
-
-        path.canonicalize()
-            .map_err(|error| TemplateNotFound { path, error })
+        let path = self.copy_path_unchecked();
+        let path = path.to_string_lossy();
+        let path = shellexpand::tilde(path.as_ref());
+        let path = Path::new(path.as_ref());
+        path.canonicalize().map_err(|error| TemplateNotFound {
+            path: path.into(),
+            error,
+        })
     }
 
-    fn build_copy_path(&self) -> PathBuf {
+    fn copy_path_unchecked(&self) -> PathBuf {
         dotfile_dir().join(".dots").join(&self.source)
     }
 
@@ -69,6 +73,9 @@ impl DotPaths for Dot {
     fn symlink(&self) -> Result<()> {
         let copy_path = &self.copy_path()?;
         let target = &self.target()?;
+        let path = target.to_string_lossy();
+        let path = shellexpand::tilde(path.as_ref());
+        let target = Path::new(path.as_ref());
 
         if let Ok(target) = target.canonicalize() {
             if &target == copy_path {

@@ -1,6 +1,7 @@
-# - A var file MUST contains valid toml with only string key/value pair.
+# - A var file MUST contains valid toml.
 # - The name of the file can be anything (ex: color-scheme.toml).
 # - A bombadil config can have many var files.
+[theme]
 terminal = "alacritty"
 background = "#292C3E"
 foreground = "#EBEBEB"

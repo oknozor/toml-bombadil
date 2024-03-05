@@ -9,7 +9,7 @@ vars = [ "vars.toml"]
 [settings.dots]
 alacritty = { source = "dummy.dot", target = ".config/dummy.dot" }
 maven = { source = "maven/settings.xml", target = ".m2/settings.xml" }
-bash = { source = "bashrc", target = ".bashrc" }
+bash = { source = "bashrc", target = "~/.bashrc" }
 
 [profiles.corporate.dots]
 maven = { source = "maven/corporate.settings.xml", target = ".m2/settings.xml" }
