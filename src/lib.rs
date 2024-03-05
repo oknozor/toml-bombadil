@@ -105,6 +105,10 @@ impl Bombadil {
             Some(path) => path,
         };
 
+        let path = path.to_string_lossy();
+        let path = shellexpand::tilde(path.as_ref());
+        let path = Path::new(path.as_ref());
+
         match path.canonicalize() {
             Ok(path) => {
                 match dirs::config_dir() {
@@ -223,8 +227,10 @@ impl Bombadil {
         match previous_state {
             Ok(previous_state) => {
                 let diff = previous_state.symlinks.difference(&new_state.symlinks);
-
                 for orphan in diff {
+                    let path = orphan.to_string_lossy();
+                    let path = shellexpand::tilde(path.as_ref());
+                    let orphan = Path::new(path.as_ref());
                     if orphan.exists() {
                         if let Ok(canonicaliszed) = orphan.canonicalize() {
                             unlink(orphan)?;
