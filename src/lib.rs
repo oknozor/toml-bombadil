@@ -836,6 +836,9 @@ mod tests {
             .is_some()
             .is_equal_to(&"world".to_string());
 
+assert_that!(bombadil.dots.get("relative_import/maven_relative")).is_some();
+        assert_that!(bombadil.dots.get("relative_import/maven_relative").unwrap().source)
+            .is_equal_to(PathBuf::from("relative_import/settings.xml"));
         Ok(())
     }
 
