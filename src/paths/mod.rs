@@ -75,6 +75,11 @@ impl DotPaths for Dot {
                 return Ok(());
             }
         }
+        
+        if let Some(parent) = target.parent() {
+            println!("Creating parent: {:?}", parent);
+            fs::create_dir_all(parent)?;
+        }
 
         // Link
         unix::fs::symlink(copy_path, target)

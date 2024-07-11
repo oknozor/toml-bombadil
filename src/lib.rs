@@ -688,6 +688,26 @@ mod tests {
         Ok(())
     }
 
+    #[sealed_test(files = ["tests/dotfiles_create_dir"], before = setup("dotfiles_create_dir"))]
+    fn install_creates_missing_directories() -> Result<()> {
+        Bombadil::from_settings(NoGpg)?.install()?;
+
+        let link = env::current_dir()?.join(".config/sub/dir/template.css");
+        let target = std::fs::read_to_string(link)?;
+
+        assert_eq!(
+            target,
+            indoc! {
+                ".class {
+                    color: #de1f1f
+                }
+                "
+            }
+        );
+
+        Ok(())
+    }
+
     #[sealed_test(files = ["tests/dotfiles_invalid_dot"], before = setup("dotfiles_invalid_dot"))]
     fn install_should_fail_and_continue() -> Result<()> {
         // Act
@@ -836,7 +856,7 @@ mod tests {
             .is_some()
             .is_equal_to(&"world".to_string());
 
-assert_that!(bombadil.dots.get("relative_import/maven_relative")).is_some();
+        assert_that!(bombadil.dots.get("relative_import/maven_relative")).is_some();
         assert_that!(bombadil.dots.get("relative_import/maven_relative").unwrap().source)
             .is_equal_to(PathBuf::from("relative_import/settings.xml"));
         Ok(())
