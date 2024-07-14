@@ -5,7 +5,7 @@ use crate::hook::Hook;
 use crate::paths::{unlink, DotPaths};
 use crate::state::BombadilState;
 use crate::templating::Variables;
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Context, Result};
 use colored::*;
 use ignore_files::IgnoreFilter;
 use settings::dots::Dot;
@@ -201,7 +201,7 @@ impl Bombadil {
         // Run post install hooks
         self.posthooks.iter().map(Hook::run).for_each(|result| {
             if let Err(err) = result {
-                eprintln!("{}", err);
+                eprintln!("Failed to run posthook: {}", err);
             }
         });
 
@@ -216,18 +216,18 @@ impl Bombadil {
             Ok(previous_state) => {
                 let diff = previous_state.symlinks.difference(&new_state.symlinks);
 
-                println!("{:?}", diff);
+                println!("Install diff: {:?}", diff);
 
                 for orphan in diff {
                     if orphan.exists() {
-                        if let Ok(canonicaliszed) = orphan.canonicalize() {
-                            unlink(orphan)?;
-                            if canonicaliszed.is_dir() {
-                                fs::remove_dir_all(&canonicaliszed)?;
+                        if let Ok(canonicalized) = orphan.canonicalize() {
+                            unlink(orphan).context(format!("unlinking `{}`", canonicalized.to_str().to_owned().unwrap().green()))?;
+                            if canonicalized.is_dir() {
+                                fs::remove_dir_all(&canonicalized)
                             } else {
-                                fs::remove_file(&canonicaliszed)?;
-                            }
-                            println!("Deleted - {canonicaliszed:?} => {orphan:?}");
+                                fs::remove_file(&canonicalized)
+                            }.context(format!("deleting `{}`", canonicalized.to_str().to_owned().unwrap().green()))?;
+                            println!("Deleted - {canonicalized:?} => {orphan:?}");
                         }
                     }
                 }
@@ -403,15 +403,15 @@ impl Bombadil {
                 // Dot exist let's override
                 if let Some(dot) = self.dots.get_mut(key) {
                     if let Some(source) = &dot_override.source {
-                        dot.source = source.clone()
+                        dot.source.clone_from(source)
                     }
 
                     if let Some(target) = &dot_override.target {
-                        dot.target = target.clone()
+                        dot.target.clone_from(target)
                     }
 
                     if let Some(vars) = &dot_override.vars {
-                        dot.vars = vars.clone();
+                        dot.vars.clone_from(vars)
                     }
 
                     if let (None, None, None) = (
@@ -464,7 +464,7 @@ impl Bombadil {
                 .prehooks
                 .iter()
                 .map(|command| command.as_ref())
-                .map(Hook::new)
+                .map(|command| Hook::new(self.path.clone(), command, profile.run_hooks_in_dotfiles_dir))
                 .collect::<Vec<Hook>>();
             self.prehooks.extend(prehooks);
 
@@ -473,7 +473,7 @@ impl Bombadil {
                 .posthooks
                 .iter()
                 .map(|command| command.as_ref())
-                .map(Hook::new)
+                .map(|command| Hook::new(self.path.clone(), command, profile.run_hooks_in_dotfiles_dir))
                 .collect::<Vec<Hook>>();
             self.posthooks.extend(posthooks);
         }
@@ -507,6 +507,8 @@ impl Bombadil {
         let config = Settings::get()?;
         let path = config.get_dotfiles_path()?;
 
+        let run_hooks_in_dotfiles_dir = config.run_hooks_in_dotfiles_dir();
+
         let gpg = match mode {
             Mode::Gpg => config.gpg_user_id.map(|user_id| Gpg::new(&user_id)),
             Mode::NoGpg => None,
@@ -523,14 +525,14 @@ impl Bombadil {
             .settings
             .posthooks
             .iter()
-            .map(|cmd| Hook::new(cmd))
+            .map(|cmd| Hook::new(path.clone(), cmd, run_hooks_in_dotfiles_dir))
             .collect();
 
         let prehooks = config
             .settings
             .prehooks
             .iter()
-            .map(|cmd| Hook::new(cmd))
+            .map(|cmd| Hook::new(path.clone(), cmd, run_hooks_in_dotfiles_dir))
             .collect();
         let dots = config.settings.dots;
         let profiles = config.profiles;

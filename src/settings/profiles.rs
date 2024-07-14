@@ -22,6 +22,10 @@ pub struct ActiveProfile {
     /// Variables to use in templates
     #[serde(default)]
     pub vars: Vec<PathBuf>,
+
+    /// Hooks are executed in dotfiles directory
+    #[serde(default)]
+    pub run_hooks_in_dotfiles_dir: bool,
 }
 
 /// An named profile meant to override the default one
@@ -46,4 +50,8 @@ pub struct Profile {
     /// Variables to use in templates
     #[serde(default)]
     pub vars: Vec<PathBuf>,
+
+    /// Hooks are executed in dotfiles directory
+    #[serde(default)]
+    pub run_hooks_in_dotfiles_dir: bool,
 }

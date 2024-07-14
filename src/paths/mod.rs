@@ -3,9 +3,11 @@ use crate::error::*;
 use crate::settings::dotfile_dir;
 use crate::{Dot, DotVar};
 use dirs::home_dir;
-use std::fs;
+use std::{fs, io};
+use std::io::{BufRead, BufReader};
 use std::os::unix;
 use std::path::{Path, PathBuf};
+use std::process::{Command, ExitStatus, Stdio};
 
 pub trait DotPaths {
     /// Return the target path of a dot entry either absolute or relative to $HOME
@@ -78,22 +80,33 @@ impl DotPaths for Dot {
         
         if let Some(parent) = target.parent() {
             println!("Creating parent: {:?}", parent);
-            fs::create_dir_all(parent)?;
+            let create_fs_err = fs::create_dir_all(parent);
+            match create_fs_err {
+                Ok(_) => Ok(()),
+                Err(cause) => match cause.kind() == std::io::ErrorKind::PermissionDenied {
+                    true => symlink_as_sudo(self),
+                    false => Err(Symlink {
+                        source_path: copy_path.to_owned(),
+                        target: target.to_owned(),
+                        cause,
+                    }),
+                },
+            }?;
         }
 
         // Link
-        unix::fs::symlink(copy_path, target)
-            .map_err(|cause| {
-                let source_path = self.source.clone();
-                let target = self.target.clone();
-
-                Symlink {
-                    source_path,
-                    target,
+        let symlink_err = unix::fs::symlink(copy_path, target);
+        match symlink_err {
+            Ok(_) => Ok(()),
+            Err(cause) => match cause.kind() {
+                std::io::ErrorKind::PermissionDenied => symlink_as_sudo(self),
+                _ => Err(Symlink {
+                    source_path: copy_path.to_owned(),
+                    target: target.to_owned(),
                     cause,
-                }
-            })
-            .unwrap_or_else(|err| eprintln!("{:?}", err));
+                }),
+            },
+        }?;
 
         Ok(())
     }
@@ -101,22 +114,130 @@ impl DotPaths for Dot {
     fn resolve_var_path(&self) -> Option<PathBuf> {
         self.resolve_from_source(&self.source, &self.vars)
     }
+
+    
 }
 
-pub fn unlink<P: AsRef<Path> + ?Sized>(path: &P) -> Result<()> {
-    if fs::symlink_metadata(path).is_ok() {
-        if path.as_ref().is_dir() {
-            fs::remove_dir_all(path).map_err(|error| Unlink {
-                path: path.as_ref().to_path_buf(),
-                error,
-            })?
-        } else {
-            fs::remove_file(path).map_err(|error| Unlink {
-                path: path.as_ref().to_path_buf(),
-                error,
-            })?
+fn symlink_as_sudo(dot: &Dot) -> Result<()> {
+    let copy_path = &dot.copy_path()?;
+    let target = &dot.target()?;
+
+    if let Ok(target) = target.canonicalize() {
+        if &target == copy_path {
+            return Ok(());
         }
     }
 
+    if let Some(parent) = target.parent() {
+        println!("Creating parent (as sudo): {:?}", parent);
+        let status = run_cmd(
+            format!("mkdir `{:?}`", parent),
+            Command::new("sudo")
+            .arg("mkdir")
+            .arg("-p")
+            .arg(parent)
+        )?;
+
+        if !status.success() {
+            return Err(Symlink { 
+                source_path: copy_path.to_owned(), 
+                target: target.to_owned(), 
+                cause: std::io::Error::new(
+                    std::io::ErrorKind::Other, 
+                    "Failed to create parent (as sudo)",
+                ),
+            });
+        }
+    }
+
+    println!("Creating symlink (as sudo): {:?} -> {:?}", copy_path, target);
+    let status = run_cmd(
+        format!("link `{:?} -> {:?}`", copy_path, target),
+        Command::new("sudo")
+        .arg("ln")
+        .arg("-s")
+        .arg(copy_path)
+        .arg(target),
+    )?;
+
+    if !status.success() {
+        return Err(Symlink { 
+            source_path: copy_path.to_owned(), 
+            target: target.to_owned(), 
+            cause: std::io::Error::new(
+                std::io::ErrorKind::Other, 
+                "Failed to create symlink (as sudo)",
+            ),
+        });
+    }
+
     Ok(())
+}
+
+pub fn unlink<P: AsRef<Path> + ?Sized>(path: &P) -> Result<()> {
+    let unlink_err = unlink_safe(path);
+    match unlink_err {
+        Ok(_) => Ok(()),
+        Err(cause) => match cause.kind() {
+            std::io::ErrorKind::PermissionDenied => Err(Unlink {
+                error: cause,
+                path: path.as_ref().to_owned(),
+            }),
+            _ => unlink_sudo(path),
+        }
+    }
+}
+
+fn unlink_safe<P: AsRef<Path> + ?Sized>(path: &P) -> std::io::Result<()> {
+    if fs::symlink_metadata(path).is_ok() {
+        if path.as_ref().is_dir() {
+            return fs::remove_dir_all(path);
+        }
+        return fs::remove_file(path);
+    }
+
+    Ok(())
+}
+
+fn unlink_sudo<P: AsRef<Path> + ?Sized>(path: &P) -> Result<()> {
+    if fs::symlink_metadata(path).is_err() {
+        return Ok(());
+    }
+
+    println!("Deleting symlink (as sudo): {:?}", path.as_ref());
+    let status = run_cmd(
+        format!("unlink `{}`", path.as_ref().display()),
+        Command::new("sudo")
+        .arg("rm")
+        .arg("-rf")
+        .arg(path.as_ref()),
+    )?;
+    if !status.success() {
+        return Err(Unlink {
+            error: std::io::Error::new(
+                std::io::ErrorKind::Other, 
+                "Failed to delete symlink (as sudo)",
+            ),
+            path: path.as_ref().to_path_buf(),
+        });
+    }
+
+    Ok(())
+}
+
+fn run_cmd(log_prefix: String, cmd: &mut Command) -> io::Result<ExitStatus> {
+    let mut child = cmd
+        .stderr(Stdio::piped())
+        .stdout(Stdio::piped())
+        .spawn()?;
+
+    BufReader::new(child.stdout.take().unwrap())
+        .lines()
+        .for_each(|line| println!("[{}] {}", log_prefix, line.unwrap_or_else(|_| "".into())));
+
+    BufReader::new(child.stderr.take().unwrap())
+        .lines()
+        .for_each(|line| eprintln!("[{}] {}", log_prefix, line.unwrap_or_else(|_| "".into())));
+
+    child.wait()
 }

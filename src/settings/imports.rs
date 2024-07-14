@@ -71,6 +71,12 @@ impl Settings {
                         if sub_settings.source_paths_are_relative {
                             sub_settings.source_path = path.strip_prefix(self.get_dotfiles_path().unwrap()).unwrap().to_owned();
                         }
+                        if sub_settings.settings.run_hooks_in_dotfiles_dir {
+                            return Err(anyhow!(
+                                "Cannot import file \"{}\" with run_hooks_in_dotfiles_dir set to true, must be set in root config",
+                                path.display()
+                            ));
+                        }
                         self.merge(sub_settings)
                     },
                     Err(err) => {
