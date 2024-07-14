@@ -3,11 +3,11 @@ use crate::error::*;
 use crate::settings::dotfile_dir;
 use crate::{Dot, DotVar};
 use dirs::home_dir;
-use std::{fs, io};
 use std::io::{BufRead, BufReader};
 use std::os::unix;
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitStatus, Stdio};
+use std::{fs, io};
 
 pub trait DotPaths {
     /// Return the target path of a dot entry either absolute or relative to $HOME
@@ -77,7 +77,7 @@ impl DotPaths for Dot {
                 return Ok(());
             }
         }
-        
+
         if let Some(parent) = target.parent() {
             println!("Creating parent: {:?}", parent);
             let create_fs_err = fs::create_dir_all(parent);
@@ -114,8 +114,6 @@ impl DotPaths for Dot {
     fn resolve_var_path(&self) -> Option<PathBuf> {
         self.resolve_from_source(&self.source, &self.vars)
     }
-
-    
 }
 
 fn symlink_as_sudo(dot: &Dot) -> Result<()> {
@@ -132,40 +130,40 @@ fn symlink_as_sudo(dot: &Dot) -> Result<()> {
         println!("Creating parent (as sudo): {:?}", parent);
         let status = run_cmd(
             format!("mkdir `{:?}`", parent),
-            Command::new("sudo")
-            .arg("mkdir")
-            .arg("-p")
-            .arg(parent)
+            Command::new("sudo").arg("mkdir").arg("-p").arg(parent),
         )?;
 
         if !status.success() {
-            return Err(Symlink { 
-                source_path: copy_path.to_owned(), 
-                target: target.to_owned(), 
+            return Err(Symlink {
+                source_path: copy_path.to_owned(),
+                target: target.to_owned(),
                 cause: std::io::Error::new(
-                    std::io::ErrorKind::Other, 
+                    std::io::ErrorKind::Other,
                     "Failed to create parent (as sudo)",
                 ),
             });
         }
     }
 
-    println!("Creating symlink (as sudo): {:?} -> {:?}", copy_path, target);
+    println!(
+        "Creating symlink (as sudo): {:?} -> {:?}",
+        copy_path, target
+    );
     let status = run_cmd(
         format!("link `{:?} -> {:?}`", copy_path, target),
         Command::new("sudo")
-        .arg("ln")
-        .arg("-s")
-        .arg(copy_path)
-        .arg(target),
+            .arg("ln")
+            .arg("-s")
+            .arg(copy_path)
+            .arg(target),
     )?;
 
     if !status.success() {
-        return Err(Symlink { 
-            source_path: copy_path.to_owned(), 
-            target: target.to_owned(), 
+        return Err(Symlink {
+            source_path: copy_path.to_owned(),
+            target: target.to_owned(),
             cause: std::io::Error::new(
-                std::io::ErrorKind::Other, 
+                std::io::ErrorKind::Other,
                 "Failed to create symlink (as sudo)",
             ),
         });
@@ -184,7 +182,7 @@ pub fn unlink<P: AsRef<Path> + ?Sized>(path: &P) -> Result<()> {
                 path: path.as_ref().to_owned(),
             }),
             _ => unlink_sudo(path),
-        }
+        },
     }
 }
 
@@ -207,15 +205,12 @@ fn unlink_sudo<P: AsRef<Path> + ?Sized>(path: &P) -> Result<()> {
     println!("Deleting symlink (as sudo): {:?}", path.as_ref());
     let status = run_cmd(
         format!("unlink `{}`", path.as_ref().display()),
-        Command::new("sudo")
-        .arg("rm")
-        .arg("-rf")
-        .arg(path.as_ref()),
+        Command::new("sudo").arg("rm").arg("-rf").arg(path.as_ref()),
     )?;
     if !status.success() {
         return Err(Unlink {
             error: std::io::Error::new(
-                std::io::ErrorKind::Other, 
+                std::io::ErrorKind::Other,
                 "Failed to delete symlink (as sudo)",
             ),
             path: path.as_ref().to_path_buf(),
@@ -226,10 +221,7 @@ fn unlink_sudo<P: AsRef<Path> + ?Sized>(path: &P) -> Result<()> {
 }
 
 fn run_cmd(log_prefix: String, cmd: &mut Command) -> io::Result<ExitStatus> {
-    let mut child = cmd
-        .stderr(Stdio::piped())
-        .stdout(Stdio::piped())
-        .spawn()?;
+    let mut child = cmd.stderr(Stdio::piped()).stdout(Stdio::piped()).spawn()?;
 
     BufReader::new(child.stdout.take().unwrap())
         .lines()

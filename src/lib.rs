@@ -221,12 +221,19 @@ impl Bombadil {
                 for orphan in diff {
                     if orphan.exists() {
                         if let Ok(canonicalized) = orphan.canonicalize() {
-                            unlink(orphan).context(format!("unlinking `{}`", canonicalized.to_str().to_owned().unwrap().green()))?;
+                            unlink(orphan).context(format!(
+                                "unlinking `{}`",
+                                canonicalized.to_str().to_owned().unwrap().green()
+                            ))?;
                             if canonicalized.is_dir() {
                                 fs::remove_dir_all(&canonicalized)
                             } else {
                                 fs::remove_file(&canonicalized)
-                            }.context(format!("deleting `{}`", canonicalized.to_str().to_owned().unwrap().green()))?;
+                            }
+                            .context(format!(
+                                "deleting `{}`",
+                                canonicalized.to_str().to_owned().unwrap().green()
+                            ))?;
                             println!("Deleted - {canonicalized:?} => {orphan:?}");
                         }
                     }
@@ -464,7 +471,13 @@ impl Bombadil {
                 .prehooks
                 .iter()
                 .map(|command| command.as_ref())
-                .map(|command| Hook::new(self.path.clone(), command, profile.run_hooks_in_dotfiles_dir))
+                .map(|command| {
+                    Hook::new(
+                        self.path.clone(),
+                        command,
+                        profile.run_hooks_in_dotfiles_dir,
+                    )
+                })
                 .collect::<Vec<Hook>>();
             self.prehooks.extend(prehooks);
 
@@ -473,7 +486,13 @@ impl Bombadil {
                 .posthooks
                 .iter()
                 .map(|command| command.as_ref())
-                .map(|command| Hook::new(self.path.clone(), command, profile.run_hooks_in_dotfiles_dir))
+                .map(|command| {
+                    Hook::new(
+                        self.path.clone(),
+                        command,
+                        profile.run_hooks_in_dotfiles_dir,
+                    )
+                })
                 .collect::<Vec<Hook>>();
             self.posthooks.extend(posthooks);
         }
@@ -859,8 +878,14 @@ mod tests {
             .is_equal_to(&"world".to_string());
 
         assert_that!(bombadil.dots.get("relative_import/maven_relative")).is_some();
-        assert_that!(bombadil.dots.get("relative_import/maven_relative").unwrap().source)
-            .is_equal_to(PathBuf::from("relative_import/settings.xml"));
+        assert_that!(
+            bombadil
+                .dots
+                .get("relative_import/maven_relative")
+                .unwrap()
+                .source
+        )
+        .is_equal_to(PathBuf::from("relative_import/settings.xml"));
         Ok(())
     }
 

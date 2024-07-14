@@ -20,7 +20,8 @@ impl Hook {
         println!("Running install hook : {}", command_display);
 
         let mut child = Command::new("sh");
-        let mut child = child.args(["-c", &self.command])
+        let mut child = child
+            .args(["-c", &self.command])
             .stderr(Stdio::piped())
             .stdout(Stdio::piped())
             .env(ENV_BOMBADIL_DOTFILES_PATH, self.dotfiles_path.as_os_str());
@@ -33,11 +34,23 @@ impl Hook {
 
         BufReader::new(child.stdout.take().unwrap())
             .lines()
-            .for_each(|line| println!("[{}] {}", command_display, line.unwrap_or_else(|_| "".into())));
+            .for_each(|line| {
+                println!(
+                    "[{}] {}",
+                    command_display,
+                    line.unwrap_or_else(|_| "".into())
+                )
+            });
 
         BufReader::new(child.stderr.take().unwrap())
             .lines()
-            .for_each(|line| eprintln!("[{}] {}", command_display, line.unwrap_or_else(|_| "".into())));
+            .for_each(|line| {
+                eprintln!(
+                    "[{}] {}",
+                    command_display,
+                    line.unwrap_or_else(|_| "".into())
+                )
+            });
 
         child
             .wait()
@@ -53,7 +66,11 @@ impl Hook {
 
     pub fn new(dotfiles_path: PathBuf, command: &str, run_in_dotfiles_dir: bool) -> Self {
         let command = command.to_owned();
-        Hook { dotfiles_path, command, run_in_dotfiles_dir }
+        Hook {
+            dotfiles_path,
+            command,
+            run_in_dotfiles_dir,
+        }
     }
 }
 
@@ -100,7 +117,7 @@ mod tests {
     #[test]
     fn should_set_dotfiles_path_env() {
         let temp_dir = tempdir().expect("a temp dir is created");
-        
+
         const TEST_FILE: &str = "test_bombadil_env";
 
         // Arrange
@@ -121,7 +138,7 @@ mod tests {
     #[test]
     fn should_run_hooks_in_dotfiles_path() {
         let temp_dir = tempdir().expect("a temp dir is created");
-        
+
         const TEST_FILE: &str = "test_bombadil_env";
 
         // Arrange

@@ -18,10 +18,10 @@ pub struct ImportPath {
 pub struct ImportedSettings {
     #[serde(default)]
     pub source_paths_are_relative: bool,
-    
+
     #[serde(skip)]
     pub source_path: PathBuf,
-    
+
     #[serde(default)]
     pub settings: ActiveProfile,
 
@@ -60,7 +60,9 @@ impl Settings {
 
                 match sub_setting {
                     Ok(mut sub_settings) => {
-                        if absolute_paths.contains_key(path) && sub_settings.source_paths_are_relative {
+                        if absolute_paths.contains_key(path)
+                            && sub_settings.source_paths_are_relative
+                        {
                             eprintln!(
                                 "{} Cannot import file \"{}\" as relative when specified as an absolute in the parent config",
                                 "Error".red(),
@@ -69,7 +71,10 @@ impl Settings {
                             continue;
                         }
                         if sub_settings.source_paths_are_relative {
-                            sub_settings.source_path = path.strip_prefix(self.get_dotfiles_path().unwrap()).unwrap().to_owned();
+                            sub_settings.source_path = path
+                                .strip_prefix(self.get_dotfiles_path().unwrap())
+                                .unwrap()
+                                .to_owned();
                         }
                         if sub_settings.settings.run_hooks_in_dotfiles_dir {
                             return Err(anyhow!(
@@ -78,7 +83,7 @@ impl Settings {
                             ));
                         }
                         self.merge(sub_settings)
-                    },
+                    }
                     Err(err) => {
                         eprintln!("Error loading settings from : {:?} {}", path, err)
                     }
@@ -113,10 +118,18 @@ impl Settings {
                 let parent_path = sub_settings.source_path.parent().unwrap();
                 key = parent_path.join(key).to_str().unwrap().to_owned();
                 dot_with_sub_path.source = parent_path.join(&value.source);
-                println!("Overwriting source_path {} to {:?}", &value.source.display(), dot_with_sub_path.source);
+                println!(
+                    "Overwriting source_path {} to {:?}",
+                    &value.source.display(),
+                    dot_with_sub_path.source
+                );
             }
             if self.settings.dots.contains_key(&key) {
-                eprintln!("{} {}", "Duplicate key in imports \"{}\", skipping".red(), key);
+                eprintln!(
+                    "{} {}",
+                    "Duplicate key in imports \"{}\", skipping".red(),
+                    key
+                );
                 continue;
             }
             self.settings.dots.insert(key.to_owned(), dot_with_sub_path);
