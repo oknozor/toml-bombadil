@@ -662,6 +662,7 @@ mod tests {
     use sealed_test::prelude::*;
     use speculoos::prelude::*;
     use std::ffi::OsStr;
+    use std::fs::OpenOptions;
     use std::io::BufWriter;
     use std::{env, fs};
 
@@ -902,6 +903,45 @@ mod tests {
 
         // Assert
         assert_that!(content).is_equal_to(".class {color: #de1f1f}\n".to_string());
+
+        Ok(())
+    }
+
+    #[sealed_test(files = ["tests/dotfiles_backup"], before = setup("dotfiles_backup"))]
+    fn should_move_existing_file_to_backup() -> Result<()> {
+        let bombadil = Bombadil::from_settings(NoGpg)?;
+
+        let original_path = PathBuf::from(".config/deep/test/dir/template.css");
+        assert_that!(original_path).does_not_exist();
+
+        fs::create_dir_all(".config/deep/test/dir")?;
+        OpenOptions::new()
+            .create(true)
+            .truncate(true)
+            .write(true)
+            .open(original_path.clone())?;
+
+        let expected_backup_path = env::current_dir()?.join(format!(
+            "dotfiles_backup/.backups{}/.config/deep/test/dir/template.css",
+            env::current_dir()?.display()
+        ));
+
+        assert_that!(expected_backup_path).does_not_exist();
+
+        bombadil.install()?;
+
+        assert_that!(expected_backup_path).exists();
+
+        let target = std::fs::read_to_string(original_path)?;
+        assert_eq!(
+            target,
+            indoc! {
+                ".class {
+                    color: #de1f1f
+                }
+                "
+            }
+        );
 
         Ok(())
     }

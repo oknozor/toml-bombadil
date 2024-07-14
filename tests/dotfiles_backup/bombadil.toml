@@ -1,0 +1,15 @@
+dotfiles_dir = "dotfiles_backup"
+
+[settings]
+vars = [ "vars.toml" ]
+
+prehooks = [
+    "touch $HOME/.config/prehook_file"
+]
+
+posthooks = [
+    "touch $HOME/.config/posthook_file"
+]
+
+[settings.dots]
+css = { source = "template.css", target = ".config/deep/test/dir/template.css" }

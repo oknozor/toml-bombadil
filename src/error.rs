@@ -27,4 +27,13 @@ pub enum Error {
         target: PathBuf,
         cause: io::Error,
     },
+
+    #[error(
+        "Failed to backup original file, target: {target}, backup: {backup_path}, cause: {cause}"
+    )]
+    Backup {
+        target: PathBuf,
+        backup_path: PathBuf,
+        cause: anyhow::Error,
+    },
 }

@@ -1,7 +1,10 @@
-use crate::error::Error::{SourceNotFound, Symlink, TargetNotFound, TemplateNotFound, Unlink};
+use crate::error::Error::{
+    Backup, SourceNotFound, Symlink, TargetNotFound, TemplateNotFound, Unlink,
+};
 use crate::error::*;
 use crate::settings::dotfile_dir;
 use crate::{Dot, DotVar};
+use anyhow::anyhow;
 use dirs::home_dir;
 use std::io::{BufRead, BufReader};
 use std::os::unix;
@@ -79,19 +82,21 @@ impl DotPaths for Dot {
         }
 
         if let Some(parent) = target.parent() {
-            println!("Creating parent: {:?}", parent);
-            let create_fs_err = fs::create_dir_all(parent);
-            match create_fs_err {
-                Ok(_) => Ok(()),
-                Err(cause) => match cause.kind() == std::io::ErrorKind::PermissionDenied {
-                    true => symlink_as_sudo(self),
-                    false => Err(Symlink {
-                        source_path: copy_path.to_owned(),
-                        target: target.to_owned(),
-                        cause,
-                    }),
-                },
-            }?;
+            if !parent.exists() {
+                println!("Creating parent: {:?}", parent);
+                let create_fs_err = fs::create_dir_all(parent);
+                match create_fs_err {
+                    Ok(_) => Ok(()),
+                    Err(cause) => match cause.kind() {
+                        std::io::ErrorKind::PermissionDenied => symlink_as_sudo(self),
+                        _ => Err(Symlink {
+                            source_path: copy_path.to_owned(),
+                            target: target.to_owned(),
+                            cause,
+                        }),
+                    },
+                }?;
+            }
         }
 
         // Link
@@ -99,6 +104,10 @@ impl DotPaths for Dot {
         match symlink_err {
             Ok(_) => Ok(()),
             Err(cause) => match cause.kind() {
+                std::io::ErrorKind::AlreadyExists => {
+                    move_original_to_backup(target)?;
+                    self.symlink()
+                }
                 std::io::ErrorKind::PermissionDenied => symlink_as_sudo(self),
                 _ => Err(Symlink {
                     source_path: copy_path.to_owned(),
@@ -114,6 +123,73 @@ impl DotPaths for Dot {
     fn resolve_var_path(&self) -> Option<PathBuf> {
         self.resolve_from_source(&self.source, &self.vars)
     }
+}
+
+fn move_original_to_backup(target: &Path) -> Result<()> {
+    let target_as_non_absolute = if target.is_absolute() {
+        target.strip_prefix("/").unwrap()
+    } else {
+        target
+    };
+    let backup_path = dotfile_dir().join(".backups").join(target_as_non_absolute);
+    println!(
+        "Backing up original file: {:?} to {:?}",
+        target, backup_path
+    );
+
+    if let Some(parent) = backup_path.parent() {
+        if !parent.exists() {
+            println!("Creating backup parent: {:?}", parent);
+            fs::create_dir_all(parent).map_err(|cause| Backup {
+                target: target.to_path_buf(),
+                backup_path: backup_path.clone(),
+                cause: anyhow!("Failed to create backup parent: {:?}", cause),
+            })?;
+        }
+    }
+
+    println!(
+        "Copying original file to backup: {:?} -> {:?}",
+        target, backup_path
+    );
+    match fs::copy(target, backup_path.clone()) {
+        Ok(_) => (),
+        Err(cause) => match cause.kind() {
+            std::io::ErrorKind::PermissionDenied => {
+                println!(
+                    "Copying original file to backup (as sudo): {:?} -> {:?}",
+                    target, backup_path
+                );
+                let status = run_cmd(
+                    format!("copy to backup `{:?}`", backup_path),
+                    Command::new("sudo")
+                        .arg("cp")
+                        .arg("-R")
+                        .arg(target)
+                        .arg(backup_path.clone()),
+                )?;
+                if !status.success() {
+                    return Err(Backup {
+                        target: target.to_path_buf(),
+                        backup_path: backup_path.to_path_buf(),
+                        cause: anyhow!("Failed to copy original file to backup (as sudo)"),
+                    });
+                }
+            }
+            _ => {
+                return Err(Backup {
+                    target: target.to_path_buf(),
+                    backup_path,
+                    cause: anyhow!("Failed to copy original file"),
+                })
+            }
+        },
+    };
+
+    println!("Deleting original file: {:?}", target);
+    unlink(target)?;
+
+    Ok(())
 }
 
 fn symlink_as_sudo(dot: &Dot) -> Result<()> {
