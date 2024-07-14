@@ -27,4 +27,29 @@ pub enum Error {
         target: PathBuf,
         cause: io::Error,
     },
+
+    #[error(
+        "Failed to backup original file, target: {target}, backup: {backup_path}, cause: {cause}"
+    )]
+    Backup {
+        target: PathBuf,
+        backup_path: PathBuf,
+        cause: anyhow::Error,
+    },
+
+    #[error("Failed to copy file, from: {from}, to: {to}, cause: {cause}")]
+    Copy {
+        from: PathBuf,
+        to: PathBuf,
+        cause: anyhow::Error,
+    },
+
+    #[error(
+        "Failed to set permissions on file: {path}, permissions: {permissions}, cause: {cause}"
+    )]
+    SetPermissions {
+        path: PathBuf,
+        permissions: u32,
+        cause: anyhow::Error,
+    },
 }

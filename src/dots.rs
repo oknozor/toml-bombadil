@@ -261,6 +261,7 @@ mod tests {
     use cmd_lib::{init_builtin_logger, run_cmd};
     use sealed_test::prelude::*;
     use speculoos::prelude::*;
+    use std::os::unix::fs::PermissionsExt;
     use std::path::PathBuf;
     use std::{env, fs};
 
@@ -286,6 +287,8 @@ mod tests {
             target: PathBuf::from(".settings/sway"),
             ignore: vec![],
             vars: Dot::default_vars(),
+            hard_copy_target: None,
+            hard_copy_permissions: None,
         };
 
         // Act
@@ -305,6 +308,8 @@ mod tests {
             target: PathBuf::from("/etc/profile"),
             ignore: vec![],
             vars: Dot::default_vars(),
+            hard_copy_target: None,
+            hard_copy_permissions: None,
         };
 
         // Act
@@ -329,6 +334,8 @@ mod tests {
             target: PathBuf::from(".config/template.css"),
             ignore: vec![],
             vars: Dot::default_vars(),
+            hard_copy_target: None,
+            hard_copy_permissions: None,
         };
 
         // Act
@@ -342,6 +349,42 @@ mod tests {
         Ok(())
     }
 
+    #[sealed_test(files = ["tests/dotfiles_hard_copy"], before = setup("dotfiles_hard_copy"))]
+    fn symlink_with_hard_copy_ok() -> Result<()> {
+        // Arrange
+        run_cmd!(
+            mkdir dotfiles_hard_copy/.dots;
+            echo "Hello Tom" > dotfiles_hard_copy/.dots/template.css;
+        )?;
+
+        let hard_copy = PathBuf::from(".config/template.css.hard");
+        let dot = Dot {
+            source: PathBuf::from("template.css"),
+            target: PathBuf::from(".config/template.css"),
+            ignore: vec![],
+            vars: Dot::default_vars(),
+            hard_copy_target: Some(hard_copy.clone()),
+            hard_copy_permissions: Some(0o555),
+        };
+
+        // Act
+        dot.symlink()?;
+
+        // Assert
+        let symlink = PathBuf::from(".config/template.css");
+        assert_that!(symlink.is_symlink()).is_true();
+        assert_that!(fs::read_to_string(symlink)?).is_equal_to(&"Hello Tom\n".to_string());
+        assert_that!(hard_copy).exists();
+        assert_that!(hard_copy.is_symlink()).is_false();
+        assert_that!(fs::read_to_string(hard_copy.clone())?)
+            .is_equal_to(&"Hello Tom\n".to_string());
+
+        let hard_copy_permissions = hard_copy.symlink_metadata().unwrap().permissions();
+        assert_that!(hard_copy_permissions.mode() & 0o777).is_equal_to(0o555);
+
+        Ok(())
+    }
+
     #[sealed_test(files = ["tests/dotfiles_with_multiple_nested_dir"], before = setup("dotfiles_with_multiple_nested_dir"))]
     fn copy() -> Result<()> {
         // Arrange
@@ -350,6 +393,8 @@ mod tests {
             target: PathBuf::from(".config/dir"),
             ignore: vec![],
             vars: Dot::default_vars(),
+            hard_copy_target: None,
+            hard_copy_permissions: None,
         };
 
         // Act
@@ -385,6 +430,8 @@ mod tests {
             target,
             ignore: vec![],
             vars: Dot::default_vars(),
+            hard_copy_target: None,
+            hard_copy_permissions: None,
         };
 
         dot.traverse_and_copy(
@@ -421,6 +468,8 @@ mod tests {
             target: PathBuf::from("source_dot"),
             ignore: vec!["*.md".to_string()],
             vars: Dot::default_vars(),
+            hard_copy_target: None,
+            hard_copy_permissions: None,
         };
 
         // Act
@@ -465,6 +514,8 @@ mod tests {
             target,
             ignore: vec![],
             vars: Dot::default_vars(),
+            hard_copy_target: None,
+            hard_copy_permissions: None,
         };
 
         dot.symlink()?;
@@ -492,6 +543,8 @@ mod tests {
             target,
             ignore: vec![],
             vars: Dot::default_vars(),
+            hard_copy_target: None,
+            hard_copy_permissions: None,
         };
 
         dot.install(&Variables::default(), vec![], &[])?;
@@ -513,6 +566,8 @@ mod tests {
             target: PathBuf::from("dot"),
             ignore: vec![],
             vars: Dot::default_vars(),
+            hard_copy_target: None,
+            hard_copy_permissions: None,
         };
 
         let mut vars = Variables::default();
@@ -554,6 +609,8 @@ mod tests {
             target: PathBuf::from("dir"),
             ignore: vec![],
             vars: PathBuf::from("my_vars.toml"),
+            hard_copy_target: None,
+            hard_copy_permissions: None,
         };
 
         dot.install(&Variables::default(), vec![], &[])?;
@@ -584,6 +641,8 @@ mod tests {
             ignore: vec![],
             // FIXME: this should be relative to the dotfile directory
             vars: PathBuf::from("dotfiles_with_local_vars/source_dot/vars.toml"),
+            hard_copy_target: None,
+            hard_copy_permissions: None,
         };
 
         // Arrange

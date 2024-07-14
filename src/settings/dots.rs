@@ -18,6 +18,17 @@ pub struct Dot {
     #[serde(default = "Dot::default_vars")]
     #[serde(skip_serializing)]
     pub vars: PathBuf,
+
+    /// If set the linked file will also be copied to this location
+    /// instead of being linked. The copy will be overwritten every link.
+    /// This is useful for files that are read by programs that don't
+    /// support symlinks.
+    #[serde(default)]
+    pub hard_copy_target: Option<PathBuf>,
+
+    /// Permissions to set on the hard copy target in chmod syntax.
+    #[serde(default)]
+    pub hard_copy_permissions: Option<u32>,
 }
 
 /// Same as dot but source and target are optionals
@@ -32,4 +43,15 @@ pub struct DotOverride {
     pub ignore: Vec<String>,
     // A single var file attached to the dot
     pub vars: Option<PathBuf>,
+
+    /// If set the linked file will also be copied to this location
+    /// instead of being linked. The copy will be overwritten every link.
+    /// This is useful for files that are read by programs that don't
+    /// support symlinks.
+    #[serde(default)]
+    pub hard_copy_target: Option<PathBuf>,
+
+    /// Permissions to set on the hard copy target in chmod syntax.
+    #[serde(default)]
+    pub hard_copy_permissions: Option<u32>,
 }

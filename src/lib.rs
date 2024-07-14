@@ -5,7 +5,7 @@ use crate::hook::Hook;
 use crate::paths::{unlink, DotPaths};
 use crate::state::BombadilState;
 use crate::templating::Variables;
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Context, Result};
 use colored::*;
 use ignore_files::IgnoreFilter;
 use settings::dots::Dot;
@@ -201,7 +201,7 @@ impl Bombadil {
         // Run post install hooks
         self.posthooks.iter().map(Hook::run).for_each(|result| {
             if let Err(err) = result {
-                eprintln!("{}", err);
+                eprintln!("Failed to run posthook: {}", err);
             }
         });
 
@@ -216,18 +216,25 @@ impl Bombadil {
             Ok(previous_state) => {
                 let diff = previous_state.symlinks.difference(&new_state.symlinks);
 
-                println!("{:?}", diff);
+                println!("Install diff: {:?}", diff);
 
                 for orphan in diff {
                     if orphan.exists() {
-                        if let Ok(canonicaliszed) = orphan.canonicalize() {
-                            unlink(orphan)?;
-                            if canonicaliszed.is_dir() {
-                                fs::remove_dir_all(&canonicaliszed)?;
+                        if let Ok(canonicalized) = orphan.canonicalize() {
+                            unlink(orphan).context(format!(
+                                "unlinking `{}`",
+                                canonicalized.to_str().to_owned().unwrap().green()
+                            ))?;
+                            if canonicalized.is_dir() {
+                                fs::remove_dir_all(&canonicalized)
                             } else {
-                                fs::remove_file(&canonicaliszed)?;
+                                fs::remove_file(&canonicalized)
                             }
-                            println!("Deleted - {canonicaliszed:?} => {orphan:?}");
+                            .context(format!(
+                                "deleting `{}`",
+                                canonicalized.to_str().to_owned().unwrap().green()
+                            ))?;
+                            println!("Deleted - {canonicalized:?} => {orphan:?}");
                         }
                     }
                 }
@@ -403,24 +410,34 @@ impl Bombadil {
                 // Dot exist let's override
                 if let Some(dot) = self.dots.get_mut(key) {
                     if let Some(source) = &dot_override.source {
-                        dot.source = source.clone()
+                        dot.source.clone_from(source)
                     }
 
                     if let Some(target) = &dot_override.target {
-                        dot.target = target.clone()
+                        dot.target.clone_from(target)
                     }
 
                     if let Some(vars) = &dot_override.vars {
-                        dot.vars = vars.clone();
+                        dot.vars.clone_from(vars)
                     }
 
-                    if let (None, None, None) = (
+                    if let Some(hard_copy_target) = &dot_override.hard_copy_target {
+                        dot.hard_copy_target = Some(hard_copy_target.clone());
+                    }
+
+                    if let Some(hard_copy_permissions) = &dot_override.hard_copy_permissions {
+                        dot.hard_copy_permissions = Some(*hard_copy_permissions);
+                    }
+
+                    if let (None, None, None, None, None) = (
                         &dot_override.source,
                         &dot_override.target,
                         &dot_override.vars,
+                        &dot_override.hard_copy_target,
+                        &dot_override.hard_copy_permissions,
                     ) {
                         let warning = format!(
-                            "Skipping {}, no `source`, `target` or `vars` to override",
+                            "Skipping {}, no `source`, `target`, `vars`, `hard_copy_target`, or `hard_copy_permissions` to override",
                             key
                         )
                         .yellow();
@@ -441,6 +458,8 @@ impl Bombadil {
                             target,
                             ignore,
                             vars: Dot::default_vars(),
+                            hard_copy_target: dot_override.hard_copy_target.clone(),
+                            hard_copy_permissions: dot_override.hard_copy_permissions,
                         },
                     );
                 } else {
@@ -464,7 +483,13 @@ impl Bombadil {
                 .prehooks
                 .iter()
                 .map(|command| command.as_ref())
-                .map(Hook::new)
+                .map(|command| {
+                    Hook::new(
+                        self.path.clone(),
+                        command,
+                        profile.run_hooks_in_dotfiles_dir,
+                    )
+                })
                 .collect::<Vec<Hook>>();
             self.prehooks.extend(prehooks);
 
@@ -473,7 +498,13 @@ impl Bombadil {
                 .posthooks
                 .iter()
                 .map(|command| command.as_ref())
-                .map(Hook::new)
+                .map(|command| {
+                    Hook::new(
+                        self.path.clone(),
+                        command,
+                        profile.run_hooks_in_dotfiles_dir,
+                    )
+                })
                 .collect::<Vec<Hook>>();
             self.posthooks.extend(posthooks);
         }
@@ -507,6 +538,8 @@ impl Bombadil {
         let config = Settings::get()?;
         let path = config.get_dotfiles_path()?;
 
+        let run_hooks_in_dotfiles_dir = config.run_hooks_in_dotfiles_dir();
+
         let gpg = match mode {
             Mode::Gpg => config.gpg_user_id.map(|user_id| Gpg::new(&user_id)),
             Mode::NoGpg => None,
@@ -523,14 +556,14 @@ impl Bombadil {
             .settings
             .posthooks
             .iter()
-            .map(|cmd| Hook::new(cmd))
+            .map(|cmd| Hook::new(path.clone(), cmd, run_hooks_in_dotfiles_dir))
             .collect();
 
         let prehooks = config
             .settings
             .prehooks
             .iter()
-            .map(|cmd| Hook::new(cmd))
+            .map(|cmd| Hook::new(path.clone(), cmd, run_hooks_in_dotfiles_dir))
             .collect();
         let dots = config.settings.dots;
         let profiles = config.profiles;
@@ -641,6 +674,7 @@ mod tests {
     use sealed_test::prelude::*;
     use speculoos::prelude::*;
     use std::ffi::OsStr;
+    use std::fs::OpenOptions;
     use std::io::BufWriter;
     use std::{env, fs};
 
@@ -674,6 +708,26 @@ mod tests {
         assert_that!(target).is_equal_to(expected);
 
         let target = std::fs::read_to_string(target)?;
+
+        assert_eq!(
+            target,
+            indoc! {
+                ".class {
+                    color: #de1f1f
+                }
+                "
+            }
+        );
+
+        Ok(())
+    }
+
+    #[sealed_test(files = ["tests/dotfiles_create_dir"], before = setup("dotfiles_create_dir"))]
+    fn install_creates_missing_directories() -> Result<()> {
+        Bombadil::from_settings(NoGpg)?.install()?;
+
+        let link = env::current_dir()?.join(".config/sub/dir/template.css");
+        let target = std::fs::read_to_string(link)?;
 
         assert_eq!(
             target,
@@ -836,6 +890,15 @@ mod tests {
             .is_some()
             .is_equal_to(&"world".to_string());
 
+        assert_that!(bombadil.dots.get("relative_import/maven_relative")).is_some();
+        assert_that!(
+            bombadil
+                .dots
+                .get("relative_import/maven_relative")
+                .unwrap()
+                .source
+        )
+        .is_equal_to(PathBuf::from("relative_import/settings.xml"));
         Ok(())
     }
 
@@ -852,6 +915,45 @@ mod tests {
 
         // Assert
         assert_that!(content).is_equal_to(".class {color: #de1f1f}\n".to_string());
+
+        Ok(())
+    }
+
+    #[sealed_test(files = ["tests/dotfiles_backup"], before = setup("dotfiles_backup"))]
+    fn should_move_existing_file_to_backup() -> Result<()> {
+        let bombadil = Bombadil::from_settings(NoGpg)?;
+
+        let original_path = PathBuf::from(".config/deep/test/dir/template.css");
+        assert_that!(original_path).does_not_exist();
+
+        fs::create_dir_all(".config/deep/test/dir")?;
+        OpenOptions::new()
+            .create(true)
+            .truncate(true)
+            .write(true)
+            .open(original_path.clone())?;
+
+        let expected_backup_path = env::current_dir()?.join(format!(
+            "dotfiles_backup/.backups{}/.config/deep/test/dir/template.css",
+            env::current_dir()?.display()
+        ));
+
+        assert_that!(expected_backup_path).does_not_exist();
+
+        bombadil.install()?;
+
+        assert_that!(expected_backup_path).exists();
+
+        let target = std::fs::read_to_string(original_path)?;
+        assert_eq!(
+            target,
+            indoc! {
+                ".class {
+                    color: #de1f1f
+                }
+                "
+            }
+        );
 
         Ok(())
     }

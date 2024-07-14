@@ -1,0 +1,4 @@
+source_paths_are_relative = true
+
+[settings.dots]
+maven_relative = { source = "settings.xml", target = ".m2/setting.xml" }
