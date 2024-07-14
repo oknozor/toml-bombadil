@@ -132,6 +132,9 @@ impl Settings {
                 );
                 continue;
             }
+            if let Some(hard_copy_target) = &dot_with_sub_path.hard_copy_target {
+                println!("Hard copy target {:?}", hard_copy_target);
+            }
             self.settings.dots.insert(key.to_owned(), dot_with_sub_path);
         }
         self.profiles.extend(sub_settings.profiles);

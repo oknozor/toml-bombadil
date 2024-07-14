@@ -421,13 +421,23 @@ impl Bombadil {
                         dot.vars.clone_from(vars)
                     }
 
-                    if let (None, None, None) = (
+                    if let Some(hard_copy_target) = &dot_override.hard_copy_target {
+                        dot.hard_copy_target = Some(hard_copy_target.clone());
+                    }
+
+                    if let Some(hard_copy_permissions) = &dot_override.hard_copy_permissions {
+                        dot.hard_copy_permissions = Some(*hard_copy_permissions);
+                    }
+
+                    if let (None, None, None, None, None) = (
                         &dot_override.source,
                         &dot_override.target,
                         &dot_override.vars,
+                        &dot_override.hard_copy_target,
+                        &dot_override.hard_copy_permissions,
                     ) {
                         let warning = format!(
-                            "Skipping {}, no `source`, `target` or `vars` to override",
+                            "Skipping {}, no `source`, `target`, `vars`, `hard_copy_target`, or `hard_copy_permissions` to override",
                             key
                         )
                         .yellow();
@@ -448,6 +458,8 @@ impl Bombadil {
                             target,
                             ignore,
                             vars: Dot::default_vars(),
+                            hard_copy_target: dot_override.hard_copy_target.clone(),
+                            hard_copy_permissions: dot_override.hard_copy_permissions,
                         },
                     );
                 } else {

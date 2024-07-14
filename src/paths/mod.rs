@@ -1,5 +1,5 @@
 use crate::error::Error::{
-    Backup, SourceNotFound, Symlink, TargetNotFound, TemplateNotFound, Unlink,
+    Backup, Copy, SetPermissions, SourceNotFound, Symlink, TargetNotFound, TemplateNotFound, Unlink,
 };
 use crate::error::*;
 use crate::settings::dotfile_dir;
@@ -8,6 +8,7 @@ use anyhow::anyhow;
 use dirs::home_dir;
 use std::io::{BufRead, BufReader};
 use std::os::unix;
+use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitStatus, Stdio};
 use std::{fs, io};
@@ -33,6 +34,8 @@ pub trait DotPaths {
     fn symlink(&self) -> Result<()>;
 
     fn resolve_var_path(&self) -> Option<PathBuf>;
+
+    fn hard_copy_target(&self) -> Option<Result<PathBuf>>;
 }
 
 impl DotPaths for Dot {
@@ -43,6 +46,20 @@ impl DotPaths for Dot {
             home_dir()
                 .map(|home| home.join(&self.target))
                 .ok_or_else(|| TargetNotFound(self.target.clone()))
+        }
+    }
+
+    fn hard_copy_target(&self) -> Option<Result<PathBuf>> {
+        self.hard_copy_target.as_ref()?;
+        let hard_copy_target = self.hard_copy_target.clone().unwrap();
+        if hard_copy_target.is_absolute() {
+            Some(Ok(hard_copy_target.clone()))
+        } else {
+            Some(
+                home_dir()
+                    .map(|home| home.join(hard_copy_target.clone()))
+                    .ok_or_else(|| TargetNotFound(hard_copy_target.clone())),
+            )
         }
     }
 
@@ -74,12 +91,37 @@ impl DotPaths for Dot {
     fn symlink(&self) -> Result<()> {
         let copy_path = &self.copy_path()?;
         let target = &self.target()?;
+        let hard_copy_target = match self.hard_copy_target() {
+            Some(Ok(path)) => Some(path),
+            Some(Err(cause)) => return Err(cause),
+            None => None,
+        };
 
-        if let Ok(target) = target.canonicalize() {
-            if &target == copy_path {
-                return Ok(());
+        let symlink_exists = if let Ok(target) = target.canonicalize() {
+            &target == copy_path
+        } else {
+            false
+        };
+        let hard_copy_exists = match hard_copy_target.clone() {
+            Some(path) => path.exists(),
+            None => false,
+        };
+        let hard_copy_permissions_match = match self.hard_copy_permissions {
+            None => true,
+            Some(target_permissions) => {
+                if let Some(hard_copy_target) = hard_copy_target.clone() {
+                    if hard_copy_target.exists() {
+                        let metadata = hard_copy_target.metadata().unwrap();
+                        let permissions = metadata.permissions().mode();
+                        permissions & 0o777 == target_permissions
+                    } else {
+                        false
+                    }
+                } else {
+                    false
+                }
             }
-        }
+        };
 
         if let Some(parent) = target.parent() {
             if !parent.exists() {
@@ -100,22 +142,48 @@ impl DotPaths for Dot {
         }
 
         // Link
-        let symlink_err = unix::fs::symlink(copy_path, target);
-        match symlink_err {
-            Ok(_) => Ok(()),
-            Err(cause) => match cause.kind() {
-                std::io::ErrorKind::AlreadyExists => {
-                    move_original_to_backup(target)?;
-                    self.symlink()
+        if !symlink_exists {
+            let symlink_err = unix::fs::symlink(copy_path, target);
+            match symlink_err {
+                Ok(_) => Ok(()),
+                Err(cause) => match cause.kind() {
+                    std::io::ErrorKind::AlreadyExists => {
+                        move_original_to_backup(target)?;
+                        self.symlink()
+                    }
+                    std::io::ErrorKind::PermissionDenied => symlink_as_sudo(self),
+                    _ => Err(Symlink {
+                        source_path: copy_path.to_owned(),
+                        target: target.to_owned(),
+                        cause,
+                    }),
+                },
+            }?;
+        }
+
+        // Make hard copy if needed.
+        if !hard_copy_exists {
+            if let Some(hard_copy_target) = hard_copy_target.clone() {
+                println!(
+                    "Making hard copy for file: {:?} -> {:?}",
+                    target, hard_copy_target
+                );
+                copy(target, hard_copy_target.as_path())?;
+            }
+        }
+
+        // Set hard copy permissions if needed.
+        if !hard_copy_permissions_match {
+            if let Some(hard_copy_target) = hard_copy_target.clone() {
+                if let Some(hard_copy_permissions) = self.hard_copy_permissions {
+                    println!(
+                        "Setting permissions for hard copy: {:?} -> {:o}",
+                        hard_copy_target, hard_copy_permissions
+                    );
+                    set_permissions(hard_copy_target.as_path(), hard_copy_permissions)?;
                 }
-                std::io::ErrorKind::PermissionDenied => symlink_as_sudo(self),
-                _ => Err(Symlink {
-                    source_path: copy_path.to_owned(),
-                    target: target.to_owned(),
-                    cause,
-                }),
-            },
-        }?;
+            }
+        }
 
         Ok(())
     }
@@ -152,42 +220,97 @@ fn move_original_to_backup(target: &Path) -> Result<()> {
         "Copying original file to backup: {:?} -> {:?}",
         target, backup_path
     );
-    match fs::copy(target, backup_path.clone()) {
+    copy(target, &backup_path).map_err(|cause| Backup {
+        target: target.to_path_buf(),
+        backup_path,
+        cause: cause.into(),
+    })?;
+
+    println!("Deleting original file: {:?}", target);
+    unlink(target)?;
+
+    Ok(())
+}
+
+fn copy(from: &Path, to: &Path) -> Result<()> {
+    if let Some(parent) = to.parent() {
+        if !parent.exists() {
+            println!("Creating copy target parent: {:?}", parent);
+            fs::create_dir_all(parent).map_err(|cause| Copy {
+                from: from.to_path_buf(),
+                to: to.to_path_buf(),
+                cause: anyhow!("Failed to create copy target parent: {:?}", cause),
+            })?;
+        }
+    }
+
+    println!("Copying file: {:?} -> {:?}", from, to);
+    match fs::copy(from, to) {
         Ok(_) => (),
         Err(cause) => match cause.kind() {
             std::io::ErrorKind::PermissionDenied => {
-                println!(
-                    "Copying original file to backup (as sudo): {:?} -> {:?}",
-                    target, backup_path
-                );
+                println!("Copying file (as sudo): {:?} -> {:?}", from, to);
                 let status = run_cmd(
-                    format!("copy to backup `{:?}`", backup_path),
-                    Command::new("sudo")
-                        .arg("cp")
-                        .arg("-R")
-                        .arg(target)
-                        .arg(backup_path.clone()),
+                    format!("copy `{:?} -> {:?}`", from, to),
+                    Command::new("sudo").arg("cp").arg("-R").arg(from).arg(to),
                 )?;
                 if !status.success() {
-                    return Err(Backup {
-                        target: target.to_path_buf(),
-                        backup_path: backup_path.to_path_buf(),
-                        cause: anyhow!("Failed to copy original file to backup (as sudo)"),
+                    return Err(Copy {
+                        from: from.to_path_buf(),
+                        to: to.to_path_buf(),
+                        cause: anyhow!("Failed to copy (as sudo)"),
                     });
                 }
             }
             _ => {
-                return Err(Backup {
-                    target: target.to_path_buf(),
-                    backup_path,
-                    cause: anyhow!("Failed to copy original file"),
+                return Err(Copy {
+                    from: from.to_path_buf(),
+                    to: to.to_path_buf(),
+                    cause: anyhow!("Failed to copy"),
                 })
             }
         },
     };
 
-    println!("Deleting original file: {:?}", target);
-    unlink(target)?;
+    Ok(())
+}
+
+fn set_permissions(path: &Path, permissions: u32) -> Result<()> {
+    println!("Setting permissions: {:?} -> {:o}", path, permissions);
+
+    let perm = fs::Permissions::from_mode(permissions);
+    match fs::set_permissions(path, perm) {
+        Ok(_) => (),
+        Err(cause) => match cause.kind() {
+            std::io::ErrorKind::PermissionDenied => {
+                println!(
+                    "Setting permissions (as sudo): {:?} -> {:o}",
+                    path, permissions
+                );
+                let status = run_cmd(
+                    format!("chmod `{:o} {:?}`", permissions, path),
+                    Command::new("sudo")
+                        .arg("chmod")
+                        .arg(format!("{:o}", permissions))
+                        .arg(path),
+                )?;
+                if !status.success() {
+                    return Err(SetPermissions {
+                        path: path.to_path_buf(),
+                        permissions,
+                        cause: anyhow!("Failed to set permissions (as sudo)"),
+                    });
+                }
+            }
+            _ => {
+                return Err(SetPermissions {
+                    path: path.to_path_buf(),
+                    permissions,
+                    cause: cause.into(),
+                });
+            }
+        },
+    };
 
     Ok(())
 }
