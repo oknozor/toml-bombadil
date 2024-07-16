@@ -87,7 +87,7 @@ pacman -S toml-bombadil
 
 **Cargo:**
 ```bash
-cargo install toml-bombadil
+cargo install --locked toml-bombadil
 ```
 
 ## Quickstart
