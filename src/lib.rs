@@ -384,9 +384,9 @@ impl Bombadil {
         self.profile_enabled = profile_keys.iter().map(ToString::to_string).collect();
 
         let mut profiles: Vec<Profile> = profile_keys
-            .iter()
+            .into_iter()
             // unwrap here is safe cause allowed profile keys are checked by clap
-            .map(|profile_key| self.profiles.get(&profile_key.to_string()).unwrap())
+            .map(|profile_key| self.profiles.get(profile_key).unwrap())
             .cloned()
             .collect();
 
@@ -416,15 +416,15 @@ impl Bombadil {
                 // Dot exist let's override
                 if let Some(dot) = self.dots.get_mut(key) {
                     if let Some(source) = &dot_override.source {
-                        dot.source = source.clone()
+                        dot.source.clone_from(source);
                     }
 
                     if let Some(target) = &dot_override.target {
-                        dot.target = target.clone()
+                        dot.target.clone_from(target);
                     }
 
                     if let Some(vars) = &dot_override.vars {
-                        dot.vars = vars.clone();
+                        dot.vars.clone_from(vars);
                     }
 
                     if let (None, None, None) = (
@@ -678,7 +678,7 @@ mod tests {
     use super::*;
     use crate::paths::unlink;
     use crate::Mode::NoGpg;
-    use cmd_lib::{init_builtin_logger, run_cmd};
+    use cmd_lib::run_cmd;
     use indoc::indoc;
     use pretty_assertions::assert_eq;
     use sealed_test::prelude::*;
@@ -689,7 +689,6 @@ mod tests {
     fn setup(dotfiles: &str) {
         let home_dir = env::current_dir().unwrap().canonicalize().unwrap();
         env::set_var("HOME", home_dir);
-        init_builtin_logger();
         run_cmd!(
             mkdir .config;
         )

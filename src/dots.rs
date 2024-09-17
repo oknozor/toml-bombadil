@@ -298,7 +298,7 @@ mod tests {
     use crate::Mode::NoGpg;
     use crate::{Bombadil, DotPaths};
     use anyhow::Result;
-    use cmd_lib::{init_builtin_logger, run_cmd};
+    use cmd_lib::run_cmd;
     use sealed_test::prelude::*;
     use speculoos::prelude::*;
     use std::path::PathBuf;
@@ -307,7 +307,6 @@ mod tests {
     fn setup(dotfiles: &str) {
         env::set_var("HOME", env::current_dir().unwrap());
         println!("Fake home: {}", env::var("HOME").unwrap());
-        init_builtin_logger();
         run_cmd!(
             mkdir .config;
         )
