@@ -91,7 +91,7 @@ impl Variables {
     pub(crate) fn from_paths(base_path: &Path, var_paths: &[PathBuf]) -> Result<Self> {
         let mut out = Self::default();
         for path in var_paths {
-            let variables = Self::from_path(&base_path.join(path))?;
+            let variables = Self::from_path(base_path.join(path))?;
             out.extend(variables);
         }
 
