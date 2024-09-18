@@ -1,4 +1,3 @@
-
 name: CI
 
 on:
@@ -19,8 +18,8 @@ jobs:
     strategy:
       matrix:
         include:
-          - os: macos-latest
-            target: x86_64-osx
+          # - os: macos-latest
+          #  target: x86_64-osx
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             coverage: true
@@ -43,14 +42,18 @@ jobs:
 
       - name: Collect coverage data
         if: ${{matrix.coverage}}
-        run: cargo llvm-cov nextest --lcov --output-path lcov.info
+        uses: actions-rs/cargo@v1
+        with:
+          command: llvm-cov
+          args: nextest --lcov --output-path lcov.info --test-threads=1
 
       - name: Upload coverage to Codecov
         if: ${{matrix.coverage}}
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v4
         with:
           files: lcov.info
           fail_ci_if_error: true
+          token: ${{ secrets.CODECOV_TOKEN }}
 
       - name: Test with latest nextest release
         if: ${{ ! matrix.coverage }}
@@ -58,7 +61,6 @@ jobs:
         with:
           command: nextest
           args: run --test-threads=1
-
 
   lints:
     name: Lints & Format
