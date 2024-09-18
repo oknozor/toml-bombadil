@@ -106,24 +106,23 @@ setup() {
 @test "Profile should override default vars" {
   run bombadil link
   assert_success
-  assert_file_exist "$HOME/.bashrc"
-  assert_symlink_to "$HOME/dotfiles/.dots/bashrc" "$HOME/.bashrc"
-  assert_file_contains "$HOME/.bashrc" "export JAVA_HOME=/etc/java11-openjdk"
+  assert_file_exist "$HOME/.shrc"
+  assert_symlink_to "$HOME/dotfiles/.dots/shrc" "$HOME/.shrc"
+  assert_file_contains "$HOME/.shrc" "export JAVA_HOME=/etc/java11-openjdk"
 
   run bombadil link -p java-16
   assert_success
-  assert_file_contains "$HOME/.bashrc" "export JAVA_HOME=/etc/java16-openjdk"
+  assert_file_contains "$HOME/.shrc" "export JAVA_HOME=/etc/java16-openjdk"
 }
 
 @test "Profile should override scoped vars" {
   run bombadil link
   assert_success
-  assert_file_exist "$HOME/.bashrc"
-  assert_symlink_to "$HOME/dotfiles/.dots/bashrc" "$HOME/.bashrc"
-  assert_file_contains "$HOME/.bashrc" "export JAVA_HOME=/etc/java11-openjdk"
+  assert_file_exist "$HOME/.shrc"
+  assert_symlink_to "$HOME/dotfiles/.dots/shrc" "$HOME/.shrc"
+  assert_file_contains "$HOME/.shrc" "export JAVA_HOME=/etc/java11-openjdk"
 
   run bombadil link -p java-17
   assert_success
-  assert_file_contains "$HOME/.bashrc" "export JAVA_HOME=/etc/java17-openjdk"
+  assert_file_contains "$HOME/.shrc" "export JAVA_HOME=/etc/java17-openjdk"
 }
-
