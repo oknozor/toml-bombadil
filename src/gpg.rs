@@ -124,7 +124,7 @@ mod test {
         run_cmd!(
             gpg --batch --yes --import $crate_dir/tests/gpg/public.gpg;
             gpg --batch --yes --import $crate_dir/tests/gpg/private.gpg;
-            gpg --batch --yes --import-ownertrust < $crate_dir/tests/gpg/trust.txt
+            gpg --batch --yes --import-ownertrust < $crate_dir/tests/gpg/trust.txt;
         )
         .unwrap();
     }
