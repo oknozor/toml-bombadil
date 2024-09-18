@@ -122,10 +122,11 @@ mod test {
         let crate_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
 
         run_cmd!(
-            gpg --import $crate_dir/tests/gpg/public.gpg;
-            gpg --import $crate_dir/tests/gpg/private.gpg;
-            echo -e "5\ny\n" | gpg --no-tty --command-fd 0 --expert --edit-key test@toml.bombadil.org trust;
-        ).unwrap();
+            gpg --batch --yes --import $crate_dir/tests/gpg/public.gpg;
+            gpg --batch --yes --import $crate_dir/tests/gpg/private.gpg;
+            gpg --batch --yes --import-ownertrust < $crate_dir/tests/gpg/trust.txt
+        )
+        .unwrap();
     }
 
     #[sealed_test(before = gpg_setup())]

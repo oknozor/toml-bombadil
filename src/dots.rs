@@ -381,7 +381,6 @@ mod tests {
         Ok(())
     }
 
-    #[cfg(target_os = "linux")]
     #[sealed_test(files = ["tests/dotfiles_with_multiple_nested_dir"], before = setup("dotfiles_with_multiple_nested_dir"))]
     fn copy() -> Result<()> {
         // Arrange
@@ -412,7 +411,6 @@ mod tests {
         Ok(())
     }
 
-    #[cfg(target_os = "linux")]
     #[sealed_test(files = ["tests/dotfiles_non_utf8"], before = setup("dotfiles_non_utf8"))]
     fn copy_non_utf8() -> Result<()> {
         let source = PathBuf::from("dotfiles_non_utf8/ferris.png");
@@ -424,6 +422,8 @@ mod tests {
             ignore: vec![],
             vars: Dot::default_vars(),
         };
+
+        run_cmd!(ls - larth)?;
 
         dot.traverse_and_copy(
             &source,
