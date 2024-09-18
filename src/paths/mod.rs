@@ -32,8 +32,12 @@ pub trait DotPaths {
 
 impl DotPaths for Dot {
     fn target(&self) -> Result<PathBuf> {
-        if self.target.is_absolute() {
-            Ok(self.target.clone())
+        let path = &self.target.to_string_lossy();
+        let path = shellexpand::tilde(path.as_ref());
+        let path = Path::new(path.as_ref());
+
+        if path.is_absolute() {
+            Ok(path.to_path_buf())
         } else {
             home_dir()
                 .map(|home| home.join(&self.target))
