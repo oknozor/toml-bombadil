@@ -423,7 +423,7 @@ mod tests {
             vars: Dot::default_vars(),
         };
 
-        run_cmd!(ls - larth)?;
+        run_cmd! {ls -larth}?;
 
         dot.traverse_and_copy(
             &source,
@@ -580,6 +580,7 @@ mod tests {
             mkdir dir;
             echo "Hello {{name}}" > dir/template;
             echo "name=\"Tom\"" > dir/my_vars.toml;
+            ls -larth;
         )?;
 
         let dot = Dot {
