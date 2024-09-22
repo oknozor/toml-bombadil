@@ -4,6 +4,7 @@ import { defineConfig } from "vitepress";
 export default defineConfig({
   title: "Toml Bombadil",
   description: "A dotfile manager written in Rust",
+  base: "/toml-bombadil",
   themeConfig: {
     // https://vitepress.dev/reference/default-theme-config
     nav: [
