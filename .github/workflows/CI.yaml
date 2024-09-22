@@ -110,6 +110,7 @@ jobs:
 
   build-docs:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -119,6 +120,7 @@ jobs:
         with:
           node-version: 20
           cache: yarn
+          cache-dependency-path: website/yarn.lock
 
       - name: Setup pages
         uses: actions/configure-pages@v4
