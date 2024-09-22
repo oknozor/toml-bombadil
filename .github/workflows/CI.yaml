@@ -121,7 +121,7 @@ jobs:
           cache: yarn
 
       - name: Setup pages
-        uses: action/configure-pages@v4
+        uses: actions/configure-pages@v4
 
       - name: Install dependencies
         working-directory: ./website
