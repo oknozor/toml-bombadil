@@ -1,3 +1,12 @@
+---
+prev:
+  text: 'Home'
+  link: '/'
+next:
+  text: 'User Guide'
+  link: '/guide/templates'
+---
+
 # Setup
 
 If you already have some dotfiles on a git repository, no need to start from scratch:
