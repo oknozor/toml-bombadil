@@ -689,6 +689,10 @@ mod tests {
     fn setup(dotfiles: &str) {
         let home_dir = env::current_dir().unwrap().canonicalize().unwrap();
         env::set_var("HOME", home_dir);
+
+        #[cfg(target_os = "macos")]
+        run_cmd!(mkdir -p "Library/Application Support";).unwrap();
+
         run_cmd!(
             mkdir .config;
         )

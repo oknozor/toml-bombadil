@@ -18,8 +18,8 @@ jobs:
     strategy:
       matrix:
         include:
-          # - os: macos-latest
-          #  target: x86_64-osx
+          - os: macos-latest
+            target: x86_64-osx
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             coverage: true
