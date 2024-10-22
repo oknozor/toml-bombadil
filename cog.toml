@@ -2,7 +2,7 @@ branch_whitelist = [ "main" ]
 ignore_merge_commits = true
 
 pre_bump_hooks = [
-    "cargo bump {{version}}",
+    "cargo set-version {{version}}",
     "cargo test",
     "cargo clippy",
     "cargo build --release",

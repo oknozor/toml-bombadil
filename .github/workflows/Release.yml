@@ -34,22 +34,21 @@ jobs:
 
       - name: Setup cargo
         run: |
-          cargo install cargo-bump
+          cargo install cargo-edit
           cargo login ${{ secrets.CARGO_TOKEN }}
 
       # version publish steps are managed by cocogitto, see `cog.toml`
       # and https://github.com/oknozor/cocogitto-action for more info
-      - name: Semver release
+      - uses: cocogitto/cocogitto-action@v3
         id: release
-        uses: oknozor/cocogitto-action@v2.1
         with:
-          release: true
           check-latest-tag-only: true
+          release: true
+          git-user: github-actions
+          git-user-email: github-actions@github.com
 
       - name: Generate Changelog
-        run: |
-          echo "::set-output name=version::${{ steps.release.outputs.version }}"
-          cog changelog --at ${{ steps.release.outputs.version }} -t full_hash > GITHUB_CHANGELOG.md
+        run: cog changelog --at ${{ steps.release.outputs.version }} -t full_hash > GITHUB_CHANGELOG.md
 
       - name: Upload github release
         uses: softprops/action-gh-release@v1
