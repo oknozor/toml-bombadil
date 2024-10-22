@@ -26,6 +26,8 @@ jobs:
           override: true
           components: rustfmt, clippy
 
+      - uses: taiki-e/install-action@nextest
+
       - name: Add gpg test key pair
         run: |
           gpg --import tests/gpg/public.gpg

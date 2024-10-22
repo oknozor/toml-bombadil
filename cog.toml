@@ -3,7 +3,7 @@ ignore_merge_commits = true
 
 pre_bump_hooks = [
     "cargo set-version {{version}}",
-    "cargo test",
+    "cargo nextest run --test-threads=1",
     "cargo clippy",
     "cargo build --release",
     "cargo fmt --all",
