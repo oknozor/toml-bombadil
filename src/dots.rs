@@ -306,11 +306,10 @@ mod tests {
 
     fn setup(dotfiles: &str) {
         env::set_var("HOME", env::current_dir().unwrap());
+        #[cfg(target_os = "macos")]
+        run_cmd!(mkdir -p "Library/Application Support";).unwrap();
         println!("Fake home: {}", env::var("HOME").unwrap());
-        run_cmd!(
-            mkdir .config;
-        )
-        .unwrap();
+        run_cmd!(mkdir .config;).unwrap();
 
         Bombadil::link_self_config(Some(PathBuf::from(dotfiles))).unwrap();
     }
@@ -423,7 +422,7 @@ mod tests {
             vars: Dot::default_vars(),
         };
 
-        run_cmd! {ls -larth}?;
+        run_cmd! {ls -larth;}?;
 
         dot.traverse_and_copy(
             &source,
@@ -598,10 +597,9 @@ mod tests {
         Ok(())
     }
 
-    #[sealed_test(files = ["tests/dotfiles_with_local_vars"], env = [("HOME", ".")])]
+    #[sealed_test(files = ["tests/dotfiles_with_local_vars"], env = [("HOME", ".")], before = setup("dotfiles_with_local_vars"))]
     fn install_with_local_vars_default_path() -> Result<()> {
         run_cmd!(
-            mkdir .config;
             mkdir dotfiles_with_local_vars/source_dot;
             echo "{{name}} is {{verb}}" > dotfiles_with_local_vars/source_dot/file;
             echo "name=\"Tom\"" > dotfiles_with_local_vars/source_dot/vars.toml;
