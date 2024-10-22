@@ -39,10 +39,10 @@ jobs:
 
       # version publish steps are managed by cocogitto, see `cog.toml`
       # and https://github.com/oknozor/cocogitto-action for more info
-      - uses: cocogitto/cocogitto-action@v3
+      - uses: cocogitto/cocogitto-action@v3.5
         id: release
         with:
-          check-latest-tag-only: true
+          # check-latest-tag-only: true
           release: true
           git-user: github-actions
           git-user-email: github-actions@github.com
