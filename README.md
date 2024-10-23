@@ -39,7 +39,7 @@
 <p align="center">
   <a href="https://oknozor.github.io/toml-bombadil">Documentation</a>
   ·
-  <a href="https://oknozor.github.io/toml-bombadil/docs/getting-started/quick-start/">Installation</a>
+  <a href="https://oknozor.github.io/toml-bombadil/quickstart.html">Quick start</a>
 </p>
 
 **A dotfile manager written in Rust**
@@ -50,7 +50,7 @@
 - **Gpg encryption:** add encrypted secrets to your dotfile configuration with gpg.
 
 <p align="center">
-<a href="https://oknozor.github.io/toml-bombadil/docs/"><strong>Explore Toml Bombadil's docs&nbsp;&nbsp;▶</strong></a>
+<a href="https://oknozor.github.io/toml-bombadil/"><strong>Explore Toml Bombadil's docs&nbsp;&nbsp;▶</strong></a>
 </p>
 
 
@@ -90,7 +90,7 @@ cargo install toml-bombadil
 
 ## Quickstart
 
-See [Docs -> Quickstart](https://oknozor.github.io/toml-bombadil/docs/getting-started/quick-start/).
+See [Docs -> Quickstart](https://oknozor.github.io/toml-bombadil/quickstart.html).
 
 ## Shell completions
 
