@@ -74,6 +74,24 @@ colors:
   {% endif -%}
 ```
 
+## Default variables
+
+By default, Bombadil automatically add some variable to your template context.
+
+Using the `bombadil get vars` command to see your current template context, you should see the following output:
+
+```json
+{
+  "os": "macos",
+  "arch": "aarch64"
+}
+```
+
+Here are the list of possible value for those default variables:
+- `os` : https://doc.rust-lang.org/std/env/consts/constant.OS.html
+- `arch` : https://doc.rust-lang.org/std/env/consts/constant.ARCH.html
+
+
 ## Render templates
 
 To render and link templates, simply run `bombadil link`. Templates will be rendered to the `.dots` directory,
