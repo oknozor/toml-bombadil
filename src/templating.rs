@@ -196,6 +196,12 @@ impl Variables {
             "os".to_string(),
             Value::String(std::env::consts::OS.to_string()),
         );
+
+        vars.insert(
+            "arch".to_string(),
+            Value::String(std::env::consts::ARCH.to_string()),
+        );
+
         self
     }
 }
