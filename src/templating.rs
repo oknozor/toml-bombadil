@@ -75,7 +75,6 @@ impl Variables {
             None => {
                 let mut secrets = tera::Map::new();
                 secrets.insert(key.to_string(), Value::String(encrypted.to_string()));
-                println!("{}", self.inner);
                 let Some(vars) = self.inner.as_object_mut() else {
                     panic!("Variables should be a Value::Object");
                 };
@@ -189,7 +188,6 @@ impl Variables {
     }
 
     pub(crate) fn with_os(mut self) -> Self {
-        println!("{}", self.inner);
         let Some(vars) = self.inner.as_object_mut() else {
             panic!("Variables should be a Value::Object");
         };
