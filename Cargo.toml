@@ -10,6 +10,7 @@ homepage = "https://oknozor.github.io/toml-bombadil/"
 description = """
 A dotfile manager.
 """
+exclude = ["asset", "bats-tests", "ci", "docs", "website"]
 
 [profile.release]
 opt-level = 2
