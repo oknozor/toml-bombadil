@@ -13,7 +13,7 @@ Instead of having all your configs defined in a single toml file, you can split 
 
 ```toml
 dotfiles_dir = "dotfiles"
-gpg_user_id = "me@example.org"
+gpg_user_ids = ["me@example.org"]
 
 import = [
   { path = "wm/sway/sway.toml" },

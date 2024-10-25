@@ -21,8 +21,8 @@ Add your gpg user id to `bombadil.toml`:
 ```toml
 dotfile_dir = "bombadil-example"
 
-# The gpg user associated with the key pair you want to use
-gpg_user_id = "me@example.org"
+# The gpg user ids associated with the key pairs you want to use
+gpg_user_ids = ["me@example.org"]
 
 vars = [ "vars.toml" ]
 ```
