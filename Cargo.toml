@@ -28,7 +28,7 @@ serde_json_merge = "0.0.4"
 colored_json = "5.0.0"
 anyhow = "1"
 tera = "1"
-colored = "2.1.0"
+colored = "2.2.0"
 globwalk = "0.9.1"
 git2 = { version = "0.19.0", features = ["https", "vendored-libgit2", "vendored-openssl"] }
 clap = { version = "4", features = ["derive"], optional = true }
