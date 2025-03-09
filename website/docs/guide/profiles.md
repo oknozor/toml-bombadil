@@ -77,7 +77,7 @@ extra_profiles = [ "sway", "rofi", "solarized", "material-icons"]
 
 Now you can simply run:
 ```bash
-bombadil -p cool-sway
+bombadil link -p cool-sway
 ```
 
 ## List available profiles
