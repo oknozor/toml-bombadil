@@ -8,6 +8,7 @@ use config::{ConfigError, File};
 use dirs::home_dir;
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
+use serde_with::{serde_as, OneOrMany};
 use std::collections::HashMap;
 use std::path::PathBuf;
 
@@ -19,9 +20,9 @@ lazy_static! {
     pub static ref SETTINGS: Settings = Settings::get().unwrap_or_default();
     pub static ref GPG: Option<Gpg> = {
         SETTINGS
-            .gpg_user_id
+            .gpg_user_ids
             .as_ref()
-            .map(|gpg| Gpg::new(gpg.as_str()))
+            .map(|user_ids| Gpg::new(user_ids.to_vec()))
     };
 }
 
@@ -40,13 +41,17 @@ pub fn dotfile_dir() -> PathBuf {
 }
 
 /// The Global bombadil configuration
+#[serde_as]
 #[derive(Debug, Deserialize, Serialize, Default)]
 #[serde(deny_unknown_fields)]
 pub struct Settings {
     /// User define dotfiles directory, usually your versioned dotfiles
     pub dotfiles_dir: PathBuf,
 
-    pub gpg_user_id: Option<String>,
+    #[serde(alias = "gpg_user_id")]
+    #[serde_as(as = "Option<OneOrMany<_>>")]
+    #[serde(default)]
+    pub gpg_user_ids: Option<Vec<String>>,
 
     #[serde(default)]
     pub settings: ActiveProfile,

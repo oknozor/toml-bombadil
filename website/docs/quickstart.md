@@ -44,8 +44,8 @@ here is a sample configuration:
 # Path to your dotfile directory containing this config file (relative to $HOME). 
 dotfiles_dir = "dotfiles"
 
-# (Optional) GPG user id for secret encryption/decryption.
-gpg_user_id = "paul.delafosse@protonmail.com"
+# (Optional) GPG user ids for secret encryption/decryption.
+gpg_user_ids = ["paul.delafosse@protonmail.com"]
 
 # (Optional) list of bombadil config files to include in the configuration. 
 import = [

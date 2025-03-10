@@ -1,6 +1,6 @@
 # Path to your dotfiles relative to your $HOME directory
 dotfiles_dir = "dotfiles"
-gpg_user_id = "test@toml.bombadil.org"
+gpg_user_ids = ["test@toml.bombadil.org"]
 
 [settings]
 prehooks = ["echo Hello from bombadil"]
