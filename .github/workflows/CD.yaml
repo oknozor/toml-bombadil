@@ -1,0 +1,42 @@
+name: Deploy tag
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  binary:
+    name: Publish binary for ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: macos-latest
+            target: x86_64-osx
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-musl
+          - os: ubuntu-latest
+            target: armv7-unknown-linux-musleabihf
+
+    steps:
+      - name: install open-ssl
+        if: ${{ runner.os == 'Linux' }}
+        run: |
+          sudo apt-get -y install libssl-dev pkg-config musl-dev musl-tools
+
+      - uses: hecrj/setup-rust-action@v1
+        with:
+          rust-version: stable
+
+      - uses: actions/checkout@v1
+      - name: Build
+        run: ci/action.sh release ${{ matrix.target }}
+
+      - name: Upload binaries to release
+        uses: svenstaro/upload-release-action@v1-release
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: target/tar/bombadil.tar.gz
+          tag: 4.1.0
+          asset_name: bombadil-${{needs.release.outputs.version}}-${{ matrix.target }}.tar.gz
