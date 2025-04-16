@@ -2,6 +2,27 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## [4.1.0](https://github.com/oknozor/toml-bombadil/compare/4.0.0..4.1.0) - 2025-04-16
+#### Bug Fixes
+- **(code)** create parent dirs before link - ([685c56d](https://github.com/oknozor/toml-bombadil/commit/685c56da975936da3873f9adb62c243439ef3d84)) - xylyxyrr
+- remove debug logs - ([3551eed](https://github.com/oknozor/toml-bombadil/commit/3551eedd35c7a429163ad150dba94a7f27493b05)) - [@oknozor](https://github.com/oknozor)
+#### Continuous Integration
+- update ci - ([f21f40e](https://github.com/oknozor/toml-bombadil/commit/f21f40e3e61b0ea9014d045102845d2be6fd839a)) - [@oknozor](https://github.com/oknozor)
+- fix clippy and bats image - ([a1b2c9d](https://github.com/oknozor/toml-bombadil/commit/a1b2c9dc9d84d874deea948aa698ba9b5e94767c)) - [@oknozor](https://github.com/oknozor)
+- remove android target - ([005c9d2](https://github.com/oknozor/toml-bombadil/commit/005c9d25068b68e111b1ac98211e723bc98d85fa)) - [@oknozor](https://github.com/oknozor)
+#### Documentation
+- **(changelog)** fix changelog rewrite - ([478e1be](https://github.com/oknozor/toml-bombadil/commit/478e1be71d44837d94925fc279e62556dc9473a1)) - [@oknozor](https://github.com/oknozor)
+- Update profiles.md (#367) - ([a46d906](https://github.com/oknozor/toml-bombadil/commit/a46d906b61ff01b8d38edd3615021449718bceb7)) - Tri.w.j
+- fix broken links in readme - ([d3bd97d](https://github.com/oknozor/toml-bombadil/commit/d3bd97dce1924ed3d863a10c31ef4556f82f9339)) - [@oknozor](https://github.com/oknozor)
+#### Features
+- add arch to default template context - ([ce12edb](https://github.com/oknozor/toml-bombadil/commit/ce12edbcd94a24ea1b7d1192eee5714e8ab380b4)) - [@oknozor](https://github.com/oknozor)
+#### Miscellaneous Chores
+- update watchexec - ([405157c](https://github.com/oknozor/toml-bombadil/commit/405157c4b19b0736d7c63417c552e64137a78568)) - [@oknozor](https://github.com/oknozor)
+- update deps - ([f6f86a2](https://github.com/oknozor/toml-bombadil/commit/f6f86a2519df61141ad252a88a51f9472e499142)) - [@oknozor](https://github.com/oknozor)
+- cleanup legacy doc - ([97da5b7](https://github.com/oknozor/toml-bombadil/commit/97da5b7c285d2daa6e289db8c544084875a65dd1)) - [@oknozor](https://github.com/oknozor)
+
+- - -
+
 ## [4.0.0](https://github.com/oknozor/toml-bombadil/compare/13d05dc55fc56f419b297fd7d704f58feecc441a..4.0.0) - 2024-10-23
 #### Bug Fixes
 - **(dot)** fix traversal bug with non utf8 path - ([ab7163e](https://github.com/oknozor/toml-bombadil/commit/ab7163ed0bb2172bef6cd3bff2173d00c85f8686)) - [@oknozor](https://github.com/oknozor)
