@@ -1,9 +1,9 @@
-name: Deploy tag
+name: Deploy
 
 on:
   push:
-    branches:
-      - main
+    tags:
+      - "*"
 
 jobs:
   binary:
@@ -38,5 +38,5 @@ jobs:
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: target/tar/bombadil.tar.gz
-          tag: 4.1.0
+          tag: ${{ github.ref }}
           asset_name: bombadil-${{needs.release.outputs.version}}-${{ matrix.target }}.tar.gz
