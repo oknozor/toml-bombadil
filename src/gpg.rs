@@ -1,8 +1,9 @@
-use crate::templating::Variables;
 use anyhow::{anyhow, Result};
 use std::io::Write;
 use std::path::Path;
 use std::process::{Command, Stdio};
+
+use crate::templating::Variables;
 
 const PGP_HEADER: &str = "-----BEGIN PGP MESSAGE-----\n\n";
 const PGP_FOOTER: &str = "\n-----END PGP MESSAGE-----";
@@ -53,12 +54,14 @@ impl Gpg {
             .spawn()
             .expect("error calling gpg command, is gpg installed ?");
 
-        {
+        let result = {
             let stdin = child.stdin.as_mut().unwrap();
-            stdin.write_all(content.as_bytes())?;
-        }
+            stdin.write_all(content.as_bytes())
+        };
 
         let output = child.wait_with_output();
+
+        result?;
 
         match output {
             Ok(output) => {
@@ -84,12 +87,14 @@ impl Gpg {
             .spawn()
             .expect("error calling gpg command, is gpg installed ?");
 
-        {
+        let result = {
             let stdin = child.stdin.as_mut().unwrap();
-            stdin.write_all(content.as_bytes())?;
-        }
+            stdin.write_all(content.as_bytes())
+        };
 
         let output = child.wait_with_output();
+
+        result?;
 
         match output {
             Ok(output) => {

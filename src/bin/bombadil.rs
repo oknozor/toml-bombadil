@@ -104,7 +104,7 @@ async fn main() -> Result<()> {
         } => {
             let path = match target {
                 None => {
-                    let repo_name = remote.split('/').last().unwrap();
+                    let repo_name = remote.split('/').next_back().unwrap();
                     let repo_name = repo_name.strip_suffix(".git").unwrap();
                     PathBuf::from_str(repo_name).unwrap()
                 }
