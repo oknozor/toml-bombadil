@@ -2,7 +2,6 @@ name: Release
 
 on:
   workflow_dispatch:
-    branches: main
 
 jobs:
   release:
@@ -66,7 +65,14 @@ jobs:
       matrix:
         # This should work with only the `include`s but it currently doesn't because of this bug:
         # https://github.community/t5/How-to-use-Git-and-GitHub/GitHub-Actions-Matrix-options-dont-work-as-documented/td-p/29558
-        target: [ x86_64-osx, x86_64-unknown-linux-musl, armv7-unknown-linux-musleabihf, armv7-linux-androideabi, aarch64-linux-android ]
+        target:
+          [
+            x86_64-osx,
+            x86_64-unknown-linux-musl,
+            armv7-unknown-linux-musleabihf,
+            armv7-linux-androideabi,
+            aarch64-linux-android,
+          ]
         include:
           - os: macos-latest
             target: x86_64-osx
@@ -96,3 +102,51 @@ jobs:
           file: target/tar/bombadil.tar.gz
           tag: ${{ github.ref }}
           asset_name: bombadil-${{needs.release.outputs.version}}-${{ matrix.target }}.tar.gz
+
+  build-docs:
+    needs: release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: yarn
+          cache-dependency-path: website/yarn.lock
+
+      - name: Setup pages
+        uses: actions/configure-pages@v4
+
+      - name: Install dependencies
+        working-directory: ./website
+        run: yarn install
+
+      - name: Build with VitePress
+        working-directory: ./website
+        run: yarn docs:build
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: website/docs/.vitepress/dist
+
+  deploy-docs:
+    permissions:
+      pages: write
+      id-token: write
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    needs: build-docs
+    runs-on: ubuntu-latest
+    name: Deploy docs
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
