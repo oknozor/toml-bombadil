@@ -145,7 +145,7 @@ impl Bombadil {
     /// 3. Clean existing rendered dotfiles templates in `.dot`
     /// 4. Copy and symlink dotfiles according to the current `$XDG_CONFIG/bombadil.toml` configuration
     /// 5. Run post install hooks
-    /// 6. Write current state to `.dot/previous_state.toml`
+    /// 6. Write the current state to `.dot/previous_state.toml`
     pub fn install(&mut self, force: bool) -> Result<()> {
         self.check_dotfile_dir()?;
 
@@ -452,7 +452,7 @@ impl Bombadil {
             // Add profile vars
             let variables = Variables::from_paths(&self.path, &profile.vars)?;
             self.vars.extend(variables);
-            // Add Profile pre hooks
+            // Add Profile pre-hooks
             let prehooks = profile
                 .prehooks
                 .iter()
@@ -461,7 +461,7 @@ impl Bombadil {
                 .collect::<Vec<Hook>>();
             self.prehooks.extend(prehooks);
 
-            // Add profile post hooks
+            // Add profile post-hooks
             let posthooks = profile
                 .posthooks
                 .iter()

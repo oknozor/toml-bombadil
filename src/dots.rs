@@ -41,11 +41,16 @@ impl Dot {
         let mut vars = vars.clone();
 
         if let Some(local_vars_path) = self.resolve_var_path() {
-            let local_vars = Dot::load_local_vars(&local_vars_path);
+            let mut local_vars = Dot::load_local_vars(&local_vars_path);
+            if local_vars.has_secrets() {
+                let decrypted = local_vars.get_secrets()?;
+                local_vars.with_secrets(decrypted);
+            }
+
             vars.extend(local_vars);
         }
 
-        // Recursively copy dotfile to .dots directory
+        // Recursively copy dotfile to the.dots directory
         self.traverse_and_copy(source, target, ignored_paths.as_slice(), &vars)
     }
 
