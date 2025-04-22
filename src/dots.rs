@@ -370,7 +370,7 @@ mod tests {
         };
 
         // Act
-        dot.symlink()?;
+        dot.symlink(false)?;
 
         // Assert
         let symlink = PathBuf::from(".config/template.css");
@@ -500,7 +500,7 @@ mod tests {
             vars: Dot::default_vars(),
         };
 
-        dot.symlink()?;
+        dot.symlink(false)?;
 
         // Act
         dot.unlink()?;
@@ -563,7 +563,7 @@ mod tests {
     #[sealed_test(files = ["tests/dotfiles_with_local_vars"], before = setup("dotfiles_with_local_vars"))]
     fn install_with_local_vars() -> Result<()> {
         let mut bombadil = Bombadil::from_settings(NoGpg)?;
-        bombadil.install()?;
+        bombadil.install(false)?;
 
         let dotfiles = bombadil.dots.get("sub_dir").unwrap();
         assert_that!(dotfiles.vars).is_equal_to(PathBuf::from("vars.toml"));

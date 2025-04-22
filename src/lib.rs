@@ -73,6 +73,7 @@ impl Bombadil {
         remote: &str,
         path: PathBuf,
         profiles: Option<Vec<&str>>,
+        force: bool,
     ) -> Result<()> {
         git::clone(remote, path.as_path())?;
         Bombadil::link_self_config(Some(path.join(BOMBADIL_CONFIG)))?;
@@ -83,7 +84,7 @@ impl Bombadil {
             bombadil.enable_profiles(profiles)?;
         }
 
-        bombadil.install()?;
+        bombadil.install(force)?;
 
         Ok(())
     }
@@ -145,7 +146,7 @@ impl Bombadil {
     /// 4. Copy and symlink dotfiles according to the current `$XDG_CONFIG/bombadil.toml` configuration
     /// 5. Run post install hooks
     /// 6. Write current state to `.dot/previous_state.toml`
-    pub fn install(&mut self) -> Result<()> {
+    pub fn install(&mut self, force: bool) -> Result<()> {
         self.check_dotfile_dir()?;
 
         self.prehooks.iter().map(Hook::run).for_each(|result| {
@@ -189,7 +190,7 @@ impl Bombadil {
                             // maybe we want to add them when implementing verbose mode
                         }
                     }
-                    dot.symlink()?;
+                    dot.symlink(force)?;
                 }
             }
         }
@@ -286,7 +287,7 @@ impl Bombadil {
     }
 
     /// Watch dotfiles and automatically run link on changes
-    pub async fn watch(profiles: Vec<String>) -> Result<()> {
+    pub async fn watch(profiles: Vec<String>, force: bool) -> Result<()> {
         let mut bombadil = Bombadil::from_settings(Mode::Gpg)?;
         bombadil.enable_profiles(profiles.iter().map(String::as_str).collect())?;
 
@@ -310,7 +311,7 @@ impl Bombadil {
                     }) {
                         println!("{}", "Detected changes, re-linking dots ...".green());
                         // Finally, install the dots like usual
-                        b.install()
+                        b.install(force)
                             .map_err(|e| RuntimeError::Handler {
                                 ctx: "bombadil install",
                                 err: e.to_string(),
@@ -689,7 +690,32 @@ mod tests {
 
     #[sealed_test(files = ["tests/dotfiles_simple"], before = setup("dotfiles_simple"))]
     fn install_single_file_works() -> Result<()> {
-        Bombadil::from_settings(NoGpg)?.install()?;
+        Bombadil::from_settings(NoGpg)?.install(false)?;
+
+        let target = fs::read_link(".config/template.css")?;
+        let expected = env::current_dir()?.join("dotfiles_simple/.dots/template.css");
+
+        assert_that!(target).is_equal_to(expected);
+
+        let target = std::fs::read_to_string(target)?;
+
+        assert_eq!(
+            target,
+            indoc! {
+                ".class {
+                    color: #de1f1f
+                }
+                "
+            }
+        );
+
+        Ok(())
+    }
+
+    #[sealed_test(files = ["tests/dotfiles_simple"], before = setup("dotfiles_simple"))]
+    fn force_install_single_file_works() -> Result<()> {
+        fs::write(".config/template.css", "foo")?;
+        Bombadil::from_settings(NoGpg)?.install(true)?;
 
         let target = fs::read_link(".config/template.css")?;
         let expected = env::current_dir()?.join("dotfiles_simple/.dots/template.css");
@@ -714,7 +740,7 @@ mod tests {
     #[sealed_test(files = ["tests/dotfiles_invalid_dot"], before = setup("dotfiles_invalid_dot"))]
     fn install_should_fail_and_continue() -> Result<()> {
         // Act
-        Bombadil::from_settings(NoGpg)?.install()?;
+        Bombadil::from_settings(NoGpg)?.install(false)?;
 
         // Assert
         assert_that!(PathBuf::from(".config/template.css")).exists();
@@ -727,7 +753,7 @@ mod tests {
         Bombadil::link_self_config(Some(PathBuf::from("dotfiles_simple")))?;
         let mut bombadil = Bombadil::from_settings(NoGpg)?;
 
-        bombadil.install()?;
+        bombadil.install(false)?;
         assert_that!(PathBuf::from(".config/template.css")).exists();
 
         bombadil.uninstall()?;
@@ -740,7 +766,7 @@ mod tests {
         let mut bombadil = Bombadil::from_settings(NoGpg)?;
 
         // Act
-        bombadil.install()?;
+        bombadil.install(false)?;
 
         // Assert
         assert_that!(PathBuf::from(".config/posthook/file").exists());
@@ -753,7 +779,7 @@ mod tests {
         let mut bombadil = Bombadil::from_settings(NoGpg)?;
 
         // Act
-        bombadil.install()?;
+        bombadil.install(false)?;
 
         // Assert
         assert_that!(PathBuf::from(".config/prehook_file")).exists();
@@ -826,7 +852,7 @@ mod tests {
         bombadil.enable_profiles(vec!["fancy"])?;
 
         // Act
-        bombadil.install()?;
+        bombadil.install(false)?;
         let target = fs::read_link(".config/template.css")?;
         let content = fs::read_to_string(target)?;
 

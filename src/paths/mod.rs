@@ -25,7 +25,7 @@ pub trait DotPaths {
     fn unlink(&self) -> Result<()>;
 
     /// Symlink the dotfile to its destination
-    fn symlink(&self) -> Result<()>;
+    fn symlink(&self, force: bool) -> Result<()>;
 
     fn resolve_var_path(&self) -> Option<PathBuf>;
 }
@@ -74,7 +74,7 @@ impl DotPaths for Dot {
         unlink(&self.target)
     }
 
-    fn symlink(&self) -> Result<()> {
+    fn symlink(&self, force: bool) -> Result<()> {
         let copy_path = &self.copy_path()?;
         let target = &self.target()?;
         let path = target.to_string_lossy();
@@ -88,6 +88,20 @@ impl DotPaths for Dot {
         }
         if let Some(p) = target.parent() {
             fs::create_dir_all(p).ok();
+        }
+
+        if target.exists() && !target.metadata()?.is_symlink() && force {
+            let backup = target.with_extension("bak");
+            if backup.exists() && backup.is_file() {
+                fs::remove_file(&backup)?;
+            }
+            if backup.exists() && backup.is_dir() {
+                fs::remove_dir_all(&backup)?;
+            }
+
+            println!("Backing up {} to {}", target.display(), backup.display());
+            fs::copy(target, backup)?;
+            fs::remove_file(target)?;
         }
 
         // Link

@@ -39,23 +39,32 @@ enum Cli {
         /// Target destination, repository name by default
         #[clap(short, long, required = false)]
         target: Option<PathBuf>,
-        /// A list of comma separated profiles to activate
+        /// A list of comma-separated profiles to activate
         #[clap(short, long, required = false, num_args(0..))]
         profiles: Vec<String>,
+        /// Force symlink creation even if the target already exists, a backup will be created
+        #[arg(long, short)]
+        force: bool,
     },
     /// Symlink a copy of your dotfiles and inject variables according to bombadil.toml settings
     Link {
-        /// A list of comma separated profiles to activate
+        /// A list of comma-separated profiles to activate
         #[clap(short, long, required = false, value_parser = profiles(), num_args(0..))]
         profiles: Vec<String>,
+        /// Force symlink creation even if the target already exists, a backup will be created
+        #[arg(long, short)]
+        force: bool,
     },
     /// Remove all symlinks defined in your bombadil.toml
     Unlink,
     /// Watch dotfiles and automatically run link on changes
     Watch {
-        /// A list of comma separated profiles to activate
+        /// A list of comma-separated profiles to activate
         #[clap(short, long, required = false, value_parser = profiles(), num_args(0..))]
         profiles: Vec<String>,
+        /// Force symlink creation even if the target already exists, a backup will be created
+        #[arg(long, short)]
+        force: bool,
     },
     /// Add a secret var to bombadil environment
     AddSecret {
@@ -101,6 +110,7 @@ async fn main() -> Result<()> {
             remote,
             target,
             profiles,
+            force,
         } => {
             let path = match target {
                 None => {
@@ -120,10 +130,10 @@ async fn main() -> Result<()> {
                 None
             };
 
-            Bombadil::install_from_remote(&remote, path, profiles)
+            Bombadil::install_from_remote(&remote, path, profiles, force)
                 .unwrap_or_else(|err| fatal!("{}", err));
         }
-        Cli::Link { profiles } => {
+        Cli::Link { profiles, force } => {
             let mut bombadil =
                 Bombadil::from_settings(Mode::Gpg).unwrap_or_else(|err| fatal!("{}", err));
 
@@ -131,10 +141,12 @@ async fn main() -> Result<()> {
                 .enable_profiles(profiles.iter().map(String::as_str).collect())
                 .unwrap_or_else(|err| fatal!("{}", err));
 
-            bombadil.install().unwrap_or_else(|err| fatal!("{}", err));
+            bombadil
+                .install(force)
+                .unwrap_or_else(|err| fatal!("{}", err));
         }
-        Cli::Watch { profiles } => {
-            Bombadil::watch(profiles).await?;
+        Cli::Watch { profiles, force } => {
+            Bombadil::watch(profiles, force).await?;
         }
         Cli::Unlink => {
             Bombadil::from_settings(Mode::NoGpg)
