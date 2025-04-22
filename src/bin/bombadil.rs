@@ -72,7 +72,7 @@ enum Cli {
         #[clap(short, long)]
         key: String,
         #[clap(short, long, required_unless_present = "ask")]
-        value: String,
+        value: Option<String>,
         /// Get the secret value from stdin
         #[clap(long, short)]
         ask: bool,
@@ -161,9 +161,9 @@ async fn main() -> Result<()> {
         } => {
             let value = if ask {
                 println!("Type the value and press enter to confirm :");
-                std::io::stdin().lock().lines().next().unwrap().unwrap()
+                io::stdin().lock().lines().next().unwrap()?
             } else {
-                value
+                value.expect("Missing value")
             };
 
             let var_file = file;
