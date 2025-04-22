@@ -2,8 +2,8 @@ use crate::gpg::Gpg;
 use crate::settings::GPG;
 use anyhow::{anyhow, Result};
 use colored::Colorize;
+use json_value_merge::Merge;
 use serde::{Deserialize, Serialize};
-use serde_json_merge::{Dfs, Merge};
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::BufReader;
@@ -120,7 +120,6 @@ impl Variables {
                 let secrets = variables
                     .get("secrets")
                     .and_then(|secrets| secrets.as_object());
-
                 // Replace secrets with their decrypted values
                 if let Some(secrets) = secrets {
                     let secrets = Variables::decrypt_values(secrets, gpg)?;
@@ -136,7 +135,7 @@ impl Variables {
         }
     }
 
-    /// Read file in the given path and return its content
+    /// Read a file in the given path and return its content
     /// with variable replaced by their values.
     pub(crate) fn to_dot(&self, path: &Path) -> tera::Result<String> {
         // Read file content
@@ -157,7 +156,7 @@ impl Variables {
     }
 
     pub(crate) fn extend(&mut self, other: Variables) {
-        self.inner.merge_recursive::<Dfs>(&other.inner);
+        self.inner.merge(&other.inner);
     }
 
     pub(crate) fn with_secrets(&mut self, secrets: Map<String, Value>) {
@@ -248,9 +247,7 @@ mod test {
 
         variables.push_secret("pass", "hunter2");
 
-        let dot_content = variables
-            .to_dot(Path::new("tests/dotfiles_with_secret/template"))
-            .unwrap();
+        let dot_content = variables.to_dot(Path::new("tests/dotfiles_with_secret/template"))?;
 
         assert_eq!(
             dot_content,

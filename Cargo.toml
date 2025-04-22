@@ -24,7 +24,7 @@ dirs = "6.0.0"
 toml = "0.8.19"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-serde_json_merge = "0.0.4"
+json_value_merge = "2.0.1"
 colored_json = "5.0.0"
 anyhow = "1"
 tera = "1"

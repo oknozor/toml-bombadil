@@ -6,7 +6,7 @@ use std::path::PathBuf;
 /// and the XDG `target` path where it should be linked
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Dot {
-    /// Path relative to user defined dotfile
+    /// Path relative to user-defined dotfile
     pub source: PathBuf,
     /// Target path either relative to $HOME or absolute
     pub target: PathBuf,
