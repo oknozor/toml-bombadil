@@ -1,42 +1,134 @@
-name: Deploy
+name: Publish latest
 
 on:
   push:
+    branches:
+      - main
     tags:
       - "*"
 
+env:
+  CARGO_TERM_COLOR: always
 jobs:
-  binary:
-    name: Publish binary for ${{ matrix.os }}
+  upload_license:
+    name: Upload License
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: LICENSE
+          path: LICENSE
+
+  build:
+    name: Build bombadil ${{ matrix.os }}-${{ matrix.target }}
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: macos-latest
-            target: x86_64-osx
+            target: x86_64-apple-darwin
+          - os: macos-latest
+            target: aarch64-apple-darwin
           - os: ubuntu-latest
             target: x86_64-unknown-linux-musl
           - os: ubuntu-latest
             target: armv7-unknown-linux-musleabihf
 
     steps:
-      - name: install open-ssl
-        if: ${{ runner.os == 'Linux' }}
-        run: |
-          sudo apt-get -y install libssl-dev pkg-config musl-dev musl-tools
+      - uses: actions/checkout@v4
 
-      - uses: hecrj/setup-rust-action@v1
+      - uses: Swatinem/rust-cache@v2
         with:
-          rust-version: stable
+          cache-all-crates: "true"
+          key: "${{ matrix.os }}-${{ matrix.target }}"
 
-      - uses: actions/checkout@v1
-      - name: Build
-        run: ci/action.sh release ${{ matrix.target }}
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          target: ${{ matrix.target }}
 
-      - name: Upload binaries to release
-        uses: svenstaro/upload-release-action@v1-release
+      - uses: actions-rs/cargo@v1
+        with:
+          use-cross: true
+          command: build
+          args: --target ${{ matrix.target }} --release --locked
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.target }}
+          path: target/${{ matrix.target }}/release/bombadil
+
+  upload_to_release:
+    needs: [build, upload_license]
+    name: Publish bombadil binaries
+    runs-on: ubuntu-latest
+    # if: ${{ github.ref_type == 'tag' }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: ~/artifacts
+
+      - name: Copy artifacts to archive
+        run: |
+          mkdir x86_64-unknown-linux-musl
+          cp -r /home/runner/artifacts/x86_64-unknown-linux-musl/bombadil x86_64-unknown-linux-musl/bombadil
+          chmod +x -R x86_64-unknown-linux-musl/bombadil
+          cp -r /home/runner/artifacts/LICENSE/LICENSE x86_64-unknown-linux-musl/
+          tar -czf bombadil-x86_64-unknown-linux-musl.tar.gz x86_64-unknown-linux-musl/*
+
+          mkdir armv7-unknown-linux-musleabihf
+          cp -r /home/runner/artifacts/armv7-unknown-linux-musleabihf/bombadil armv7-unknown-linux-musleabihf/bombadil
+          chmod +x -R armv7-unknown-linux-musleabihf/bombadil
+          cp -r /home/runner/artifacts/LICENSE/LICENSE armv7-unknown-linux-musleabihf/
+          tar -czf bombadil-armv7-unknown-linux-musleabihf.tar.gz armv7-unknown-linux-musleabihf/*
+
+          mkdir x86_64-apple-darwin
+          cp -r /home/runner/artifacts/x86_64-apple-darwin/bombadil x86_64-apple-darwin/bombadil
+          chmod +x -R x86_64-apple-darwin/bombadil
+          cp -r /home/runner/artifacts/LICENSE/LICENSE x86_64-apple-darwin/
+          tar -czf bombadil-x86_64-apple-darwin.tar.gz x86_64-apple-darwin/*
+
+          mkdir aarch64-apple-darwin
+          cp -r /home/runner/artifacts/x86_64-apple-darwin/bombadil aarch64-apple-darwin/bombadil
+          chmod +x -R aarch64-apple-darwin/bombadil
+          cp -r /home/runner/artifacts/LICENSE/LICENSE aarch64-apple-darwin/
+          tar -czf bombadil-aarch64-apple-darwin.tar.gz aarch64-apple-darwin/*
+
+      - uses: svenstaro/upload-release-action@v1-release
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: target/tar/bombadil.tar.gz
-          tag: ${{ github.ref }}
-          asset_name: bombadil-${{needs.release.outputs.version}}-${{ matrix.target }}.tar.gz
+          file: bombadil-aarch64-apple-darwin.tar.gz
+          tag: 4.2.0
+          # tag: ${{ github.ref_name }}
+          # asset_name: bombadil-${{ github.ref_name }}-x86_64-apple-darwin.tar.gz
+          asset_name: bombadil-4.2.0-aarch64-apple-darwin.tar.gz
+
+      - uses: svenstaro/upload-release-action@v1-release
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: bombadil-x86_64-unknown-linux-musl.tar.gz
+          tag: 4.2.0
+          # tag: ${{ github.ref }}
+          # asset_name: bombadil-${{ github.ref_name }}-x86_64-unknown-linux-musl.tar.gz
+          asset_name: bombadil-4.2.0-x86_64-unknown-linux-musl.tar.gz
+
+      - uses: svenstaro/upload-release-action@v1-release
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: bombadil-armv7-unknown-linux-musleabihf.tar.gz
+          tag: 4.2.0
+          # tag: ${{ github.ref_name }}
+          # asset_name: bombadil-${{ github.ref_name }}-armv7-unknown-linux-musleabihf.tar.gz
+          asset_name: bombadil-4.2.0-armv7-unknown-linux-musleabihf.tar.gz
+
+      - uses: svenstaro/upload-release-action@v1-release
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: bombadil-x86_64-apple-darwin.tar.gz
+          tag: 4.2.0
+          # tag: ${{ github.ref_name }}
+          # asset_name: bombadil-${{ github.ref_name }}-x86_64-apple-darwin.tar.gz
+          asset_name: bombadil-4.2.0-x86_64-apple-darwin.tar.gz
