@@ -65,7 +65,7 @@ jobs:
     needs: [build, upload_license]
     name: Publish bombadil binaries
     runs-on: ubuntu-latest
-    # if: ${{ github.ref_type == 'tag' }}
+    if: ${{ github.ref_type == 'tag' }}
     steps:
       - uses: actions/download-artifact@v4
         with:
@@ -101,34 +101,26 @@ jobs:
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: bombadil-aarch64-apple-darwin.tar.gz
-          tag: 4.2.0
-          # tag: ${{ github.ref_name }}
-          # asset_name: bombadil-${{ github.ref_name }}-x86_64-apple-darwin.tar.gz
-          asset_name: bombadil-4.2.0-aarch64-apple-darwin.tar.gz
+          tag: ${{ github.ref_name }}
+          asset_name: bombadil-${{ github.ref_name }}-aarch64-apple-darwin.tar.gz
 
       - uses: svenstaro/upload-release-action@v1-release
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: bombadil-x86_64-unknown-linux-musl.tar.gz
-          tag: 4.2.0
-          # tag: ${{ github.ref }}
-          # asset_name: bombadil-${{ github.ref_name }}-x86_64-unknown-linux-musl.tar.gz
-          asset_name: bombadil-4.2.0-x86_64-unknown-linux-musl.tar.gz
+          tag: ${{ github.ref }}
+          asset_name: bombadil-${{ github.ref_name }}-x86_64-unknown-linux-musl.tar.gz
 
       - uses: svenstaro/upload-release-action@v1-release
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: bombadil-armv7-unknown-linux-musleabihf.tar.gz
-          tag: 4.2.0
-          # tag: ${{ github.ref_name }}
-          # asset_name: bombadil-${{ github.ref_name }}-armv7-unknown-linux-musleabihf.tar.gz
-          asset_name: bombadil-4.2.0-armv7-unknown-linux-musleabihf.tar.gz
+          tag: ${{ github.ref_name }}
+          asset_name: bombadil-${{ github.ref_name }}-armv7-unknown-linux-musleabihf.tar.gz
 
       - uses: svenstaro/upload-release-action@v1-release
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: bombadil-x86_64-apple-darwin.tar.gz
-          tag: 4.2.0
-          # tag: ${{ github.ref_name }}
-          # asset_name: bombadil-${{ github.ref_name }}-x86_64-apple-darwin.tar.gz
-          asset_name: bombadil-4.2.0-x86_64-apple-darwin.tar.gz
+          tag: ${{ github.ref_name }}
+          asset_name: bombadil-${{ github.ref_name }}-x86_64-apple-darwin.tar.gz
