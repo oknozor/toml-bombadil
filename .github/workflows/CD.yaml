@@ -4,8 +4,7 @@ on:
   push:
     tags:
       - "*"
-    branches:
-      - main
+
 jobs:
   binary:
     name: Publish binary for ${{ matrix.os }}
