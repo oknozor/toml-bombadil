@@ -27,6 +27,9 @@ pub trait DotPaths {
     /// Symlink the dotfile to its destination
     fn symlink(&self, force: bool) -> Result<()>;
 
+    /// Symlink the dotfile to its destination directly with no templating
+    fn symlink_direct(&self, force: bool) -> Result<()>;
+
     fn resolve_var_path(&self) -> Option<PathBuf>;
 }
 
@@ -72,6 +75,48 @@ impl DotPaths for Dot {
 
     fn unlink(&self) -> Result<()> {
         unlink(&self.target)
+    }
+
+    fn symlink_direct(&self, force: bool) -> Result<()> {
+        let source = &self.source()?;
+        let target = &self.target()?;
+        let path = target.to_string_lossy();
+        let path = shellexpand::tilde(path.as_ref());
+        let target = Path::new(path.as_ref());
+
+        if let Some(p) = target.parent() {
+            fs::create_dir_all(p).ok();
+        }
+
+        if target.exists() && !target.metadata()?.is_symlink() && force {
+            let backup = target.with_extension("bak");
+            if backup.exists() && backup.is_file() {
+                fs::remove_file(&backup)?;
+            }
+            if backup.exists() && backup.is_dir() {
+                fs::remove_dir_all(&backup)?;
+            }
+
+            println!("Backing up {} to {}", target.display(), backup.display());
+            fs::copy(target, backup)?;
+            fs::remove_file(target)?;
+        }
+
+        // Link
+        unix::fs::symlink(source, target)
+            .map_err(|cause| {
+                let source_path = self.source.clone();
+                let target = self.target.clone();
+
+                Symlink {
+                    source_path,
+                    target,
+                    cause,
+                }
+            })
+            .unwrap_or_else(|err| eprintln!("{:?}", err));
+
+        Ok(())
     }
 
     fn symlink(&self, force: bool) -> Result<()> {

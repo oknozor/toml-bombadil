@@ -1,0 +1,5 @@
+
+dotfiles_dir = "dotfiles_direct"
+
+[settings.dots]
+css = { source = "file.txt", target = ".config/file.txt", direct = true }

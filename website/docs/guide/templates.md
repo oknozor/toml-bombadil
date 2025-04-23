@@ -4,7 +4,8 @@ next:
   link: '/guide/profiles'
 ---
 
-  # Dotfile templates
+# Dotfile templates
+
 Toml Bombadil uses the tera templating engine. Turning dotfiles into templates is meant to make theme
 editing, environment managment and ricing smoother.
 
@@ -159,4 +160,27 @@ zsh = { source = "zsh/zshrc", target = ".zshrc", vars = "shell_vars.toml" }
 
 ::: tip
 Note that if you prefer having every single variable files named, this also works for dotfile directory.
+:::
+
+## Direct symlink without templating
+
+In some cases, you may want to manage and symlink a dotfile **without rendering it as a template**—for example, if it doesn’t contain any variables or Tera syntax, or you just want to use it as-is. To handle such scenarios, Bombadil provides the `direct` option for dotfile entries.
+
+When `direct = true` is specified in a dotfile entry, Bombadil will skip the rendering phase entirely and directly symlink the source file to the specified target.
+
+### Example
+
+```toml
+[settings.dots]
+zsh = { source = "zsh/zshrc", target = ".zshrc", direct = true }
+```
+
+### Use cases
+
+- Linking files that don’t use templating.
+- Including pre-rendered config files.
+- Keeping binary or compiled files under version control and synced to system locations.
+
+::: warning
+If `direct` is set to `true`, any variables or Tera syntax in the file will **not** be processed.
 :::

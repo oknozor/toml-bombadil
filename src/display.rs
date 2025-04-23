@@ -4,6 +4,7 @@ pub mod links {
     use colored::Colorize;
     use std::fmt::Formatter;
     use std::io::Write;
+    use std::path::PathBuf;
     use std::{fmt, io};
 
     impl fmt::Display for LinkResult {
@@ -12,6 +13,7 @@ pub mod links {
                 LinkResult::Updated { copy, target, .. } => writeln!(f, "{copy:?} => {target:?}")?,
                 LinkResult::Created { copy, target, .. } => writeln!(f, "{copy:?} => {target:?}")?,
                 LinkResult::Ignored { source } => writeln!(f, "{source:?}")?,
+                LinkResult::Direct { source, target } => writeln!(f, "{source:?} => {target:?}")?,
                 LinkResult::Unchanged { .. } => {}
             }
 
@@ -30,11 +32,11 @@ pub mod links {
         Ok(())
     }
 
-    pub fn write_errors(errored: Vec<Error>, out: &mut impl Write) -> io::Result<()> {
+    pub fn write_errors(errored: Vec<(PathBuf, Error)>, out: &mut impl Write) -> io::Result<()> {
         if !errored.is_empty() {
             writeln!(out, "{}", "[Errored]".bold().red())?;
-            for error in errored {
-                writeln!(out, "{error:?}")?;
+            for (path, error) in errored {
+                writeln!(out, "{path:?}: {error:?}")?;
             }
             writeln!(out)?;
         }

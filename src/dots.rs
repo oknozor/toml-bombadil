@@ -15,6 +15,7 @@ use tera::ErrorKind;
 pub enum LinkResult {
     Updated { copy: PathBuf, target: PathBuf },
     Created { copy: PathBuf, target: PathBuf },
+    Direct { source: PathBuf, target: PathBuf },
     Ignored { source: PathBuf },
     Unchanged { target: PathBuf },
 }
@@ -50,8 +51,10 @@ impl Dot {
             vars.extend(local_vars);
         }
 
+        let vars = (!self.direct).then_some(vars);
+
         // Recursively copy dotfile to the.dots directory
-        self.traverse_and_copy(source, target, ignored_paths.as_slice(), &vars)
+        self.traverse_and_copy(source, target, ignored_paths.as_slice(), vars.as_ref())
     }
 
     fn load_local_vars(source: &Path) -> Variables {
@@ -76,7 +79,7 @@ impl Dot {
         source: &PathBuf,
         target: &PathBuf,
         ignored: &[PathBuf],
-        vars: &Variables,
+        vars: Option<&Variables>,
     ) -> Result<LinkResult> {
         if ignored.contains(source) {
             return Ok(LinkResult::Ignored {
@@ -84,76 +87,95 @@ impl Dot {
             });
         }
 
-        // Single file : inject vars and write to .dots/
-        if source.is_file() {
-            fs::create_dir_all(target.parent().unwrap())?;
+        match vars {
+            Some(vars) if source.is_file() => self.render_file(source, target, vars),
+            Some(vars) => self.render_directory(source, target, ignored, vars),
+            None => Ok(LinkResult::Direct {
+                source: source.clone(),
+                target: self.target()?,
+            }),
+        }
+    }
 
-            match vars.to_dot(source) {
-                Ok(content) if target.exists() => self.update(source, target, content),
-                Ok(content) => self.create(source, target, content),
-                Err(e) if target.exists() => {
-                    match e.kind {
-                        ErrorKind::Utf8Conversion { .. } | ErrorKind::Io(..) => {
-                            // Skip non utf8 files like binaries, images etc.
-                            // Those should be symlinked directly once this is implemented
-                            // https://github.com/oknozor/toml-bombadil/issues/138
-                        }
-                        _ => {
-                            if let Some(source) = e.source() {
-                                let message = format!("{source}");
-                                println!("{}", message.red());
-                            }
+    fn render_directory(
+        &self,
+        source: &Path,
+        target: &PathBuf,
+        ignored: &[PathBuf],
+        vars: &Variables,
+    ) -> std::result::Result<LinkResult, anyhow::Error> {
+        fs::create_dir_all(target)?;
+        let mut link_results = vec![];
+        for entry in source.read_dir()? {
+            let entry_path = &entry?.path();
+            let entry_name = entry_path.file_name().unwrap().to_str().unwrap();
+            let result = self.traverse_and_copy(
+                &source.join(entry_name),
+                &target.join(entry_name),
+                ignored,
+                Some(vars),
+            );
+
+            match result {
+                Ok(result) => link_results.push(result),
+                Err(err) => eprintln!("{err}"),
+            }
+        }
+
+        if link_results
+            .iter()
+            .any(|res| matches!(res, LinkResult::Updated { .. }))
+        {
+            Ok(LinkResult::Updated {
+                copy: self.copy_path()?,
+                target: self.target()?,
+            })
+        } else if link_results
+            .iter()
+            .any(|res| matches!(res, LinkResult::Created { .. }))
+        {
+            Ok(LinkResult::Created {
+                copy: self.copy_path()?,
+                target: self.target()?,
+            })
+        } else {
+            Ok(LinkResult::Unchanged {
+                target: self.target()?,
+            })
+        }
+    }
+
+    fn render_file(
+        &self,
+        source: &PathBuf,
+        target: &PathBuf,
+        vars: &Variables,
+    ) -> std::result::Result<LinkResult, anyhow::Error> {
+        fs::create_dir_all(target.parent().unwrap())?;
+        match vars.to_dot(source) {
+            Ok(content) if target.exists() => self.update(source, target, content),
+            Ok(content) => self.create(source, target, content),
+            Err(e) if target.exists() => {
+                match e.kind {
+                    ErrorKind::Utf8Conversion { .. } | ErrorKind::Io(..) => {
+                        // Skip non utf8 files like binaries, images etc.
+                        // Those should be symlinked directly once this is implemented
+                        // https://github.com/oknozor/toml-bombadil/issues/138
+                    }
+                    _ => {
+                        if let Some(source) = e.source() {
+                            let message = format!("{source}");
+                            println!("{}", message.red());
                         }
                     }
-                    self.update_raw(source, target)
                 }
-                Err(_) => {
-                    fs::copy(source, target)?;
-                    Ok(LinkResult::Created {
-                        target: self.target.clone(),
-                        copy: self.copy_path_unchecked(),
-                    })
-                }
+                self.update_raw(source, target)
             }
-        } else {
-            fs::create_dir_all(target)?;
-            let mut link_results = vec![];
-
-            for entry in source.read_dir()? {
-                let entry_path = &entry?.path();
-                let entry_name = entry_path.file_name().unwrap().to_str().unwrap();
-                let result = self.traverse_and_copy(
-                    &source.join(entry_name),
-                    &target.join(entry_name),
-                    ignored,
-                    vars,
-                );
-
-                match result {
-                    Ok(result) => link_results.push(result),
-                    Err(err) => eprintln!("{err}"),
-                }
-            }
-
-            if link_results
-                .iter()
-                .any(|res| matches!(res, LinkResult::Updated { .. }))
-            {
-                Ok(LinkResult::Updated {
-                    copy: self.copy_path()?,
-                    target: self.target()?,
-                })
-            } else if link_results
-                .iter()
-                .any(|res| matches!(res, LinkResult::Created { .. }))
-            {
+            Err(_) => {
+                fs::copy(source, target)?;
                 Ok(LinkResult::Created {
-                    copy: self.copy_path()?,
-                    target: self.target()?,
-                })
-            } else {
-                Ok(LinkResult::Unchanged {
-                    target: self.target()?,
+                    target: self.target.clone(),
+                    copy: self.copy_path_unchecked(),
                 })
             }
         }
@@ -229,7 +251,9 @@ impl Dot {}
 
 pub(crate) trait DotVar {
     fn vars(&self) -> Option<PathBuf>;
+
     fn get_source(&self) -> Option<&PathBuf>;
+
     fn default_vars() -> PathBuf {
         PathBuf::from("vars.toml")
     }
@@ -329,6 +353,7 @@ mod tests {
             target: PathBuf::from(".settings/sway"),
             ignore: vec![],
             vars: Dot::default_vars(),
+            direct: false,
         };
 
         // Act
@@ -348,6 +373,7 @@ mod tests {
             target: PathBuf::from("/etc/profile"),
             ignore: vec![],
             vars: Dot::default_vars(),
+            direct: false,
         };
 
         // Act
@@ -372,6 +398,7 @@ mod tests {
             target: PathBuf::from(".config/template.css"),
             ignore: vec![],
             vars: Dot::default_vars(),
+            direct: false,
         };
 
         // Act
@@ -393,6 +420,7 @@ mod tests {
             target: PathBuf::from(".config/dir"),
             ignore: vec![],
             vars: Dot::default_vars(),
+            direct: false,
         };
 
         // Act
@@ -400,7 +428,7 @@ mod tests {
             &PathBuf::from("dotfiles_with_multiple_nested_dir/dir"),
             &PathBuf::from("dotfiles_with_multiple_nested_dir/.dots/dir"),
             &[],
-            &Variables::default(),
+            Some(&Variables::default()),
         )?;
 
         // Assert
@@ -425,6 +453,7 @@ mod tests {
             target,
             ignore: vec![],
             vars: Dot::default_vars(),
+            direct: false,
         };
 
         run_cmd! {ls -larth;}?;
@@ -433,7 +462,7 @@ mod tests {
             &source,
             &PathBuf::from("dotfiles_non_utf8/.dots/ferris.png"),
             &[],
-            &Variables::default(),
+            Some(&Variables::default()),
         )?;
 
         assert_that!(PathBuf::from("dotfiles_non_utf8/.dots/ferris.png")).exists();
@@ -460,6 +489,7 @@ mod tests {
             target: PathBuf::from("source_dot"),
             ignore: vec!["*.md".to_string()],
             vars: Dot::default_vars(),
+            direct: false,
         };
 
         // Act
@@ -470,7 +500,7 @@ mod tests {
                 PathBuf::from("source_dot/subdir_two/subfile.md"),
                 PathBuf::from("source_dot/file.md"),
             ],
-            &Variables::default(),
+            Some(&Variables::default()),
         )?;
 
         // Assert
@@ -503,6 +533,7 @@ mod tests {
             target,
             ignore: vec![],
             vars: Dot::default_vars(),
+            direct: false,
         };
 
         dot.symlink(false)?;
@@ -530,6 +561,7 @@ mod tests {
             target,
             ignore: vec![],
             vars: Dot::default_vars(),
+            direct: false,
         };
 
         dot.install(&Variables::default(), vec![])?;
@@ -551,6 +583,7 @@ mod tests {
             target: PathBuf::from("dot"),
             ignore: vec![],
             vars: Dot::default_vars(),
+            direct: false,
         };
 
         let vars: Variables = toml::from_str(r#"name = "Tom Bombadil""#)?;
@@ -592,6 +625,7 @@ mod tests {
             target: PathBuf::from("dir"),
             ignore: vec![],
             vars: PathBuf::from("my_vars.toml"),
+            direct: false,
         };
 
         dot.install(&Variables::default(), vec![])?;
@@ -621,6 +655,7 @@ mod tests {
             ignore: vec![],
             // FIXME: this should be relative to the dotfile directory
             vars: PathBuf::from("dotfiles_with_local_vars/source_dot/vars.toml"),
+            direct: false,
         };
 
         // Arrange
