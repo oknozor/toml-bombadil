@@ -162,6 +162,7 @@ impl Bombadil {
         let mut created = vec![];
         let mut ignored = vec![];
         let mut updated = vec![];
+        let mut direct = vec![];
         let mut errored = vec![];
 
         if self.vars.has_secrets() {
@@ -179,12 +180,17 @@ impl Bombadil {
 
         for (key, dot) in self.dots.iter() {
             match dot.install(&self.vars, self.get_auto_ignored_files(key)) {
-                Err(err) => errored.push(err),
+                Err(err) => errored.push((dot.source.clone(), err)),
                 Ok(linked) => {
                     match linked {
                         LinkResult::Updated { .. } => updated.push(linked),
                         LinkResult::Created { .. } => created.push(linked),
                         LinkResult::Ignored { .. } => ignored.push(linked),
+                        LinkResult::Direct { .. } => {
+                            direct.push(linked);
+                            dot.symlink_direct(force)?;
+                            continue;
+                        }
                         LinkResult::Unchanged { .. } => {
                             // Ignoring those for now
                             // maybe we want to add them when implementing verbose mode
@@ -200,6 +206,7 @@ impl Bombadil {
         links::write(created, &mut stdout, "Created")?;
         links::write(updated, &mut stdout, "Updated")?;
         links::write(ignored, &mut stdout, "Ignored")?;
+        links::write(direct, &mut stdout, "Direct")?;
         links::write_errors(errored, &mut stdout)?;
 
         // Run post install hooks
@@ -407,13 +414,18 @@ impl Bombadil {
                         dot.vars.clone_from(vars);
                     }
 
-                    if let (None, None, None) = (
+                    if let Some(templating) = &dot_override.direct {
+                        dot.direct.clone_from(templating);
+                    }
+
+                    if let (None, None, None, None) = (
                         &dot_override.source,
                         &dot_override.target,
                         &dot_override.vars,
+                        &dot_override.direct,
                     ) {
                         let warning = format!(
-                            "Skipping {}, no `source`, `target` or `vars` to override",
+                            "Skipping {}, no `source`, `target`, `vars`, or `templating` to override",
                             key
                         )
                         .yellow();
@@ -434,6 +446,7 @@ impl Bombadil {
                             target,
                             ignore,
                             vars: Dot::default_vars(),
+                            direct: false,
                         },
                     );
                 } else {
@@ -712,6 +725,17 @@ mod tests {
         Ok(())
     }
 
+    #[sealed_test(files = ["tests/dotfiles_direct"], before = setup("dotfiles_direct"))]
+    fn install_direct_file_works() -> Result<()> {
+        Bombadil::from_settings(NoGpg)?.install(false)?;
+
+        let target = fs::read_link(".config/file.txt")?;
+        let expected = env::current_dir()?.join("dotfiles_direct/file.txt");
+
+        assert_that!(target).is_equal_to(expected);
+
+        Ok(())
+    }
     #[sealed_test(files = ["tests/dotfiles_simple"], before = setup("dotfiles_simple"))]
     fn force_install_single_file_works() -> Result<()> {
         fs::write(".config/template.css", "foo")?;

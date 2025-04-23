@@ -18,6 +18,9 @@ pub struct Dot {
     #[serde(default = "Dot::default_vars")]
     #[serde(skip_serializing)]
     pub vars: PathBuf,
+    /// Templating enabled for this dot
+    #[serde(default)]
+    pub direct: bool,
 }
 
 /// Same as dot but source and target are optionals
@@ -32,4 +35,6 @@ pub struct DotOverride {
     pub ignore: Vec<String>,
     /// A single var file attached to the dot
     pub vars: Option<PathBuf>,
+    /// Templating enabled for this dot
+    pub direct: Option<bool>,
 }
