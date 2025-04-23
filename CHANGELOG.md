@@ -2,6 +2,19 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## [4.2.0](https://github.com/oknozor/toml-bombadil/compare/4.1.0..4.2.0) - 2025-04-23
+#### Bug Fixes
+- **(link)** decrypt nested dot secrets - ([1be8dfd](https://github.com/oknozor/toml-bombadil/commit/1be8dfd38494ebfaaaffe733763e5d97f6e0e689)) - [@oknozor](https://github.com/oknozor)
+- **(secrets)** do not require '--value' flag when using '-ask' - ([4d72211](https://github.com/oknozor/toml-bombadil/commit/4d72211c63d46e01c77135a85b73f297e4ce2613)) - [@oknozor](https://github.com/oknozor)
+#### Features
+- **(dots)** add 'direct' option to link without templating - ([2ece4e5](https://github.com/oknozor/toml-bombadil/commit/2ece4e5b67026f89bde21339a1c122f8313149b3)) - [@oknozor](https://github.com/oknozor)
+- add force arg to override/backup existing dotfiles - ([d7186b8](https://github.com/oknozor/toml-bombadil/commit/d7186b864ae4958b72012bedb309ce8363b81b7b)) - [@oknozor](https://github.com/oknozor)
+#### Miscellaneous Chores
+- only publish binaries on new tag - ([a73e752](https://github.com/oknozor/toml-bombadil/commit/a73e752b01319ddba1869b3b0ab4b85c70dc766f)) - [@oknozor](https://github.com/oknozor)
+- build binaries for latest version - ([15cb320](https://github.com/oknozor/toml-bombadil/commit/15cb320f968a1ea7618826e7aaf9958b6932f5ed)) - [@oknozor](https://github.com/oknozor)
+
+- - -
+
 ## [4.1.0](https://github.com/oknozor/toml-bombadil/compare/4.0.0..4.1.0) - 2025-04-16
 #### Bug Fixes
 - **(code)** create parent dirs before link - ([685c56d](https://github.com/oknozor/toml-bombadil/commit/685c56da975936da3873f9adb62c243439ef3d84)) - xylyxyrr
