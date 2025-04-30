@@ -1,0 +1,7 @@
+
+dotfiles_dir = "dotfiles_with_profiles_direct"
+
+[profiles.fancy.dots]
+css1 = { source = "file.txt", target = ".config/file1.txt", direct = true }
+css2 = { source = "file.txt", target = ".config/file2.txt", direct = false }
+css3 = { source = "file.txt", target = ".config/file3.txt" }
