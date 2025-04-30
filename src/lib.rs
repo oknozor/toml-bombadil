@@ -438,6 +438,11 @@ impl Bombadil {
                     let source = source.clone();
                     let target = target.clone();
                     let ignore = dot_override.ignore.clone();
+                    let direct = if dot_override.direct.is_some() {
+                        dot_override.direct.unwrap()
+                    } else {
+                        false
+                    };
 
                     self.dots.insert(
                         key.to_string(),
@@ -446,7 +451,7 @@ impl Bombadil {
                             target,
                             ignore,
                             vars: Dot::default_vars(),
-                            direct: false,
+                            direct,
                         },
                     );
                 } else {
@@ -882,6 +887,25 @@ mod tests {
 
         // Assert
         assert_that!(content).is_equal_to(".class {color: #de1f1f}\n".to_string());
+
+        Ok(())
+    }
+
+    #[sealed_test(files = ["tests/dotfiles_with_profiles_direct"], before = setup("dotfiles_with_profiles_direct"))]
+    fn should_have_profiles_direct() -> Result<()> {
+        // Arrange
+        let mut bombadil = Bombadil::from_settings(NoGpg)?;
+        bombadil.enable_profiles(vec!["fancy"])?;
+
+        // Act
+        let css1 = bombadil.dots.get("css1").unwrap();
+        let css2 = bombadil.dots.get("css2").unwrap();
+        let css3 = bombadil.dots.get("css3").unwrap();
+
+        // Assert
+        assert_that!(css1.direct).is_equal_to(true);
+        assert_that!(css2.direct).is_equal_to(false);
+        assert_that!(css3.direct).is_equal_to(false);
 
         Ok(())
     }
