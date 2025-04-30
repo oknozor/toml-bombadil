@@ -438,12 +438,11 @@ impl Bombadil {
                     let source = source.clone();
                     let target = target.clone();
                     let ignore = dot_override.ignore.clone();
-                    let direct;
-                    if dot_override.direct.is_some() {
-                        direct = dot_override.direct.unwrap()
+                    let direct = if dot_override.direct.is_some() {
+                        dot_override.direct.unwrap()
                     } else {
-                        direct = false;
-                    }
+                        false
+                    };
 
                     self.dots.insert(
                         key.to_string(),
