@@ -36,7 +36,7 @@ clap_complete = { version = "4", optional = true }
 lazy_static = { version = "1.5.0", optional = true }
 watchexec = "6.0.0"
 watchexec-events = "5.0.0"
-watchexec-signals = "4.0.1"
+watchexec-signals = "5.0.0"
 watchexec-filterer-ignore = "6.0.0"
 ignore-files = "3.0.3"
 tokio = { version = "1.41.0", features = ["macros", "rt"] }
