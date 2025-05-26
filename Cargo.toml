@@ -39,7 +39,7 @@ watchexec-events = "5.0.0"
 watchexec-signals = "4.0.1"
 watchexec-filterer-ignore = "6.0.0"
 ignore-files = "3.0.3"
-tokio = { version = "1.41.0", features = ["macros", "rt"] }
+tokio = { version = "1.45.1", features = ["macros", "rt"] }
 thiserror = "2.0.12"
 shellexpand = "3.1.0"
 
