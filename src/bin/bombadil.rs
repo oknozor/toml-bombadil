@@ -17,7 +17,7 @@ macro_rules! fatal {
     }}
 }
 
-/// Toml is a dotfile template manager, written in rust.
+/// Toml Bombadil is a dotfile template manager, written in rust.
 #[derive(Parser)]
 #[command(
     version,
