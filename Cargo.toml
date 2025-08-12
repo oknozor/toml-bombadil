@@ -40,7 +40,7 @@ watchexec-signals = "4.0.1"
 watchexec-filterer-ignore = "6.0.0"
 ignore-files = "3.0.3"
 tokio = { version = "1.41.0", features = ["macros", "rt"] }
-thiserror = "2.0.12"
+thiserror = "2.0.14"
 shellexpand = "3.1.0"
 
 [features]
