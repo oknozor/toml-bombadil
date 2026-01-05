@@ -1,0 +1,12 @@
+dotfiles_dir = "dotfiles_with_os_profiles"
+
+[settings.dots]
+test-file = { source = "test.txt", target = "test.txt" }
+
+[profiles.linux.dots]
+test-file = { source = "test.txt", target = "linux-test.txt" }
+linux-specific = { source = "linux-specific.txt", target = "linux-specific.txt" }
+
+[profiles.macos.dots]
+test-file = { source = "test.txt", target = "macos-test.txt" }
+macos-specific = { source = "macos-specific.txt", target = "macos-specific.txt" }
