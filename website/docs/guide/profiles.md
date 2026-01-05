@@ -142,6 +142,40 @@ rofi = { source = "rofi/rofi.sway" }
 
 Notice on the `sway` profile we are redefining the rofi dot entry and only specifying the source attribute.
 
+## Automatic OS-specific profiles
+
+Bombadil can automatically enable OS-specific profiles based on the operating system you're running on. This is particularly useful when you need different configurations for different operating systems.
+
+For example, if you're using [Nushell](https://www.nushell.sh/) and want different configuration paths for Linux and macOS:
+
+```toml
+dotfiles_dir = "dotfiles"
+
+[settings.dots]
+nushell-scripts = { source = "nushell/scripts", target = ".config/nushell/scripts" }
+nushell-config = { source = "nushell/config.nu", target = ".config/nushell/config.nu" }
+
+[profiles.linux.dots]
+nushell-scripts = { source = "nushell/scripts", target = ".config/nushell/scripts" }
+nushell-config = { source = "nushell/config.nu", target = ".config/nushell/config.nu" }
+
+[profiles.macos.dots]
+nushell-scripts = { source = "nushell/scripts", target = "Library/Application Support/nushell/scripts" }
+nushell-config = { source = "nushell/config.nu", target = "Library/Application Support/nushell/config.nu" }
+```
+
+When you run `bombadil link` without specifying any profiles, Bombadil will automatically enable the profile that matches your current operating system. On Linux, it will enable the `linux` profile, and on macOS, it will enable the `macos` profile.
+
+The supported operating system profile names are:
+- `linux` (for Linux systems)
+- `macos` (for macOS systems)
+- `windows` (for Windows systems)
+- `freebsd` (for FreeBSD systems)
+- `android` (for Android systems)
+- `ios` (for iOS systems)
+
+If no OS-specific profile exists for your current operating system, Bombadil will simply use the default profile.
+
 ## Variable overrides
 
 Like for dotfiles variable can be overridden by profile variables:

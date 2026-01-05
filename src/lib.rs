@@ -362,18 +362,24 @@ impl Bombadil {
         }
     }
 
-    /// Enable a dotfile profile by merging its settings with the default profile
-    pub fn enable_profiles(&mut self, profile_keys: Vec<&str>) -> Result<()> {
-        if profile_keys.is_empty() {
-            return Ok(());
-        }
+    /// Get the list of enabled profiles
+    pub fn get_enabled_profiles(&self) -> Vec<String> {
+        self.profile_enabled.clone()
+    }
 
+    /// Get the dots
+    pub fn get_dots(&self) -> &HashMap<String, Dot> {
+        &self.dots
+    }
+
+    /// Enable a dotfile profile by merging its settings with the default profile
+    pub fn enable_profiles(&mut self, mut profile_keys: Vec<&str>) -> Result<()> {
+        profile_keys.push(std::env::consts::OS);
         self.profile_enabled = profile_keys.iter().map(ToString::to_string).collect();
 
         let mut profiles: Vec<Profile> = profile_keys
             .into_iter()
-            // unwrap here is safe cause allowed profile keys are checked by clap
-            .map(|profile_key| self.profiles.get(profile_key).unwrap())
+            .filter_map(|profile_key| self.profiles.get(profile_key))
             .cloned()
             .collect();
 
@@ -1024,6 +1030,41 @@ mod tests {
 
             // Assert
             assert_that!(lines).has_length(2);
+
+            Ok(())
+        }
+
+        #[sealed_test(files = [ "tests/dotfiles_with_os_profiles" ], before = setup("dotfiles_with_os_profiles"))]
+        #[cfg(target_os = "linux")]
+        fn should_enable_linux_specific_profile_automatically() -> Result<()> {
+            let mut bombadil = Bombadil::from_settings(NoGpg)?;
+
+            bombadil.enable_profiles(vec![])?;
+
+            let enabled_profiles = bombadil.get_enabled_profiles();
+            assert!(enabled_profiles.contains(&"linux".to_string()));
+
+            let dots = bombadil.get_dots();
+            assert!(dots.contains_key("linux-specific"));
+
+            Ok(())
+        }
+
+        #[cfg(target_os = "macos")]
+        #[sealed_test(files = [ "tests/dotfiles_with_os_profiles" ], before = setup("dotfiles_with_os_profiles"))]
+        fn should_enable_macos_specific_profile_automatically() -> Result<()> {
+            let mut bombadil = Bombadil::from_settings(NoGpg)?;
+
+            // Don't specify any profiles - should automatically enable OS-specific profile
+            bombadil.enable_profiles(vec![])?;
+
+            // Check that the macos profile was enabled (since we're running on macos)
+            let enabled_profiles = bombadil.get_enabled_profiles();
+            assert!(enabled_profiles.contains(&"macos".to_string()));
+
+            // Check that the macos-specific dot is present
+            let dots = bombadil.get_dots();
+            assert!(dots.contains_key("macos-specific"));
 
             Ok(())
         }
