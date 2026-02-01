@@ -2,7 +2,7 @@ use crate::paths::DotPaths;
 use crate::settings::dotfile_dir;
 use crate::settings::dots::{Dot, DotOverride};
 use crate::templating::Variables;
-use anyhow::Result;
+use anyhow::{Context, Result};
 use colored::*;
 use std::error::Error;
 use std::fs;
@@ -104,9 +104,11 @@ impl Dot {
         ignored: &[PathBuf],
         vars: &Variables,
     ) -> std::result::Result<LinkResult, anyhow::Error> {
-        fs::create_dir_all(target)?;
+        let sd = source.display();
+        let td = target.display();
+        fs::create_dir_all(target).with_context(|| format!("Failed to create {td}"))?;
         let mut link_results = vec![];
-        for entry in source.read_dir()? {
+        for entry in source.read_dir().with_context(|| format!("Failed to read directory {sd}"))? {
             let entry_path = &entry?.path();
             let entry_name = entry_path.file_name().unwrap().to_str().unwrap();
             let result = self.traverse_and_copy(
@@ -118,7 +120,7 @@ impl Dot {
 
             match result {
                 Ok(result) => link_results.push(result),
-                Err(err) => eprintln!("{err}"),
+                Err(err) => eprintln!("{err:#}"),
             }
         }
 
@@ -151,7 +153,11 @@ impl Dot {
         target: &PathBuf,
         vars: &Variables,
     ) -> std::result::Result<LinkResult, anyhow::Error> {
-        fs::create_dir_all(target.parent().unwrap())?;
+        let target_parent = target.parent();
+        if let Some(target_parent) = target_parent {
+            let tpd = target_parent.display();
+            fs::create_dir_all(target_parent).with_context(|| format!("Failed to create {tpd}"))?;
+        }
         match vars.to_dot(source) {
             Ok(content) if target.exists() => self.update(source, target, content),
             Ok(content) => self.create(source, target, content),
@@ -182,10 +188,12 @@ impl Dot {
     }
 
     fn create(&self, source: &PathBuf, target: &PathBuf, content: String) -> Result<LinkResult> {
-        let permissions = fs::metadata(source)?.permissions();
-        let mut dot_copy = File::create(target)?;
-        dot_copy.write_all(content.as_bytes())?;
-        dot_copy.set_permissions(permissions)?;
+        let sd = source.display();
+        let td = target.display();
+        let permissions = fs::metadata(source).with_context(|| format!("Failed to query metadata for {sd}"))?.permissions();
+        let mut dot_copy = File::create(target).with_context(|| format!("Failed to create {td}"))?;
+        dot_copy.write_all(content.as_bytes()).with_context(|| format!("Failed to write to {td}"))?;
+        dot_copy.set_permissions(permissions).with_context(|| format!("Failed to set permissions on {td}"))?;
         Ok(LinkResult::Created {
             target: self.target()?,
             copy: self.copy_path()?,
@@ -193,17 +201,19 @@ impl Dot {
     }
 
     fn update(&self, source: &PathBuf, target: &PathBuf, content: String) -> Result<LinkResult> {
-        let target_content = fs::read_to_string(target)?;
+        let sd = source.display();
+        let td = target.display();
+        let target_content = fs::read_to_string(target).context(format!("Failed to read from {td}"))?;
         if target_content == content {
             Ok(LinkResult::Unchanged {
                 target: self.target()?,
             })
         } else {
-            let permissions = fs::metadata(source)?.permissions();
-            let mut dot_copy = OpenOptions::new().write(true).truncate(true).open(target)?;
-            dot_copy.write_all(content.as_bytes())?;
-            dot_copy.set_permissions(permissions)?;
-            dot_copy.sync_data()?;
+            let permissions = fs::metadata(source).with_context(|| format!("Failed to query metadata for {sd}"))?.permissions();
+            let mut dot_copy = OpenOptions::new().write(true).truncate(true).open(target).with_context(|| format!("Failed to open(truncate) {td}"))?;
+            dot_copy.write_all(content.as_bytes()).with_context(|| format!("Failed to write to {td}"))?;
+            dot_copy.set_permissions(permissions).with_context(|| format!("Failed to set permissions on {td}"))?;
+            dot_copy.sync_data().with_context(|| format!("Failed to sync data for {td}"))?;
             Ok(LinkResult::Updated {
                 target: self.target()?,
                 copy: self.copy_path()?,
@@ -212,20 +222,22 @@ impl Dot {
     }
 
     fn update_raw(&self, source: &PathBuf, target: &PathBuf) -> Result<LinkResult> {
-        let target_content = fs::read(target)?;
-        let content = fs::read(source)?;
+        let sd = source.display();
+        let td = source.display();
+        let target_content = fs::read(target).with_context(|| format!("Failed to read {td}"))?;
+        let content = fs::read(source).with_context(|| format!("Failed to read {sd}"))?;
 
         if target_content == content {
             Ok(LinkResult::Unchanged {
                 target: self.target()?,
             })
         } else {
-            let permissions = fs::metadata(source)?.permissions();
-            let mut dot_copy = OpenOptions::new().write(true).truncate(true).open(target)?;
+            let permissions = fs::metadata(source).with_context(|| format!("Failed to query metadata for {sd}"))?.permissions();
+            let mut dot_copy = OpenOptions::new().write(true).truncate(true).open(target).with_context(|| format!("Failed to open(truncate) {td}"))?;
 
-            dot_copy.write_all(&content)?;
-            dot_copy.set_permissions(permissions)?;
-            dot_copy.sync_data()?;
+            dot_copy.write_all(&content).with_context(|| format!("Failed to write to {td}"))?;
+            dot_copy.set_permissions(permissions).with_context(|| format!("Failed to set permissions on {td}"))?;
+            dot_copy.sync_data().with_context(|| format!("Failed to sync data for {td}"))?;
             Ok(LinkResult::Updated {
                 target: self.target()?,
                 copy: self.copy_path()?,
