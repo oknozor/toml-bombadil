@@ -90,10 +90,22 @@ impl Dot {
         match vars {
             Some(vars) if source.is_file() => self.render_file(source, target, vars),
             Some(vars) => self.render_directory(source, target, ignored, vars),
-            None => Ok(LinkResult::Direct {
-                source: source.clone(),
-                target: self.target()?,
-            }),
+            None => {
+                let resolved_target = self.target()?;
+                if let Ok(canonical_target) = resolved_target.canonicalize() {
+                    if let Ok(canonical_source) = source.canonicalize() {
+                        if canonical_target == canonical_source {
+                            return Ok(LinkResult::Unchanged {
+                                target: resolved_target,
+                            });
+                        }
+                    }
+                }
+                Ok(LinkResult::Direct {
+                    source: source.clone(),
+                    target: resolved_target,
+                })
+            }
         }
     }
 

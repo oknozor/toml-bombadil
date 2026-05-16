@@ -84,6 +84,14 @@ impl DotPaths for Dot {
         let path = shellexpand::tilde(path.as_ref());
         let target = Path::new(path.as_ref());
 
+        if let Ok(canonical_target) = target.canonicalize() {
+            if let Ok(canonical_source) = source.canonicalize() {
+                if canonical_target == canonical_source {
+                    return Ok(());
+                }
+            }
+        }
+
         if let Some(p) = target.parent() {
             fs::create_dir_all(p).ok();
         }
@@ -98,8 +106,7 @@ impl DotPaths for Dot {
             }
 
             println!("Backing up {} to {}", target.display(), backup.display());
-            fs::copy(target, backup)?;
-            fs::remove_file(target)?;
+            fs::rename(target, backup)?;
         }
 
         // Link
@@ -145,8 +152,7 @@ impl DotPaths for Dot {
             }
 
             println!("Backing up {} to {}", target.display(), backup.display());
-            fs::copy(target, backup)?;
-            fs::remove_file(target)?;
+            fs::rename(target, backup)?;
         }
 
         // Link

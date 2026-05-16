@@ -194,6 +194,9 @@ impl Bombadil {
                         LinkResult::Unchanged { .. } => {
                             // Ignoring those for now
                             // maybe we want to add them when implementing verbose mode
+                            if dot.direct {
+                                continue;
+                            }
                         }
                     }
                     dot.symlink(force)?;
